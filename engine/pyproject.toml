@@ -8,11 +8,13 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "fastembed>=0.9.0",
     "faster-whisper>=1.2.1",
     "fastmcp>=4.1.0",
     "numpy>=2.5.4",
     "pyobjc-framework-libdispatch>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-screencapturekit>=12.2.2 ; sys_platform == 'darwin'",
+    "qdrant-client>=1.19.1",
     "sounddevice>=0.5.6",
     "websockets>=17.2",
 ]
@@ -20,6 +22,7 @@ dependencies = [
 [project.scripts]
 continuum-actions = "continuum.actions.server:main"
 continuum-engine = "continuum.pipeline:main"
+continuum-memory-search = "continuum.memory.cli:main"
 
 [project.optional-dependencies]
 diarization = [

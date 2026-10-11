@@ -16,7 +16,7 @@ Open-source autonomous AI meeting intelligence: live fact-checking, approval-gat
 ```bash
 cd apps/desktop && pnpm install && pnpm tauri dev
 cd engine && uv sync --all-extras && uv run pytest
-cd engine && cp .env.example .env && uv run --env-file .env continuum-engine
+cd engine && cp .env.example .env   # settings; the desktop app starts the engine itself
 ```
 
 MIT licensed.
