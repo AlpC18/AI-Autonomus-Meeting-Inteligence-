@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
+
+"""Runs the live engine: capture, transcribe, label speakers, stream to the HUD.
+
+This module only wires the other modules together; it holds no audio,
+diarization, or transport logic of its own.
+"""
+
+import asyncio
+import logging
+import os
+import sys
+from collections.abc import AsyncIterator, Callable
+
+import numpy as np
+
+from continuum.audio.blocks import SAMPLE_RATE
+from continuum.audio.chunker import Utterance, UtteranceChunker
+from continuum.audio.transcriber import Transcriber
+from continuum.config import Settings
+from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
+from continuum.diarization.turns import label_segment
+from continuum.transcript import Segment
+from continuum.transport.server import TranscriptServer
+
+logger = logging.getLogger(__name__)
+
+BlockSource = Callable[[], AsyncIterator[np.ndarray]]
+
+
+def _block_source(source: str) -> BlockSource:
+    """Return the capture function for ``source``, importing it on demand.
+
+    Raises:
+        RuntimeError: if system audio is requested on an unsupported platform.
+    """
+    if source == "mic":
+        from continuum.audio.microphone import microphone_blocks
+
+        return microphone_blocks
+    if sys.platform != "darwin":
+        raise RuntimeError("System audio capture is only implemented for macOS.")
+    from continuum.audio.system_audio import system_audio_blocks
+
+    return system_audio_blocks
+
+
+class Engine:
+    """Turns live audio into published transcript segments.
+
+    One model instance is shared by all sources, so model calls are serialised
+    with a lock and run in worker threads to keep the event loop responsive.
+    """
+
+    def __init__(
+        self,
+        transcriber: Transcriber,
+        publish: Callable[[Segment], None],
+        diarizer: PyannoteDiarizer | None = None,
+    ) -> None:
+        self._transcriber = transcriber
+        self._publish = publish
+        self._diarizer = diarizer
+        self._model_lock = asyncio.Lock()
+
+    async def process(self, utterance: Utterance, source: str) -> None:
+        """Transcribe one utterance and publish its segments.
+
+        System audio is additionally split by speaker when a diarizer is set;
+        the microphone is always the local user.
+        """
+        async with self._model_lock:
+            segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
+            if segments and self._diarizer is not None and source == "system":
+                turns = await asyncio.to_thread(self._diarizer.diarize, utterance)
+                segments = [label_segment(segment, turns) for segment in segments]
+        for segment in segments:
+            self._publish(segment)
+
+    async def run_source(self, source: str, blocks: AsyncIterator[np.ndarray]) -> None:
+        """Consume ``blocks`` from ``source`` until the stream ends or fails."""
+        chunker = UtteranceChunker(SAMPLE_RATE)
+        async for block in blocks:
+            for utterance in chunker.feed(block):
+                await self.process(utterance, source)
+
+
+async def _run_source_logged(engine: Engine, source: str) -> bool:
+    """Run one source; log instead of raising so other sources keep going."""
+    try:
+        await engine.run_source(source, _block_source(source)())
+    except Exception:
+        logger.exception("Audio source %r stopped", source)
+        return False
+    return True
+
+
+async def run(settings: Settings) -> int:
+    """Run the engine until every audio source has stopped.
+
+    Returns a process exit code: 1 when all sources failed, otherwise 0.
+    """
+    logger.info("Loading Whisper model %r", settings.whisper_model)
+    transcriber = await asyncio.to_thread(
+        Transcriber, settings.whisper_model, settings.model_dir
+    )
+    diarizer = None
+    if settings.hf_token:
+        diarizer = await asyncio.to_thread(
+            PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir
+        )
+    else:
+        logger.info("HF_TOKEN is not set: speakers are labelled by audio source only")
+
+    async with TranscriptServer(port=settings.ws_port) as server:
+        engine = Engine(transcriber, server.publish, diarizer)
+        results = await asyncio.gather(
+            *(_run_source_logged(engine, source) for source in settings.sources)
+        )
+    return 0 if any(results) else 1
+
+
+def main() -> None:
+    """Console entry point (``continuum-engine``). Stops on Ctrl+C."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    try:
+        settings = Settings.from_env(os.environ)
+    except ValueError as error:
+        sys.exit(f"Invalid configuration: {error}")
+    try:
+        sys.exit(asyncio.run(run(settings)))
+    except RuntimeError as error:
+        sys.exit(str(error))
+    except KeyboardInterrupt:
+        sys.exit(0)

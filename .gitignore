@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+dist/
+target
+.venv
+__pycache__/
+.pytest_cache/
+.npm-cache/
+graft/
+.claude/settings.local.json
+.env
