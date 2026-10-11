@@ -26,6 +26,7 @@ from continuum.audio.transcriber import Transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
+from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import Meeting, MemoryStore
 from continuum.transcript import Segment
@@ -65,12 +66,16 @@ class Engine:
         transcriber: Transcriber,
         publish: Callable[[Segment], None],
         diarizer: PyannoteDiarizer | None = None,
-        remember: Callable[[Segment], None] | None = None,
+        remember: Callable[[Segment, bool], None] | None = None,
+        check: Callable[[Segment], FactCheckAlert | None] | None = None,
+        publish_alert: Callable[[FactCheckAlert], None] | None = None,
     ) -> None:
         self._transcriber = transcriber
         self._publish = publish
         self._diarizer = diarizer
         self._remember = remember
+        self._check = check
+        self._publish_alert = publish_alert
         self._model_lock = asyncio.Lock()
 
     async def process(self, utterance: Utterance, source: str) -> None:
@@ -78,8 +83,12 @@ class Engine:
 
         System audio is additionally split by speaker when a diarizer is set;
         the microphone is always the local user. Segments are published
-        first and then written to memory when ``remember`` is set; a memory
-        failure is logged and does not interrupt the live transcript.
+        first. Each is then fact-checked against memory (when ``check`` is
+        set) and only afterwards written to memory (when ``remember`` is
+        set), so a statement is never compared with itself. ``remember``
+        receives the segment and whether it was flagged, so a contradicted
+        claim is stored as disputed and cannot become the record. A failure
+        in either step is logged and does not interrupt the live transcript.
         """
         async with self._model_lock:
             segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
@@ -88,13 +97,25 @@ class Engine:
                 segments = [label_segment(segment, turns) for segment in segments]
         for segment in segments:
             self._publish(segment)
-        if self._remember is None:
-            return
         for segment in segments:
-            try:
-                await asyncio.to_thread(self._remember, segment)
-            except Exception:
-                logger.exception("Could not store a transcript segment in memory")
+            flagged = False
+            if self._check is not None and self._publish_alert is not None:
+                try:
+                    alert = await asyncio.to_thread(self._check, segment)
+                except Exception:
+                    logger.exception("Could not fact-check a transcript segment")
+                else:
+                    if alert is not None:
+                        flagged = True
+                        logger.info(
+                            "Fact check: said %s, on record %s", alert.claimed, alert.recorded
+                        )
+                        self._publish_alert(alert)
+            if self._remember is not None:
+                try:
+                    await asyncio.to_thread(self._remember, segment, flagged)
+                except Exception:
+                    logger.exception("Could not store a transcript segment in memory")
 
     async def run_source(self, source: str, blocks: AsyncIterator[np.ndarray]) -> None:
         """Consume ``blocks`` from ``source`` until the stream ends or fails."""
@@ -133,18 +154,23 @@ async def run(settings: Settings) -> int:
 
     with contextlib.ExitStack() as stack:
         remember = None
+        check = None
         if settings.scope is not None:
+            model_name = settings.embedding_model or DEFAULT_MODEL
             embed, dimensions = await asyncio.to_thread(
-                load_embedder, settings.embedding_model or DEFAULT_MODEL, settings.model_dir
+                load_embedder, model_name, settings.model_dir
             )
             # Transcripts are private: only the current user may read the folder.
             settings.memory_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-            store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions))
+            store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions, model_name)
+            )
             memory = store.scoped(settings.scope)
             meeting = Meeting(str(uuid.uuid4()), datetime.now(UTC))
 
-            def remember(segment: Segment) -> None:
-                memory.add_segment(segment, meeting)
+            def remember(segment: Segment, disputed: bool) -> None:
+                memory.add_segment(segment, meeting, disputed=disputed)
+
+            check = FactChecker(memory.search).check
 
             logger.info(
                 "Storing meeting %s for tenant %r, project %r",
@@ -158,7 +184,9 @@ async def run(settings: Settings) -> int:
             )
 
         async with TranscriptServer(port=settings.ws_port) as server:
-            engine = Engine(transcriber, server.publish, diarizer, remember)
+            engine = Engine(
+                transcriber, server.publish, diarizer, remember, check, server.publish_alert
+            )
             results = await asyncio.gather(
                 *(_run_source_logged(engine, source) for source in settings.sources)
             )

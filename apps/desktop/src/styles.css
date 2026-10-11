@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved. */
+
+@import "tailwindcss";
+
+/* The overlay window shows only its cards; everything else is see-through. */
+html[data-window="hud"],
+html[data-window="hud"] body {
+  background: transparent;
+  overflow: hidden;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

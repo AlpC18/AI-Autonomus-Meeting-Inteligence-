@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { parseAlertMessage, type FactCheckAlert } from "./factCheck";
 
 /** One transcribed word, timed in seconds since the engine started capturing. */
 export interface TranscriptWord {
@@ -26,11 +27,21 @@ export interface TranscriptSegment {
 /** Whether the HUD currently has a live connection to the engine. */
 export type StreamStatus = "connecting" | "open" | "closed";
 
-/** Live transcript state returned by {@link useTranscriptStream}. */
+/** A fact-check alert with a local id, so it can be listed and dismissed. */
+export interface ShownAlert {
+  id: number;
+  alert: FactCheckAlert;
+}
+
+/** Live engine state returned by {@link useTranscriptStream}. */
 export interface TranscriptStream {
   status: StreamStatus;
   /** Most recent segments, oldest first, capped at {@link MAX_SEGMENTS}. */
   segments: readonly TranscriptSegment[];
+  /** Undismissed fact-check alerts, oldest first, capped at {@link MAX_ALERTS}. */
+  alerts: readonly ShownAlert[];
+  /** Removes one alert by its id. Unknown ids are ignored. */
+  dismissAlert: (id: number) => void;
 }
 
 /** Default address of the engine's transcript WebSocket. */
@@ -39,7 +50,12 @@ export const ENGINE_STREAM_URL = "ws://127.0.0.1:8765";
 /** How many segments the HUD keeps; older ones are dropped. */
 export const MAX_SEGMENTS = 200;
 
+/** How many fact-check alerts are shown at once; older ones are dropped. */
+export const MAX_ALERTS = 3;
+
 const RECONNECT_DELAY_MS = 2000;
+
+let nextAlertId = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -95,15 +111,19 @@ export function parseSegmentMessage(raw: unknown): TranscriptSegment | null {
 }
 
 /**
- * Subscribes to the engine's live transcript.
+ * Subscribes to the engine's live transcript and fact-check alerts.
  *
- * Connects to `url`, appends each incoming segment, and reconnects every two
+ * Connects to `url`, collects incoming segments and alerts, and reconnects every two
  * seconds while the engine is unreachable, so the HUD recovers on its own when
  * the engine starts late or restarts. The socket is closed on unmount.
  */
 export function useTranscriptStream(url: string = ENGINE_STREAM_URL): TranscriptStream {
   const [status, setStatus] = useState<StreamStatus>("connecting");
   const [segments, setSegments] = useState<readonly TranscriptSegment[]>([]);
+  const [alerts, setAlerts] = useState<readonly ShownAlert[]>([]);
+  const dismissAlert = useCallback((id: number) => {
+    setAlerts((current) => current.filter((shown) => shown.id !== id));
+  }, []);
 
   useEffect(() => {
     let socket: WebSocket | null = null;
@@ -118,6 +138,12 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
         const segment = parseSegmentMessage(event.data);
         if (segment) {
           setSegments((current) => [...current, segment].slice(-MAX_SEGMENTS));
+          return;
+        }
+        const alert = parseAlertMessage(event.data);
+        if (alert) {
+          const shown = { id: nextAlertId++, alert };
+          setAlerts((current) => [...current, shown].slice(-MAX_ALERTS));
         }
       };
       socket.onclose = () => {
@@ -135,5 +161,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments };
+  return { status, segments, alerts, dismissAlert };
 }
