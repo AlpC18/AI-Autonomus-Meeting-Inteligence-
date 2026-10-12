@@ -7,6 +7,7 @@
 //! runs the Python engine for as long as the app is open. All behaviour lives
 //! in dedicated modules; this file only wires them up.
 
+pub mod actions;
 pub mod commands;
 pub mod engine;
 
@@ -43,7 +44,11 @@ fn start_engine(app: &tauri::App) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![commands::app_info])
+        .invoke_handler(tauri::generate_handler![
+            commands::app_info,
+            actions::pending_actions,
+            actions::decide_action
+        ])
         .setup(|app| {
             start_engine(app);
             Ok(())

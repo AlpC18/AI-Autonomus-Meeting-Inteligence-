@@ -4,6 +4,11 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 
 | Date | Module | Feature | Notes |
 | :--- | :--- | :--- | :--- |
+| 2026-10-12 | desktop | Proposed-actions panel | Lists pending proposals in full with Approve and Reject; backed by Rust commands that run the review CLI. |
+| 2026-10-12 | actions | `continuum-actions-review` CLI | list / approve / reject; approval asks for confirmation and refuses without a terminal unless `--yes`. |
+| 2026-10-12 | actions | GitHub issue action with approval gate | Propose-only MCP tools, repo allowlist, tamper check, single-use approval, SQLite audit trail. |
+| 2026-10-12 | diarization | Stable speaker names across a session | `SpeakerTracker` matches voice embeddings to speakers already heard; system-audio speakers are "Speaker 1", "Speaker 2", ... |
+| 2026-10-12 | pipeline | Engine starts without pyannote when the model cannot be loaded | Logs the reason, keeps source-based speaker labels. |
 | 2026-10-11 | hud | Fact-check overlay window | Floating always-on-top card: said now vs on record, source quote, speaker and date; dismiss button, 30 s auto-dismiss, max 3 cards. |
 | 2026-10-11 | transport | `fact_check` messages | Alerts are broadcast on the transcript WebSocket. |
 | 2026-10-11 | pipeline | Live fact checking | Each segment is checked before it is stored; flagged segments are stored as disputed. |

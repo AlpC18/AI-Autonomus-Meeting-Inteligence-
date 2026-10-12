@@ -36,9 +36,10 @@ def _overlap(start: float, end: float, turn: SpeakerTurn) -> float:
 
 def _speaker_for(word: Word, turns: list[SpeakerTurn]) -> str | None:
     best = max(turns, key=lambda turn: _overlap(word.start, word.end, turn), default=None)
-    if best is None or _overlap(word.start, word.end, best) <= 0.0:
-        return None
-    return best.speaker
+    if best is not None and _overlap(word.start, word.end, best) > 0.0:
+        return best.speaker
+    # Whisper gives some words no duration; those are placed by their start time.
+    return next((turn.speaker for turn in turns if turn.start <= word.start <= turn.end), None)
 
 
 def label_segment(segment: Segment, turns: list[SpeakerTurn]) -> Segment:

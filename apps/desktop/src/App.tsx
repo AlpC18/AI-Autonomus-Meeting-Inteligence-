@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { PendingActions } from "./actions/PendingActions";
 import { TranscriptFeed } from "./hud";
 
 /** Build identity returned by the Rust `app_info` command. */
@@ -29,8 +30,8 @@ export default function App() {
   }, []);
 
   return (
-    <main>
-      <h1>Continuum</h1>
+    <main className="p-4">
+      <h1 className="text-2xl font-bold">Continuum</h1>
       {error && <p role="alert">Could not reach the desktop backend: {error}</p>}
       {info && (
         <p>
@@ -38,6 +39,7 @@ export default function App() {
         </p>
       )}
       <TranscriptFeed />
+      <PendingActions />
     </main>
   );
 }
