@@ -17,7 +17,7 @@ import threading
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 
@@ -32,6 +32,7 @@ from continuum.live_controls import Note, Rename, SpeakerNames, note_segment, pa
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import Meeting, MemoryStore
 from continuum.notes import MeetingNotes
+from continuum.privacy import redact_segment, warn_if_disk_unencrypted
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -164,6 +165,8 @@ async def run(settings: Settings) -> int:
     else:
         logger.info("HF_TOKEN is not set: speakers are labelled by audio source only")
 
+    if settings.scope is not None or settings.notes_dir is not None:
+        warn_if_disk_unencrypted()
     with contextlib.ExitStack() as stack:
         remember = None
         check = None
@@ -178,9 +181,14 @@ async def run(settings: Settings) -> int:
             )
             memory = store.scoped(settings.scope)
             meeting = Meeting(str(uuid.uuid4()), datetime.now(UTC))
+            if settings.retention_days is not None:
+                cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
+                forgotten = await asyncio.to_thread(memory.forget_before, cutoff)
+                logger.info("Forgot %d segments older than %d days", forgotten, settings.retention_days)
+            store_as = redact_segment if settings.redact else (lambda segment: segment)
 
             def remember(segment: Segment, disputed: bool) -> None:
-                memory.add_segment(segment, meeting, disputed=disputed)
+                memory.add_segment(store_as(segment), meeting, disputed=disputed)
 
             check = FactChecker(memory.search).check
 
@@ -262,7 +270,8 @@ def _also_noting(
     """Return a ``publish`` that also appends each segment to Markdown notes.
 
     Notes of a tenant and project go to their own subfolder of
-    ``settings.notes_dir``. A write failure is logged and never interrupts
+    ``settings.notes_dir``. With ``settings.redact`` the file gets the
+    redacted text; the live transcript is unchanged. A write failure is logged and never interrupts
     the live transcript.
     """
     assert settings.notes_dir is not None
@@ -275,7 +284,7 @@ def _also_noting(
     def publish_and_note(segment: Segment) -> None:
         publish(segment)
         try:
-            notes.add(segment)
+            notes.add(redact_segment(segment) if settings.redact else segment)
         except OSError:
             logger.exception("Could not write meeting notes")
 

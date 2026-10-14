@@ -119,3 +119,18 @@ def test_data_stored_with_one_model_is_invisible_to_another(tmp_path: Path) -> N
         first.scoped(ACME).add_segment(segment("the budget was revised"), MEETING)
     with MemoryStore(tmp_path, embed, DIMENSIONS, "model-b") as second:
         assert second.scoped(ACME).search("budget") == []
+
+
+def test_old_segments_are_forgotten_only_in_this_scope(store: MemoryStore) -> None:
+    acme, globex = store.scoped(ACME), store.scoped(GLOBEX)
+    old = Meeting("old", STARTED - timedelta(days=100))
+    acme.add_segment(segment("old budget talk"), old)
+    acme.add_segment(segment("new budget talk"), MEETING)
+    globex.add_segment(segment("globex old budget"), old)
+
+    forgotten = acme.forget_before(STARTED - timedelta(days=30))
+
+    assert forgotten == 1
+    assert [hit.text for hit in acme.search("budget talk", limit=5)] == ["new budget talk"]
+    assert len(globex.search("budget", limit=5)) == 1
+    assert store.scoped(TenantScope("nobody", "none")).forget_before(STARTED) == 0

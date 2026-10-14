@@ -167,6 +167,31 @@ class ScopedMemory:
                 )
             self._client.upsert(self._collection, [point])
 
+    def forget_before(self, cutoff: datetime) -> int:
+        """Delete every segment of this scope spoken before ``cutoff``; return how many.
+
+        ``cutoff`` must be timezone-aware.
+        """
+        condition = models.Filter(
+            must=[
+                *self._scope_conditions(),
+                models.FieldCondition(key="spoken_at", range=models.DatetimeRange(lt=cutoff)),
+            ]
+        )
+        with self._lock:
+            if not self._client.collection_exists(self._collection):
+                return 0
+            count = self._client.count(self._collection, count_filter=condition, exact=True).count
+            if count:
+                self._client.delete(self._collection, points_selector=models.FilterSelector(filter=condition))
+        return count
+
+    def _scope_conditions(self) -> list[models.Condition]:
+        return [
+            models.FieldCondition(key="tenant_id", match=models.MatchValue(value=self._scope.tenant_id)),
+            models.FieldCondition(key="project_id", match=models.MatchValue(value=self._scope.project_id)),
+        ]
+
     def search(self, query: str, limit: int = 5) -> list[MemoryHit]:
         """Return up to ``limit`` stored segments most similar to ``query``.
 
@@ -185,17 +210,7 @@ class ScopedMemory:
             response = self._client.query_points(
                 self._collection,
                 query=vector,
-                query_filter=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="tenant_id", match=models.MatchValue(value=self._scope.tenant_id)
-                        ),
-                        models.FieldCondition(
-                            key="project_id",
-                            match=models.MatchValue(value=self._scope.project_id),
-                        ),
-                    ]
-                ),
+                query_filter=models.Filter(must=self._scope_conditions()),
                 limit=limit,
             )
         return [
