@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 
 pytest.importorskip("pyannote.audio")
-from pyannote.core import Annotation  # noqa: E402
-from pyannote.core import Segment as Span  # noqa: E402
+from pyannote.core import Annotation
+from pyannote.core import Segment as Span
 
-from continuum.audio.chunker import Utterance  # noqa: E402
-from continuum.diarization.pyannote_diarizer import PyannoteDiarizer  # noqa: E402
-from continuum.diarization.turns import SpeakerTurn  # noqa: E402
+from continuum.audio.chunker import Utterance
+from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
+from continuum.diarization.turns import SpeakerTurn
 
 
 @dataclass
