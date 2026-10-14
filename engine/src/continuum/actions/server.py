@@ -18,7 +18,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from continuum.actions import calendar, github, jira, slack
+from continuum.actions import proposals
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import ActionStore
 from continuum.config import Settings
@@ -50,11 +50,11 @@ def _store() -> tuple[ActionStore, ActionSettings]:
     return ActionStore(settings.database), settings
 
 
-def _queue(kind: str, build: Any) -> dict[str, Any]:
-    """Validate with ``build(settings)`` and queue the payload it returns."""
+def _queue(build: Any) -> dict[str, Any]:
+    """Validate with ``build(settings)`` and queue the proposal it returns."""
     try:
         store, settings = _store()
-        action = store.propose(kind, build(settings))
+        action = proposals.queue(store, build(settings))
     except (ValueError, PermissionError, RuntimeError) as error:
         raise ToolError(str(error)) from error
     return {
@@ -87,12 +87,9 @@ def continuum_propose_github_issue(
         ``{"action_id": ..., "status": "pending", "message": ...}``.
     """
 
-    def build(settings: ActionSettings) -> dict[str, Any]:
-        issue = github.GitHubIssue(repo, title, body, tuple(labels or ()))
-        github.require_allowed_repo(issue, settings.github_repos)
-        return issue.to_payload()
-
-    return _queue(github.KIND, build)
+    return _queue(
+        lambda settings: proposals.github_issue(settings, repo, title, body, labels or ())
+    )
 
 
 @mcp.tool(annotations=_PROPOSAL)
@@ -115,13 +112,9 @@ def continuum_propose_jira_issue(
         ``{"action_id": ..., "status": "pending", "message": ...}``.
     """
 
-    def build(settings: ActionSettings) -> dict[str, Any]:
-        jira.require_access(settings.jira)
-        issue = jira.JiraIssue(project, summary, body, tuple(labels or ()))
-        jira.require_allowed_project(issue, settings.jira_projects)
-        return issue.to_payload()
-
-    return _queue(jira.KIND, build)
+    return _queue(
+        lambda settings: proposals.jira_issue(settings, project, summary, body, labels or ())
+    )
 
 
 @mcp.tool(annotations=_PROPOSAL)
@@ -139,11 +132,7 @@ def continuum_propose_slack_message(
         ``{"action_id": ..., "status": "pending", "message": ...}``.
     """
 
-    def build(settings: ActionSettings) -> dict[str, Any]:
-        slack.require_webhook(settings.slack_webhook_url)
-        return slack.SlackMessage(text).to_payload()
-
-    return _queue(slack.KIND, build)
+    return _queue(lambda settings: proposals.slack_message(settings, text))
 
 
 @mcp.tool(annotations=_PROPOSAL)
@@ -163,11 +152,7 @@ def continuum_propose_calendar_deadline(
         ``{"action_id": ..., "status": "pending", "message": ...}``.
     """
 
-    def build(settings: ActionSettings) -> dict[str, Any]:
-        calendar.require_access(settings.google)
-        return calendar.CalendarDeadline(title, due, description).to_payload()
-
-    return _queue(calendar.KIND, build)
+    return _queue(lambda settings: proposals.calendar_deadline(settings, title, due, description))
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False))
