@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from continuum.actions.calendar import GoogleAccess
+
 
 @dataclass(frozen=True, slots=True)
 class ActionSettings:
@@ -15,20 +17,40 @@ class ActionSettings:
     ``github_repos`` is the allowlist of ``owner/name`` repositories; empty
     means no GitHub issue may be proposed or created. ``github_token`` is
     needed only to execute an approved action, never to propose one.
+    ``slack_webhook_url`` is the single Slack destination and ``google`` the
+    credentials for ``google_calendar_id``; a connector left unset accepts no
+    proposals at all.
     """
 
     database: Path = Path.home() / ".continuum" / "actions.db"
     github_repos: frozenset[str] = frozenset()
     github_token: str | None = None
+    slack_webhook_url: str | None = None
+    google: GoogleAccess | None = None
+    google_calendar_id: str = "primary"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "ActionSettings":
-        """Read ``CONTINUUM_ACTIONS_DB``, ``CONTINUUM_GITHUB_REPOS``
-        (comma-separated) and ``GITHUB_TOKEN`` from ``env``."""
+        """Read the action settings from ``env``.
+
+        Variables: ``CONTINUUM_ACTIONS_DB``, ``CONTINUUM_GITHUB_REPOS``
+        (comma-separated), ``GITHUB_TOKEN``, ``CONTINUUM_SLACK_WEBHOOK_URL``,
+        ``GOOGLE_CLIENT_ID``, ``GOOGLE_CLIENT_SECRET``, ``GOOGLE_REFRESH_TOKEN``
+        and ``CONTINUUM_GOOGLE_CALENDAR_ID``. Google access needs all three
+        ``GOOGLE_*`` values; with any missing it is off.
+        """
         database = env.get("CONTINUUM_ACTIONS_DB")
         repos = env.get("CONTINUUM_GITHUB_REPOS", "")
+        google = (
+            env.get("GOOGLE_CLIENT_ID"),
+            env.get("GOOGLE_CLIENT_SECRET"),
+            env.get("GOOGLE_REFRESH_TOKEN"),
+        )
         return cls(
             database=Path(database) if database else cls().database,
             github_repos=frozenset(part.strip() for part in repos.split(",") if part.strip()),
             github_token=env.get("GITHUB_TOKEN") or None,
+            slack_webhook_url=env.get("CONTINUUM_SLACK_WEBHOOK_URL") or None,
+            google=GoogleAccess(*google) if all(google) else None,
+            google_calendar_id=env.get("CONTINUUM_GOOGLE_CALENDAR_ID") or "primary",
         )

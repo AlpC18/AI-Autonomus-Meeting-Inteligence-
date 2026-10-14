@@ -7,6 +7,9 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 | 2026-10-12 | desktop | Proposed-actions panel | Lists pending proposals in full with Approve and Reject; backed by Rust commands that run the review CLI. |
 | 2026-10-12 | actions | `continuum-actions-review` CLI | list / approve / reject; approval asks for confirmation and refuses without a terminal unless `--yes`. |
 | 2026-10-12 | actions | GitHub issue action with approval gate | Propose-only MCP tools, repo allowlist, tamper check, single-use approval, SQLite audit trail. |
+| 2026-10-12 | hud | Per-speaker transcript lines | A segment with several voices is shown as one line per speaker turn. |
+| 2026-10-12 | actions | Google Calendar deadline action | `continuum_propose_calendar_deadline`; all-day event on the configured calendar after approval. |
+| 2026-10-12 | actions | Slack message action | `continuum_propose_slack_message`; posts to the one configured incoming webhook after approval. |
 | 2026-10-12 | diarization | Stable speaker names across a session | `SpeakerTracker` matches voice embeddings to speakers already heard; system-audio speakers are "Speaker 1", "Speaker 2", ... |
 | 2026-10-12 | pipeline | Engine starts without pyannote when the model cannot be loaded | Logs the reason, keeps source-based speaker labels. |
 | 2026-10-11 | hud | Fact-check overlay window | Floating always-on-top card: said now vs on record, source quote, speaker and date; dismiss button, 30 s auto-dismiss, max 3 cards. |

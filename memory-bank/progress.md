@@ -50,11 +50,21 @@
 - Not verified: speaker names on live system-audio capture or in a real meeting.
 - Not started: LLM action-item extraction (no LLM configured); Jira, Slack/Discord, Calendar tools (no credentials).
 
+### Phase 6 (part) — Integration (2026-10-12, branch `feat/phase-6-integration`, uncommitted)
+
+- Phase 5 committed and pushed; PR #4 open, stacked on PR #2.
+- `hud`: transcript lines are split per speaker turn (`speakerTurns`).
+- `actions`: Slack message (one configured incoming webhook) and Google Calendar all-day deadline (refresh-token OAuth, configured calendar) behind the same approval gate; propose tools refuse when the connector is not configured; the review panel and CLI show all three kinds.
+- Verified live through the desktop app: capture, speaker names, memory with tenant isolation, fact-check alert, proposal queued and shown.
+- During that run the queued Slack test proposal was approved in the app window by someone at the Mac (not by the assistant). It went to a made-up webhook path; Slack answered HTTP 302 and the failure was recorded without the URL.
+- Not verified: Slack and Calendar against the real services; any step from transcript to proposal (none exists).
+- Not built: Jira connector (deferred).
+
 ## Pending
 
 - **Speaker names:** check in a real meeting; separate two voices inside short utterances; let the user rename "Speaker 1".
 - **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates; notepad UI.
-- **Actions phase:** Jira/GitHub/Slack/Calendar MCP tools with approval gate; security review.
+- **Actions:** Jira connector; real-service check of Slack and Calendar; LLM extraction of action items into proposals.
 - Bundling the engine into release builds; choosing tenant/project from the UI; non-macOS system audio.
 - CI workflow and pre-commit checks (add when there is logic to guard).
 

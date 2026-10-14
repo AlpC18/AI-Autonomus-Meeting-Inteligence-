@@ -21,6 +21,8 @@ class Settings:
     separation; without it speakers are labelled by audio source only.
     ``scope`` enables memory: without it nothing is stored, because data must
     never be saved without knowing which tenant and project own it.
+    ``notes_dir`` enables Markdown notes: each meeting's transcript is also
+    written there as a plain file.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -31,6 +33,7 @@ class Settings:
     scope: TenantScope | None = None
     memory_dir: Path = Path.home() / ".continuum" / "memory"
     embedding_model: str | None = None
+    notes_dir: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -40,7 +43,8 @@ class Settings:
         ``system``), ``CONTINUUM_WS_PORT``, ``CONTINUUM_WHISPER_MODEL``,
         ``CONTINUUM_MODEL_DIR``, ``HF_TOKEN``, ``CONTINUUM_TENANT_ID`` and
         ``CONTINUUM_PROJECT_ID`` (set both or neither), ``CONTINUUM_MEMORY_DIR``,
-        ``CONTINUUM_EMBEDDING_MODEL``. Unset variables use defaults.
+        ``CONTINUUM_EMBEDDING_MODEL``, ``CONTINUUM_NOTES_DIR``. Unset variables
+        use defaults.
 
         Raises:
             ValueError: naming the offending variable, if a source is unknown,
@@ -78,6 +82,7 @@ class Settings:
 
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
+        notes_dir = env.get("CONTINUUM_NOTES_DIR")
         return cls(
             sources=sources,
             ws_port=int(raw_port),
@@ -87,4 +92,5 @@ class Settings:
             scope=scope,
             memory_dir=Path(memory_dir) if memory_dir else defaults.memory_dir,
             embedding_model=env.get("CONTINUUM_EMBEDDING_MODEL") or None,
+            notes_dir=Path(notes_dir).expanduser() if notes_dir else None,
         )

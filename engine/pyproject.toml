@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "av>=14",
     "fastembed>=0.9.0",
     "faster-whisper>=1.2.1",
     "fastmcp>=4.1.0",
@@ -25,6 +26,7 @@ continuum-actions = "continuum.actions.server:main"
 continuum-engine = "continuum.pipeline:main"
 continuum-memory-search = "continuum.memory.cli:main"
 continuum-actions-review = "continuum.actions.review_cli:main"
+continuum-transcribe = "continuum.transcribe_cli:main"
 
 [project.optional-dependencies]
 diarization = [

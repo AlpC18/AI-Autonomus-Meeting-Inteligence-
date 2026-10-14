@@ -9,7 +9,30 @@ import sys
 
 from continuum.config import Settings
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
-from continuum.memory.store import MemoryStore
+from continuum.memory.store import MemoryHit, MemoryStore
+
+
+def search_configured(settings: Settings, query: str, limit: int) -> list[MemoryHit]:
+    """Search the memory of the tenant and project named in ``settings``.
+
+    Opens the database only for the duration of the call.
+
+    Raises:
+        LookupError: if no tenant and project are configured, or nothing has
+            been stored yet.
+        RuntimeError: if the database is in use by the running engine.
+        ValueError: if ``limit`` is less than 1.
+    """
+    if settings.scope is None:
+        raise LookupError(
+            "Set CONTINUUM_TENANT_ID and CONTINUUM_PROJECT_ID to choose whose memory to search."
+        )
+    if not settings.memory_dir.is_dir():
+        raise LookupError(f"No memory has been stored yet at {settings.memory_dir}.")
+    model_name = settings.embedding_model or DEFAULT_MODEL
+    embed, dimensions = load_embedder(model_name, settings.model_dir)
+    with MemoryStore(settings.memory_dir, embed, dimensions, model_name) as store:
+        return store.scoped(settings.scope).search(query, limit)
 
 
 def main() -> None:
@@ -28,16 +51,10 @@ def main() -> None:
         settings = Settings.from_env(os.environ)
     except ValueError as error:
         sys.exit(f"Invalid configuration: {error}")
-    if settings.scope is None:
-        sys.exit("Set CONTINUUM_TENANT_ID and CONTINUUM_PROJECT_ID to choose whose memory to search.")
-    if not settings.memory_dir.is_dir():
-        sys.exit(f"No memory has been stored yet at {settings.memory_dir}.")
-
-    model_name = settings.embedding_model or DEFAULT_MODEL
-    embed, dimensions = load_embedder(model_name, settings.model_dir)
     try:
-        with MemoryStore(settings.memory_dir, embed, dimensions, model_name) as store:
-            hits = store.scoped(settings.scope).search(args.query, args.limit)
+        hits = search_configured(settings, args.query, args.limit)
+    except LookupError as error:
+        sys.exit(str(error.args[0]))
     except (RuntimeError, ValueError) as error:
         sys.exit(f"Could not search memory (is the engine still running?): {error}")
 
