@@ -14,7 +14,7 @@ import av
 import numpy as np
 
 from continuum.audio.blocks import SAMPLE_RATE
-from continuum.audio.transcriber import Transcriber
+from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.notes import markdown_lines, speaker_runs, srt
@@ -25,7 +25,7 @@ _BLOCK = SAMPLE_RATE // 10
 
 
 async def transcribe_samples(
-    samples: np.ndarray, transcriber: Transcriber, diarizer: PyannoteDiarizer | None
+    samples: np.ndarray, transcriber: SpeechToText, diarizer: PyannoteDiarizer | None
 ) -> list[Segment]:
     """Run mono 16 kHz ``samples`` through the engine and return the segments.
 
@@ -102,7 +102,12 @@ def main() -> None:
     except (av.FFmpegError, IndexError, ValueError) as error:
         sys.exit(f"Could not read audio from {args.file}: {error}")
 
-    transcriber = Transcriber(settings.whisper_model, settings.model_dir, translate=args.translate)
+    try:
+        transcriber = load_transcriber(
+            settings.asr_backend, settings.whisper_model, settings.model_dir, translate=args.translate
+        )
+    except RuntimeError as error:
+        sys.exit(str(error))
     diarizer = None
     if settings.hf_token:
         try:

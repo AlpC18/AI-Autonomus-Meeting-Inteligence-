@@ -22,7 +22,7 @@ import numpy as np
 
 from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
-from continuum.audio.transcriber import Transcriber
+from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
@@ -64,7 +64,7 @@ class Engine:
 
     def __init__(
         self,
-        transcriber: Transcriber,
+        transcriber: SpeechToText,
         publish: Callable[[Segment], None],
         diarizer: PyannoteDiarizer | None = None,
         remember: Callable[[Segment, bool], None] | None = None,
@@ -141,9 +141,9 @@ async def run(settings: Settings) -> int:
 
     Returns a process exit code: 1 when all sources failed, otherwise 0.
     """
-    logger.info("Loading Whisper model %r", settings.whisper_model)
+    logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     transcriber = await asyncio.to_thread(
-        Transcriber, settings.whisper_model, settings.model_dir
+        load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
     )
     diarizer = None
     if settings.hf_token:
