@@ -10,6 +10,7 @@
 pub mod actions;
 pub mod commands;
 pub mod engine;
+pub mod library;
 
 use tauri::{Manager, RunEvent, WindowEvent};
 
@@ -47,7 +48,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             actions::pending_actions,
-            actions::decide_action
+            actions::decide_action,
+            library::library_list,
+            library::library_search,
+            library::library_show,
+            library::library_summarize
         ])
         .setup(|app| {
             start_engine(app);
