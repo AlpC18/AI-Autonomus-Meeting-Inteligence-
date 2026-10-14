@@ -58,13 +58,23 @@
 - Verified live through the desktop app: capture, speaker names, memory with tenant isolation, fact-check alert, proposal queued and shown.
 - During that run the queued Slack test proposal was approved in the app window by someone at the Mac (not by the assistant). It went to a made-up webhook path; Slack answered HTTP 302 and the failure was recorded without the URL.
 - Not verified: Slack and Calendar against the real services; any step from transcript to proposal (none exists).
-- Not built: Jira connector (deferred).
+- Jira Cloud connector (2026-10-14): Tasks only, project-key allowlist, `*.atlassian.net` sites only, token never in errors or repr.
+
+### Phase 7 (part) — Competitor features (2026-10-14, branch `feat/phase-6-integration`, uncommitted)
+
+- `llm` + `summary` + `continuum-summarize`: summary, decisions and action items from any OpenAI-compatible provider (Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI, custom) or Claude via the Anthropic SDK (`claude` extra); replies parsed as untrusted data; `--propose` queues through `actions/proposals.py`, the same validation the MCP tools use.
+- `audio/transcriber`: `CONTINUUM_ASR_BACKEND` with an mlx-whisper backend (`apple` extra). Parakeet was measured (1.00 s per 8 s piece, no Turkish) and dropped.
+- `live_controls` + transport: typed notes and speaker renames from the desktop app; notes are "Note" lines in the transcript, notes file and memory.
+- `privacy`: redaction of e-mails, phones, cards, IBANs, keys and spoken passwords before memory and notes; `CONTINUUM_RETENTION_DAYS`; FileVault warning.
+- `transcribe_cli`: VTT, `--watch`, `--remember` (content-hash meeting ids, so re-imports replace), creates missing output folders.
+- `library` + desktop "Past meetings" view: search across meetings, per-meeting filter, click-to-play for linked recordings (asset protocol scoped per file), "Summarize with AI".
+- Desktop tests now run with vitest (`pnpm test`).
 
 ## Pending
 
-- **Speaker names:** check in a real meeting; separate two voices inside short utterances; let the user rename "Speaker 1".
-- **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates; notepad UI.
-- **Actions:** Jira connector; real-service check of Slack and Calendar; LLM extraction of action items into proposals.
+- **Speaker names:** check in a real meeting; separate two voices inside short utterances.
+- **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates.
+- **Actions:** real-service check of Slack, Calendar and Jira; summaries against a real AI provider.
 - Bundling the engine into release builds; choosing tenant/project from the UI; non-macOS system audio.
 - CI workflow and pre-commit checks (add when there is logic to guard).
 

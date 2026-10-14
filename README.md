@@ -19,4 +19,11 @@ cd engine && uv sync --all-extras && uv run pytest
 cd engine && cp .env.example .env   # settings; the desktop app starts the engine itself
 ```
 
+Engine commands (run with `uv run` in `engine/`):
+
+- `continuum-transcribe FILE` / `--watch FOLDER` — transcribe recordings to Markdown, SRT, VTT or text; `--remember` adds them to memory.
+- `continuum-summarize NOTES.md` — AI summary, decisions and action items with Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI or Claude; `--propose` queues them for approval.
+- `continuum-library` — past meetings for the desktop viewer.
+- `continuum-memory-search`, `continuum-actions-review`, `continuum-actions` (MCP server).
+
 MIT licensed.
