@@ -50,7 +50,7 @@
 - Not verified: speaker names on live system-audio capture or in a real meeting.
 - Not started: LLM action-item extraction (no LLM configured); Jira, Slack/Discord, Calendar tools (no credentials).
 
-### Phase 6 (part) — Integration (2026-10-12, branch `feat/phase-6-integration`, uncommitted)
+### Phase 6 (part) — Integration (2026-10-12, branch `feat/phase-7-competitor-features`, PR #6)
 
 - Phase 5 committed and pushed; PR #4 open, stacked on PR #2.
 - `hud`: transcript lines are split per speaker turn (`speakerTurns`).
@@ -60,7 +60,7 @@
 - Not verified: Slack and Calendar against the real services; any step from transcript to proposal (none exists).
 - Jira Cloud connector (2026-10-14): Tasks only, project-key allowlist, `*.atlassian.net` sites only, token never in errors or repr.
 
-### Phase 7 (part) — Competitor features (2026-10-14, branch `feat/phase-6-integration`, uncommitted)
+### Phase 7 (part) — Competitor features (2026-10-14, branch `feat/phase-7-competitor-features`, PR #6)
 
 - `llm` + `summary` + `continuum-summarize`: summary, decisions and action items from any OpenAI-compatible provider (Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI, custom) or Claude via the Anthropic SDK (`claude` extra); replies parsed as untrusted data; `--propose` queues through `actions/proposals.py`, the same validation the MCP tools use.
 - `audio/transcriber`: `CONTINUUM_ASR_BACKEND` with an mlx-whisper backend (`apple` extra). Parakeet was measured (1.00 s per 8 s piece, no Turkish) and dropped.

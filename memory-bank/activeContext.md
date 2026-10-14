@@ -4,7 +4,7 @@ _Last updated: 2026-10-14_
 
 ## Current focus
 
-Phase 6 (integration) is on branch `feat/phase-6-integration`, open as PR #5 stacked on PR #4: per-speaker transcript lines, Slack, Google Calendar and Jira connectors, notes export, and a live end-to-end run. On 2026-10-14 eight features modelled on Meetily, Buzz, Screenpipe and Anarlog were added uncommitted: AI summaries with any provider, mlx speech backend, live notepad, speaker renaming, redaction + retention, VTT + watch folder, recording import into memory, and the past-meetings viewer. Phase 5 is PR #4, stacked on PR #2 (`feat/phase-4-fact-check-hud`), which is stacked on PR #1 (`feat/phase-3-memory-sidecar`). `main` holds Phases 1 and 2.
+Phase 6 (integration) is on branch `feat/phase-6-integration`, open as PR #5 stacked on PR #4: per-speaker transcript lines, Slack, Google Calendar and Jira connectors, notes export, and a live end-to-end run. On 2026-10-14 eight features modelled on Meetily, Buzz, Screenpipe and Anarlog were added on branch `feat/phase-7-competitor-features` (PR #6, stacked on #5): AI summaries with any provider, mlx speech backend, live notepad, speaker renaming, redaction + retention, VTT + watch folder, recording import into memory, and the past-meetings viewer. Phase 5 is PR #4, stacked on PR #2 (`feat/phase-4-fact-check-hud`), which is stacked on PR #1 (`feat/phase-3-memory-sidecar`). `main` holds Phases 1 and 2.
 
 ## What works end to end
 
