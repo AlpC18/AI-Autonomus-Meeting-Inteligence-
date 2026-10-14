@@ -64,3 +64,7 @@ def main() -> None:
         sys.stdout.write(
             f"{hit.spoken_at.astimezone():%Y-%m-%d %H:%M:%S}  {hit.speaker}: {hit.text}  (score {hit.score:.2f})\n"
         )
+
+
+if __name__ == "__main__":
+    main()
