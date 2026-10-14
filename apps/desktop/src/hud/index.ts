@@ -10,5 +10,6 @@
  * fact-check overlay window.
  */
 export { HudOverlay } from "./HudOverlay";
+export { SpeakerNamer } from "./SpeakerNamer";
 export { TranscriptFeed } from "./TranscriptFeed";
 export { useTranscriptStream } from "./transcriptStream";

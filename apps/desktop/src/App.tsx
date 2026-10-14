@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { PendingActions } from "./actions/PendingActions";
-import { TranscriptFeed } from "./hud";
+import { SpeakerNamer, TranscriptFeed, useTranscriptStream } from "./hud";
+import { Notepad } from "./notes/Notepad";
 
 /** Build identity returned by the Rust `app_info` command. */
 interface AppInfo {
@@ -16,12 +17,16 @@ interface AppInfo {
 
 /**
  * Root shell window. Shows the running build so it is obvious the webview and
- * the Rust backend are connected; feature views (HUD, notes) mount here later.
+ * the Rust backend are connected, then the live transcript, speaker names,
+ * notes and proposed actions.
  * If the backend call fails, the error text is shown instead of a blank screen.
  */
 export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // One connection to the engine, shared by the transcript, notes and names.
+  const stream = useTranscriptStream();
+  const connected = stream.status === "open";
 
   useEffect(() => {
     invoke<AppInfo>("app_info")
@@ -38,7 +43,9 @@ export default function App() {
           {info.name} v{info.version}
         </p>
       )}
-      <TranscriptFeed />
+      <TranscriptFeed status={stream.status} segments={stream.segments} />
+      <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
+      <Notepad connected={connected} send={stream.send} />
       <PendingActions />
     </main>
   );
