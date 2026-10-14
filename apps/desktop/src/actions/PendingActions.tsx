@@ -44,6 +44,18 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       approveLabel: "Approve and create",
     };
   }
+  if (kind === "jira_issue" && text(payload.project) && text(payload.summary)) {
+    const labels = Array.isArray(payload.labels)
+      ? payload.labels.filter((label): label is string => typeof label === "string")
+      : [];
+    return {
+      heading: `Jira task in project ${text(payload.project)}`,
+      title: text(payload.summary),
+      detail: labels.length > 0 ? `Labels: ${labels.join(", ")}` : "",
+      body: text(payload.body),
+      approveLabel: "Approve and create",
+    };
+  }
   if (kind === "slack_message" && text(payload.text)) {
     return {
       heading: "Slack message to your configured channel",

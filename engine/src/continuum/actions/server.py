@@ -18,7 +18,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from continuum.actions import calendar, github, slack
+from continuum.actions import calendar, github, jira, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import ActionStore
 from continuum.config import Settings
@@ -52,8 +52,8 @@ def _store() -> tuple[ActionStore, ActionSettings]:
 
 def _queue(kind: str, build: Any) -> dict[str, Any]:
     """Validate with ``build(settings)`` and queue the payload it returns."""
-    store, settings = _store()
     try:
+        store, settings = _store()
         action = store.propose(kind, build(settings))
     except (ValueError, PermissionError, RuntimeError) as error:
         raise ToolError(str(error)) from error
@@ -93,6 +93,35 @@ def continuum_propose_github_issue(
         return issue.to_payload()
 
     return _queue(github.KIND, build)
+
+
+@mcp.tool(annotations=_PROPOSAL)
+def continuum_propose_jira_issue(
+    project: Annotated[str, Field(description="Jira project key, e.g. 'WEB'")],
+    summary: Annotated[str, Field(description="Issue summary, at most 255 characters")],
+    body: Annotated[str, Field(description="Description as plain text, at most 10000 characters")] = "",
+    labels: Annotated[
+        list[str] | None, Field(description="Up to 10 labels, each without spaces")
+    ] = None,
+) -> dict[str, Any]:
+    """Propose creating a Jira Task. Does NOT create it.
+
+    The proposal is queued for a human, who sees the exact project, summary,
+    description and labels and decides. Only projects the user allowed in
+    CONTINUUM_JIRA_PROJECTS are accepted. Tell the user the issue is waiting
+    for their approval; do not claim it was created.
+
+    Returns:
+        ``{"action_id": ..., "status": "pending", "message": ...}``.
+    """
+
+    def build(settings: ActionSettings) -> dict[str, Any]:
+        jira.require_access(settings.jira)
+        issue = jira.JiraIssue(project, summary, body, tuple(labels or ()))
+        jira.require_allowed_project(issue, settings.jira_projects)
+        return issue.to_payload()
+
+    return _queue(jira.KIND, build)
 
 
 @mcp.tool(annotations=_PROPOSAL)

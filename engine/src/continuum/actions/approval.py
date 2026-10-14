@@ -12,7 +12,7 @@ import logging
 
 import httpx
 
-from continuum.actions import calendar, github, slack
+from continuum.actions import calendar, github, jira, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -26,8 +26,8 @@ def approve(
 
     The action is claimed first, so a second approval of the same id fails
     instead of repeating the side effect. The stored content is re-validated
-    and the connector's permission (repository allowlist, configured webhook
-    or calendar) re-checked at execution time, in case either changed since
+    and the connector's permission (repository or project allowlist,
+    configured webhook or calendar) re-checked at execution time, in case either changed since
     the proposal. Any failure is recorded on the action
     (status ``failed``) rather than raised.
 
@@ -60,4 +60,8 @@ def _execute(action: Action, settings: ActionSettings, client: httpx.Client) -> 
         deadline = calendar.CalendarDeadline.from_payload(action.payload)
         access = calendar.require_access(settings.google)
         return calendar.create_deadline(deadline, access, settings.google_calendar_id, client)
+    if action.kind == jira.KIND:
+        jira_issue = jira.JiraIssue.from_payload(action.payload)
+        jira.require_allowed_project(jira_issue, settings.jira_projects)
+        return jira.create_issue(jira_issue, jira.require_access(settings.jira), client)
     raise ValueError(f"unknown action kind {action.kind!r}")

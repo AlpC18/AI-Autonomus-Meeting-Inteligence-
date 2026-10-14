@@ -54,7 +54,10 @@ def main() -> None:
     reject_parser.add_argument("id")
     args = parser.parse_args()
 
-    settings = ActionSettings.from_env(os.environ)
+    try:
+        settings = ActionSettings.from_env(os.environ)
+    except ValueError as error:
+        sys.exit(str(error))
     store = ActionStore(settings.database)
 
     def emit(actions: list[Action]) -> None:
