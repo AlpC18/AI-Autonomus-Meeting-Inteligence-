@@ -30,6 +30,7 @@ continuum-transcribe = "continuum.transcribe_cli:main"
 continuum-summarize = "continuum.summarize_cli:main"
 continuum-library = "continuum.library:main"
 continuum-check-config = "continuum.config_check:main"
+continuum-ask = "continuum.ask:main"
 
 [project.optional-dependencies]
 diarization = [

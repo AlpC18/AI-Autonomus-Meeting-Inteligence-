@@ -63,3 +63,16 @@ def test_unusable_embeddings_get_no_name() -> None:
     assert tracker.name(np.array([np.nan, 1.0, 0.0]), 3.0) is None
     assert tracker.name(np.zeros(3), 3.0) is None
     assert tracker.name(ANNA, 3.0) == "Speaker 1"
+
+
+def test_duplicate_speakers_are_merged_by_their_final_voices() -> None:
+    import numpy as np
+
+    from continuum.diarization.tracker import SpeakerTracker
+
+    tracker = SpeakerTracker(match=0.95)  # strict live matching creates duplicates
+    ana, ana_later, mark = np.array([1.0, 0.0, 0.0]), np.array([0.9, 0.3, 0.0]), np.array([0.0, 0.0, 1.0])
+    assert [tracker.name(voice, 2.0) for voice in (ana, mark, ana_later)] == ["Speaker 1", "Speaker 2", "Speaker 3"]
+
+    assert tracker.merges() == {"Speaker 3": "Speaker 1"}
+    assert SpeakerTracker().merges() == {}

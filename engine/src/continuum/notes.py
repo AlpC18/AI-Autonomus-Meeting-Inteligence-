@@ -8,6 +8,7 @@ Obsidian or Git without this app.
 """
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -98,12 +99,36 @@ class MeetingNotes:
     the first segment, so a session in which nobody speaks leaves nothing.
     """
 
-    def __init__(self, directory: Path, started_at: datetime, title: str = "Meeting") -> None:
-        """``started_at`` must be timezone-aware; it names the file."""
+    def __init__(
+        self, directory: Path, started_at: datetime, title: str = "Meeting", audio: Path | None = None
+    ) -> None:
+        """``started_at`` must be timezone-aware; it names the file.
+
+        ``title`` is cleaned of characters that are unsafe in file names.
+        ``audio`` names the meeting's recording in a comment, for playback.
+        """
         local = started_at.astimezone()
-        self._heading = f"# {title} — {local:%Y-%m-%d %H:%M}\n\n"
-        self.path = directory / f"{local:%Y-%m-%d %H%M%S} {title}.md"
-        """Where the notes are (or will be) written."""
+        title = " ".join(re.sub(r'[\\/:*?"<>|\x00-\x1f]+', " ", title).split())[:80] or "Meeting"
+        self._title = f"# {title} — {local:%Y-%m-%d %H:%M}\n\n"
+        self._marker = ""
+        stem = f"{local:%Y-%m-%d %H%M%S} {title}"
+        self.path = directory / f"{stem}.md"
+        """Where the notes are (or will be) written; never an existing file."""
+        count = 2
+        while self.path.exists():
+            self.path = directory / f"{stem} ({count}).md"
+            count += 1
+        if audio is not None:
+            self.set_audio(audio)
+
+    def set_audio(self, audio: Path) -> None:
+        """Name the meeting's recording in the notes (before the first line is written)."""
+        if "-->" not in str(audio):
+            self._marker = f"<!-- continuum:audio {audio.resolve()} -->\n\n"
+
+    @property
+    def _heading(self) -> str:
+        return self._title + self._marker
 
     def add(self, segment: Segment) -> None:
         """Append ``segment`` to the file, creating folder and file if needed.
@@ -119,3 +144,26 @@ class MeetingNotes:
                 self.path.chmod(0o600)
                 file.write(self._heading)
             file.write("\n".join(markdown_lines(segment)) + "\n")
+
+    def append(self, markdown: str) -> None:
+        """Add a section (for example the summary) at the end of an existing file.
+
+        Raises:
+            OSError: if the file cannot be written.
+        """
+        if self.path.exists():
+            with self.path.open("a", encoding="utf-8") as file:
+                file.write("\n" + markdown.rstrip() + "\n")
+
+    def rename_speakers(self, names: dict[str, str]) -> None:
+        """Replace speaker labels on transcript lines, e.g. a merged duplicate.
+
+        Raises:
+            OSError: if the file cannot be rewritten.
+        """
+        if not names or not self.path.exists():
+            return
+        text = self.path.read_text(encoding="utf-8")
+        for old, new in names.items():
+            text = re.sub(rf"(^- `[\d:]+` \*\*){re.escape(old)}(:\*\*)", rf"\g<1>{new}\2", text, flags=re.MULTILINE)
+        self.path.write_text(text, encoding="utf-8")

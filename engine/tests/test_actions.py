@@ -418,3 +418,26 @@ async def test_meeting_search_tool_explains_when_memory_is_not_set_up(
             await client.call_tool("continuum_search_meetings", {"query": "budget"})
         with pytest.raises(ToolError):
             await client.call_tool("continuum_search_meetings", {"query": "budget", "limit": 500})
+
+
+def test_current_calendar_event_names_the_meeting() -> None:
+    from datetime import UTC, datetime
+
+    now = datetime(2026, 10, 15, 9, 30, tzinfo=UTC)
+    fake = FakeService(
+        httpx.Response(200, json={"access_token": "short-lived"}),
+        httpx.Response(
+            200,
+            json={
+                "items": [
+                    {"summary": "Holiday", "start": {"date": "2026-10-15"}},
+                    {"summary": "  Weekly   budget sync ", "start": {"dateTime": "2026-10-15T09:00:00Z"}},
+                ]
+            },
+        ),
+    )
+    assert calendar.current_event_title(GOOGLE, "primary", fake.client(), now) == "Weekly budget sync"
+    _token, listing = fake.requests
+    assert listing.method == "GET" and listing.url.params["singleEvents"] == "true"
+    failing = FakeService(httpx.Response(401, json={"error": "invalid_grant"}))
+    assert calendar.current_event_title(GOOGLE, "primary", failing.client(), now) is None

@@ -41,6 +41,25 @@ class Rename:
     new: str
 
 
+@dataclass(frozen=True, slots=True)
+class Ask:
+    """A question about past meetings; ``request_id`` pairs it with its answer."""
+
+    request_id: str
+    question: str
+
+
+@dataclass(frozen=True, slots=True)
+class EndMeeting:
+    """The user ended the meeting: summarise it and start a new one."""
+
+
+Command = Note | Rename | Ask | EndMeeting
+
+MAX_QUESTION = 500
+_REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
 def clean_name(value: object) -> str:
     """Return ``value`` as a speaker name.
 
@@ -58,11 +77,12 @@ def clean_name(value: object) -> str:
     return name
 
 
-def parse(raw: str) -> Note | Rename | None:
+def parse(raw: str) -> Command | None:
     """Read one client message; ``None`` for anything malformed or unknown.
 
-    Accepted: ``{"type": "note", "text": ...}`` and
-    ``{"type": "rename_speaker", "from": ..., "to": ...}``.
+    Accepted: ``{"type": "note", "text": ...}``,
+    ``{"type": "rename_speaker", "from": ..., "to": ...}``,
+    ``{"type": "ask", "id": ..., "question": ...}`` and ``{"type": "end_meeting"}``.
     """
     try:
         message = json.loads(raw)
@@ -83,6 +103,15 @@ def parse(raw: str) -> Note | Rename | None:
         except (TypeError, ValueError):
             return None
         return Rename(old, new) if old != new else None
+    if message.get("type") == "ask":
+        request_id, question = message.get("id"), message.get("question")
+        if not isinstance(request_id, str) or not _REQUEST_ID.fullmatch(request_id):
+            return None
+        if not isinstance(question, str) or not 0 < len(question.strip()) <= MAX_QUESTION:
+            return None
+        return Ask(request_id, " ".join(question.split()))
+    if message.get("type") == "end_meeting":
+        return EndMeeting()
     return None
 
 
@@ -104,6 +133,10 @@ class SpeakerNames:
         labels = [label for label, shown in self._names.items() if shown == old]
         for label in labels or [old]:
             self._names[label] = new
+
+    def shown(self, label: str) -> str:
+        """How ``label`` is displayed now."""
+        return self._names.get(label, label)
 
     def apply(self, segment: Segment) -> Segment:
         """Return ``segment`` with the user's names in place of raw labels."""

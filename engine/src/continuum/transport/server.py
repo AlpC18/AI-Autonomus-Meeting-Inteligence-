@@ -116,7 +116,11 @@ class TranscriptServer:
 
     def publish_rename(self, old: str, new: str) -> None:
         """Tell clients that speaker ``old`` is now shown as ``new``."""
-        broadcast(self._clients, json.dumps({"type": "renamed", "from": old, "to": new}))
+        self.publish_event({"type": "renamed", "from": old, "to": new})
+
+    def publish_event(self, event: dict[str, object]) -> None:
+        """Send any JSON event (answers, summaries, meeting changes) to all clients."""
+        broadcast(self._clients, json.dumps(event, ensure_ascii=False))
 
     async def wait_for_clients(self, count: int) -> None:
         """Block until at least ``count`` clients are connected."""

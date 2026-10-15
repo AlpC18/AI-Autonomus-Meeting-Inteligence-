@@ -14,13 +14,14 @@ import os
 import signal
 import sys
 import threading
-import time
-import uuid
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import numpy as np
 
+from continuum.actions.calendar import current_event_title
+from continuum.actions.settings import ActionSettings
 from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
 from continuum.audio.transcriber import SpeechToText, load_transcriber
@@ -28,11 +29,12 @@ from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.factcheck.checker import FactCheckAlert, FactChecker
-from continuum.live_controls import Note, Rename, SpeakerNames, note_segment, parse
+from continuum.factcheck.semantic import SemanticChecker
+from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
-from continuum.memory.store import Meeting, MemoryStore
-from continuum.notes import MeetingNotes
-from continuum.privacy import redact_segment, warn_if_disk_unencrypted
+from continuum.memory.store import MemoryStore, ScopedMemory
+from continuum.privacy import warn_if_disk_unencrypted
+from continuum.session import MeetingSession, queue_configured_proposals
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -134,14 +136,52 @@ class Engine:
                 await self.process(utterance, source)
 
 
-async def _run_source_logged(engine: Engine, source: str) -> bool:
+async def _tapped(
+    blocks: AsyncIterator[np.ndarray], source: str, record: Callable[[str, np.ndarray], None]
+) -> AsyncIterator[np.ndarray]:
+    """Pass ``blocks`` through, handing each to ``record`` first."""
+    async for block in blocks:
+        record(source, block)
+        yield block
+
+
+async def _run_source_logged(
+    engine: Engine, source: str, record: Callable[[str, np.ndarray], None]
+) -> bool:
     """Run one source; log instead of raising so other sources keep going."""
     try:
-        await engine.run_source(source, _block_source(source)())
+        await engine.run_source(source, _tapped(_block_source(source)(), source, record))
     except Exception:
         logger.exception("Audio source %r stopped", source)
         return False
     return True
+
+
+def _load_llm() -> Llm | None:
+    """The configured AI model, or ``None`` (logged) when there is none or it is unusable."""
+    try:
+        llm_settings = LlmSettings.from_env(os.environ)
+        return connect(llm_settings) if llm_settings else None
+    except (ValueError, RuntimeError) as error:
+        logger.error("AI model not available: %s", error)
+        return None
+
+
+def _calendar_title() -> Callable[[datetime], str | None] | None:
+    """Looks up the current calendar event when Google Calendar is configured."""
+    try:
+        action_settings = ActionSettings.from_env(os.environ)
+    except ValueError:
+        return None
+    access = action_settings.google
+    if access is None:
+        return None
+
+    def title_for(now: datetime) -> str | None:
+        with httpx.Client(timeout=10) as client:
+            return current_event_title(access, action_settings.google_calendar_id, client, now)
+
+    return title_for
 
 
 async def run(settings: Settings) -> int:
@@ -171,11 +211,12 @@ async def run(settings: Settings) -> int:
             logger.error("%s Continuing with speakers labelled by audio source only.", error)
     else:
         logger.info("HF_TOKEN is not set: speakers are labelled by audio source only")
+    llm = _load_llm()
 
     if settings.scope is not None or settings.notes_dir is not None:
         warn_if_disk_unencrypted()
     with contextlib.ExitStack() as stack:
-        remember = None
+        memory = None
         check = None
         if settings.scope is not None:
             model_name = settings.embedding_model or DEFAULT_MODEL
@@ -184,24 +225,15 @@ async def run(settings: Settings) -> int:
             )
             # Transcripts are private: only the current user may read the folder.
             settings.memory_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-            store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions, model_name)
-            )
+            store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions, model_name))
             memory = store.scoped(settings.scope)
-            meeting = Meeting(str(uuid.uuid4()), datetime.now(UTC))
             if settings.retention_days is not None:
                 cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
                 forgotten = await asyncio.to_thread(memory.forget_before, cutoff)
                 logger.info("Forgot %d segments older than %d days", forgotten, settings.retention_days)
-            store_as = redact_segment if settings.redact else (lambda segment: segment)
-
-            def remember(segment: Segment, disputed: bool) -> None:
-                memory.add_segment(store_as(segment), meeting, disputed=disputed)
-
-            check = FactChecker(memory.search).check
-
+            check = _checker(memory, llm if settings.llm_fact_check else None)
             logger.info(
-                "Storing meeting %s for tenant %r, project %r",
-                meeting.meeting_id,
+                "Storing meetings for tenant %r, project %r",
                 settings.scope.tenant_id,
                 settings.scope.project_id,
             )
@@ -210,92 +242,49 @@ async def run(settings: Settings) -> int:
                 "Memory is off: set CONTINUUM_TENANT_ID and CONTINUUM_PROJECT_ID to store transcripts"
             )
 
-        names = SpeakerNames()
-        controls = LiveControls(names, remember)
-        async with TranscriptServer(port=settings.ws_port, on_message=controls.handle) as server:
-            publish = server.publish
-            if settings.notes_dir is not None:
-                publish = _also_noting(server.publish, settings)
-            controls.connect(publish, server.publish_rename)
+        main_task = asyncio.current_task()
+        assert main_task is not None
+        session = MeetingSession(
+            settings,
+            memory=memory,
+            llm=llm,
+            speakers=diarizer,
+            title_for=_calendar_title(),
+            propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
+            stop=main_task.cancel,
+        )
+        async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
+            session.connect(server.publish, server.publish_event)
+            await session.start()
             engine = Engine(
-                transcriber, publish, diarizer, remember, check, server.publish_alert, names.apply
+                transcriber,
+                session.publish,
+                diarizer,
+                session.remember if memory is not None else None,
+                check,
+                server.publish_alert,
+                session.relabel,
             )
-            results = await asyncio.gather(
-                *(_run_source_logged(engine, source) for source in settings.sources)
-            )
+            idle = asyncio.create_task(session.watch_idle())
+            try:
+                results = await asyncio.gather(
+                    *(_run_source_logged(engine, source, session.record) for source in settings.sources)
+                )
+            finally:
+                idle.cancel()
+                await session.close()
     return 0 if any(results) else 1
 
 
-class LiveControls:
-    """Applies what the user does during the meeting: typed notes and speaker names.
-
-    A note becomes a transcript line (speaker "Note") at the current stream
-    time: it is published, written to the Markdown notes and stored in
-    memory, but never fact-checked. A rename changes how a speaker is shown
-    from now on, tells the desktop app, and is recorded as a note.
-    """
-
-    def __init__(
-        self, names: SpeakerNames, remember: Callable[[Segment, bool], None] | None
-    ) -> None:
-        self._names = names
-        self._remember = remember
-        self._publish: Callable[[Segment], None] | None = None
-        self._announce: Callable[[str, str], None] | None = None
-        self._started = time.monotonic()
-
-    def connect(
-        self, publish: Callable[[Segment], None], announce_rename: Callable[[str, str], None]
-    ) -> None:
-        """Set where notes are published and renames announced; call before audio starts."""
-        self._publish = publish
-        self._announce = announce_rename
-        self._started = time.monotonic()
-
-    async def handle(self, raw: str) -> None:
-        """Handle one message from the desktop app; malformed ones are ignored."""
-        command = parse(raw)
-        if command is None or self._publish is None or self._announce is None:
-            logger.warning("Ignored a malformed message from the desktop app")
-            return
-        if isinstance(command, Rename):
-            self._names.rename(command.old, command.new)
-            self._announce(command.old, command.new)
-            command = Note(f"{command.old} is now called {command.new}.")
-        segment = note_segment(command, time.monotonic() - self._started)
-        self._publish(segment)
-        if self._remember is not None:
-            try:
-                await asyncio.to_thread(self._remember, segment, False)
-            except Exception:
-                logger.exception("Could not store a note in memory")
-
-
-def _also_noting(
-    publish: Callable[[Segment], None], settings: Settings
-) -> Callable[[Segment], None]:
-    """Return a ``publish`` that also appends each segment to Markdown notes.
-
-    Notes of a tenant and project go to their own subfolder of
-    ``settings.notes_dir``. With ``settings.redact`` the file gets the
-    redacted text; the live transcript is unchanged. A write failure is logged and never interrupts
-    the live transcript.
-    """
-    assert settings.notes_dir is not None
-    directory = settings.notes_dir
-    if settings.scope is not None:
-        directory = directory / settings.scope.tenant_id / settings.scope.project_id
-    notes = MeetingNotes(directory, datetime.now(UTC))
-    logger.info("Writing meeting notes to %s", notes.path)
-
-    def publish_and_note(segment: Segment) -> None:
-        publish(segment)
-        try:
-            notes.add(redact_segment(segment) if settings.redact else segment)
-        except OSError:
-            logger.exception("Could not write meeting notes")
-
-    return publish_and_note
+def _checker(
+    memory: ScopedMemory, llm: Llm | None
+) -> Callable[[Segment], FactCheckAlert | None]:
+    """Figures first; then, when an AI model is given, contradictions without figures."""
+    figures = FactChecker(memory.search).check
+    if llm is None:
+        return figures
+    semantic = SemanticChecker(memory.search, llm).check
+    return lambda segment: figures(segment) or semantic(segment)
 
 
 async def _serve(settings: Settings) -> int:

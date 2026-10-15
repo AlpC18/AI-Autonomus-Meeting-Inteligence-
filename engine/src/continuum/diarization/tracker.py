@@ -13,6 +13,11 @@ Measured with the pyannote community-1 embedding model on clean clips of
 MIN_VOICE_S = 1.0
 """Speech shorter than this is too little to learn a voice from."""
 
+MERGE = 0.6
+"""Similarity at which two speakers' final voices are taken to be one person.
+Stricter than :data:`MATCH`: wrongly merging two people is worse than
+leaving one person under two names."""
+
 
 class SpeakerTracker:
     """Recognises voices heard earlier in the session and names new ones.
@@ -56,3 +61,20 @@ class SpeakerTracker:
             return None
         self._voices.append(unit)
         return f"Speaker {len(self._voices)}"
+
+    def merges(self, threshold: float = MERGE) -> dict[str, str]:
+        """Speakers who turned out to be one person: ``{later name: earlier name}``.
+
+        Early in a meeting a voice is matched against little evidence, so one
+        person can end up as two speakers. Comparing the final averaged
+        voices, which hold much more evidence, finds those duplicates.
+        """
+        units = [voice / float(np.linalg.norm(voice)) for voice in self._voices]
+        result: dict[str, str] = {}
+        for later in range(1, len(units)):
+            scores = [float(units[later] @ units[earlier]) for earlier in range(later)]
+            best = int(np.argmax(scores))
+            if scores[best] >= threshold:
+                target = f"Speaker {best + 1}"
+                result[f"Speaker {later + 1}"] = result.get(target, target)
+        return result

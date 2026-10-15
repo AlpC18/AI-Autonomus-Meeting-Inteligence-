@@ -134,3 +134,17 @@ def test_old_segments_are_forgotten_only_in_this_scope(store: MemoryStore) -> No
     assert [hit.text for hit in acme.search("budget talk", limit=5)] == ["new budget talk"]
     assert len(globex.search("budget", limit=5)) == 1
     assert store.scoped(TenantScope("nobody", "none")).forget_before(STARTED) == 0
+
+
+def test_speaker_is_renamed_only_within_one_meeting_and_scope(store: MemoryStore) -> None:
+    acme, globex = store.scoped(ACME), store.scoped(GLOBEX)
+    other = Meeting("meeting-2", STARTED)
+    acme.add_segment(segment("budget one", 1.0, "Speaker 3"), MEETING)
+    acme.add_segment(segment("budget two", 2.0, "Speaker 3"), other)
+    globex.add_segment(segment("budget three", 1.0, "Speaker 3"), MEETING)
+
+    acme.rename_speaker("meeting-1", "Speaker 3", "Speaker 1")
+
+    speakers = {hit.meeting_id: hit.speaker for hit in acme.search("budget", limit=5)}
+    assert speakers == {"meeting-1": "Speaker 1", "meeting-2": "Speaker 3"}
+    assert [hit.speaker for hit in globex.search("budget", limit=5)] == ["Speaker 3"]

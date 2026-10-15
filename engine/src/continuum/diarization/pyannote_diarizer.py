@@ -81,6 +81,14 @@ class PyannoteDiarizer:
 
         return cls(pipeline, embed)
 
+    def speaker_merges(self) -> dict[str, str]:
+        """Duplicate speakers found by comparing final voices; see :meth:`SpeakerTracker.merges`."""
+        return self._tracker.merges()
+
+    def reset(self) -> None:
+        """Forget all voices: the next meeting starts again at "Speaker 1"."""
+        self._tracker = SpeakerTracker()
+
     def diarize(self, utterance: Utterance) -> list[SpeakerTurn]:
         """Return the speaker turns in ``utterance`` on the stream timeline.
 

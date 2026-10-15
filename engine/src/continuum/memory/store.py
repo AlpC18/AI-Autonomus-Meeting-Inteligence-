@@ -186,6 +186,19 @@ class ScopedMemory:
                 self._client.delete(self._collection, points_selector=models.FilterSelector(filter=condition))
         return count
 
+    def rename_speaker(self, meeting_id: str, old: str, new: str) -> None:
+        """Show ``old`` as ``new`` in every stored segment of one meeting of this scope."""
+        condition = models.Filter(
+            must=[
+                *self._scope_conditions(),
+                models.FieldCondition(key="meeting_id", match=models.MatchValue(value=meeting_id)),
+                models.FieldCondition(key="speaker", match=models.MatchValue(value=old)),
+            ]
+        )
+        with self._lock:
+            if self._client.collection_exists(self._collection):
+                self._client.set_payload(self._collection, {"speaker": new}, points=condition)
+
     def _scope_conditions(self) -> list[models.Condition]:
         return [
             models.FieldCondition(key="tenant_id", match=models.MatchValue(value=self._scope.tenant_id)),

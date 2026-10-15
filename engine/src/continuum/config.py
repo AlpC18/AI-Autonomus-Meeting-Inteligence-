@@ -3,6 +3,7 @@
 
 """Engine settings, read from environment variables."""
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,24 @@ from continuum.memory.scope import TenantScope
 
 KNOWN_SOURCES = ("mic", "system")
 """Audio sources the engine can capture."""
+
+_PROPOSAL_TARGET = re.compile(r"calendar|slack|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+")
+
+
+def _flag(env: Mapping[str, str], name: str, default: bool = False) -> bool:
+    value = env.get(name, "").strip().lower()
+    if not value:
+        return default
+    return value not in {"0", "false", "off", "no"}
+
+
+def _minutes(env: Mapping[str, str], name: str) -> int | None:
+    raw = env.get(name, "").strip()
+    if not raw:
+        return None
+    if not raw.isdecimal() or int(raw) < 1:
+        raise ValueError(f"{name} must be a whole number of minutes, got {raw!r}")
+    return int(raw)
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +46,13 @@ class Settings:
     runtime: ``auto`` uses the Apple Silicon GPU (mlx) when available.
     ``redact`` hides personal data and secrets in what is stored (memory and
     notes). ``retention_days`` deletes memories older than that many days
-    each time the engine starts.
+    each time the engine starts. When a meeting ends, its summary's action
+    items are proposed to ``auto_propose`` targets (``calendar``, ``slack``,
+    ``jira:KEY``, ``github:owner/name``). ``idle_end_minutes`` ends a meeting
+    after that long without speech; ``exit_when_idle`` then stops the engine
+    (used by the app's auto-start). ``record_audio`` saves each meeting's
+    audio next to its notes. ``llm_fact_check`` also asks the AI model about
+    contradictions that involve no numbers.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -42,6 +67,11 @@ class Settings:
     asr_backend: str = "auto"
     redact: bool = True
     retention_days: int | None = None
+    auto_propose: tuple[str, ...] = ()
+    idle_end_minutes: int | None = None
+    exit_when_idle: bool = False
+    record_audio: bool = False
+    llm_fact_check: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -53,7 +83,10 @@ class Settings:
         ``CONTINUUM_PROJECT_ID`` (set both or neither), ``CONTINUUM_MEMORY_DIR``,
         ``CONTINUUM_EMBEDDING_MODEL``, ``CONTINUUM_NOTES_DIR``,
         ``CONTINUUM_ASR_BACKEND`` (``auto``, ``faster-whisper`` or ``mlx``),
-        ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``. Unset variables
+        ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``,
+        ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
+        ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
+        ``CONTINUUM_LLM_FACT_CHECK``. Unset variables
         use defaults.
 
         Raises:
@@ -61,7 +94,8 @@ class Settings:
                 no source is given, the port is not a number in 1-65535, only
                 one of tenant and project is set, either ID is malformed, or the
                 speech backend is unknown, or the retention is not a positive
-                number of days.
+                number of days, a proposal target is malformed, or the idle
+                time is not a positive number of minutes.
         """
         defaults = cls()
         raw_sources = env.get("CONTINUUM_SOURCES")
@@ -101,7 +135,17 @@ class Settings:
             raise ValueError(
                 f"CONTINUUM_RETENTION_DAYS must be a whole number of days, got {raw_retention!r}"
             )
-        redact = env.get("CONTINUUM_REDACT", "1").strip().lower() not in {"0", "false", "off", "no"}
+        redact = _flag(env, "CONTINUUM_REDACT", default=True)
+        auto_propose = tuple(
+            part.strip() for part in env.get("CONTINUUM_AUTO_PROPOSE", "").split(",") if part.strip()
+        )
+        bad_targets = [target for target in auto_propose if not _PROPOSAL_TARGET.fullmatch(target)]
+        if bad_targets:
+            raise ValueError(
+                "CONTINUUM_AUTO_PROPOSE takes calendar, slack, jira:PROJECT or github:owner/name, "
+                f"got {bad_targets[0]!r}"
+            )
+        idle_end_minutes = _minutes(env, "CONTINUUM_IDLE_END_MINUTES")
 
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
@@ -119,4 +163,9 @@ class Settings:
             asr_backend=asr_backend,
             redact=redact,
             retention_days=int(raw_retention) if raw_retention else None,
+            auto_propose=auto_propose,
+            idle_end_minutes=idle_end_minutes,
+            exit_when_idle=_flag(env, "CONTINUUM_EXIT_WHEN_IDLE"),
+            record_audio=_flag(env, "CONTINUUM_RECORD_AUDIO"),
+            llm_fact_check=_flag(env, "CONTINUUM_LLM_FACT_CHECK"),
         )
