@@ -62,6 +62,13 @@ class SpeakerTracker:
         self._voices.append(unit)
         return f"Speaker {len(self._voices)}"
 
+    def voice(self, label: str) -> np.ndarray | None:
+        """The averaged voice of ``label`` ("Speaker N"), or ``None`` if unknown."""
+        prefix, _, number = label.partition(" ")
+        if prefix != "Speaker" or not number.isdecimal() or not 0 < int(number) <= len(self._voices):
+            return None
+        return self._voices[int(number) - 1].copy()
+
     def merges(self, threshold: float = MERGE) -> dict[str, str]:
         """Speakers who turned out to be one person: ``{later name: earlier name}``.
 

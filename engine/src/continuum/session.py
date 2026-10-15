@@ -57,6 +57,8 @@ class Speakers(Protocol):
 
     def speaker_merges(self) -> dict[str, str]: ...
     def reset(self) -> None: ...
+    def recognise(self, label: str) -> str | None: ...
+    def learn(self, label: str, name: str) -> None: ...
 
 
 Propose = Callable[[MeetingSummary, str], tuple[int, list[str]]]
@@ -207,6 +209,7 @@ class MeetingSession:
                 current.recorder.close()
                 with contextlib.suppress(OSError):
                     current.recorder.path.unlink()
+            self._learn_voices()
             self._publish_event({"type": "meeting_ended", "reason": reason})
             if self._speakers is not None:
                 self._speakers.reset()
@@ -234,6 +237,7 @@ class MeetingSession:
 
         The recording of a meeting in which nobody spoke is deleted.
         """
+        self._learn_voices()
         current = self._current
         if current is None or current.recorder is None:
             return
@@ -245,8 +249,35 @@ class MeetingSession:
     # --- live transcript -------------------------------------------------------
 
     def relabel(self, segment: Segment) -> Segment:
-        """Apply the names the user gave to speakers."""
+        """Apply the names the user gave to speakers, and recognise remembered voices."""
+        if self._speakers is not None:
+            labels = {segment.speaker, *(word.speaker for word in segment.words)}
+            for label in sorted(label for label in labels if label and label.startswith("Speaker ")):
+                self._recognise(label)
         return self.names.apply(segment)
+
+    def _recognise(self, label: str) -> None:
+        assert self._speakers is not None
+        if self.names.shown(label) != label:
+            return
+        name = self._speakers.recognise(label)
+        if name is None or name in self.names.named().values():
+            return
+        self.names.rename(label, name)
+        logger.info("Recognised %s as %s", label, name)
+        self._publish_event({"type": "renamed", "from": label, "to": name})
+
+    def _learn_voices(self) -> None:
+        """Remember the voices of named speakers for the next meetings."""
+        if self._speakers is None:
+            return
+        for label, name in self.names.named().items():
+            if name.startswith("Speaker "):
+                continue
+            try:
+                self._speakers.learn(label, name)
+            except OSError:
+                logger.exception("Could not remember the voice of %s", name)
 
     def publish(self, segment: Segment) -> None:
         """Show ``segment`` live, add it to the notes (redacted) and the meeting's transcript."""

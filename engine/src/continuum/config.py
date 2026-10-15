@@ -52,7 +52,8 @@ class Settings:
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
     audio next to its notes. ``llm_fact_check`` also asks the AI model about
-    contradictions that involve no numbers.
+    contradictions that involve no numbers. ``remember_voices`` keeps the
+    voices of speakers the user named, so later meetings show their names.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -72,6 +73,12 @@ class Settings:
     exit_when_idle: bool = False
     record_audio: bool = False
     llm_fact_check: bool = False
+    remember_voices: bool = True
+
+    @property
+    def voices_file(self) -> Path:
+        """Where named voices are kept: next to the memory folder."""
+        return self.memory_dir.parent / "voices.json"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -86,7 +93,8 @@ class Settings:
         ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``,
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
-        ``CONTINUUM_LLM_FACT_CHECK``. Unset variables
+        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
+        it off). Unset variables
         use defaults.
 
         Raises:
@@ -168,4 +176,5 @@ class Settings:
             exit_when_idle=_flag(env, "CONTINUUM_EXIT_WHEN_IDLE"),
             record_audio=_flag(env, "CONTINUUM_RECORD_AUDIO"),
             llm_fact_check=_flag(env, "CONTINUUM_LLM_FACT_CHECK"),
+            remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),
         )

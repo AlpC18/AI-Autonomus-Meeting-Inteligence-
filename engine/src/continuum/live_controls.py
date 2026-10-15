@@ -134,6 +134,10 @@ class SpeakerNames:
         for label in labels or [old]:
             self._names[label] = new
 
+    def named(self) -> dict[str, str]:
+        """Every renamed label and the name it is shown as."""
+        return dict(self._names)
+
     def shown(self, label: str) -> str:
         """How ``label`` is displayed now."""
         return self._names.get(label, label)

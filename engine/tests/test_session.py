@@ -56,8 +56,16 @@ class FakeLlm:
 
 
 class FakeSpeakers:
-    def __init__(self, merges: dict[str, str] | None = None) -> None:
+    def __init__(self, merges: dict[str, str] | None = None, known: dict[str, str] | None = None) -> None:
         self.merges, self.resets = merges or {}, 0
+        self.known = known or {}
+        self.learned: list[tuple[str, str]] = []
+
+    def recognise(self, label: str) -> str | None:
+        return self.known.get(label)
+
+    def learn(self, label: str, name: str) -> None:
+        self.learned.append((label, name))
 
     def speaker_merges(self) -> dict[str, str]:
         return self.merges
@@ -248,3 +256,23 @@ async def test_closing_keeps_only_recordings_with_speech(tmp_path: Path) -> None
             session.publish(said("hello"))
         await session.close()
         assert len(list(folder.glob("*.wav"))) == int(spoken)
+
+
+async def test_remembered_voices_are_named_and_named_voices_are_learned(tmp_path: Path) -> None:
+    speakers = FakeSpeakers(known={"Speaker 1": "Ayşe", "Speaker 3": "Ayşe"})
+    session, _published, events = await make(tmp_path, speakers=speakers)
+
+    assert session.relabel(said("hello", "Speaker 1")).speaker == "Ayşe"
+    assert session.relabel(said("hi", "Speaker 1")).words[0].speaker == "Ayşe"
+    # A second voice matching the same person is not given the same name.
+    assert session.relabel(said("hey", "Speaker 3")).speaker == "Speaker 3"
+    await session.handle('{"type": "rename_speaker", "from": "Speaker 2", "to": "Mark"}')
+    assert [e for e in events if e["type"] == "renamed"] == [
+        {"type": "renamed", "from": "Speaker 1", "to": "Ayşe"},
+        {"type": "renamed", "from": "Speaker 2", "to": "Mark"},
+    ]
+
+    await session.end()
+
+    assert sorted(speakers.learned) == [("Speaker 1", "Ayşe"), ("Speaker 2", "Mark")]
+    assert session.relabel(said("new meeting", "Speaker 2")).speaker == "Speaker 2"

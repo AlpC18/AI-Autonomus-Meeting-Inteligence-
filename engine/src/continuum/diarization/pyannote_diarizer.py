@@ -13,6 +13,7 @@ from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance
 from continuum.diarization.tracker import SpeakerTracker
 from continuum.diarization.turns import SpeakerTurn
+from continuum.diarization.voices import VoiceBook
 
 MODEL = "pyannote/speaker-diarization-community-1"
 """Gated Hugging Face pipeline; its terms must be accepted for the token used."""
@@ -39,16 +40,21 @@ class PyannoteDiarizer:
         self,
         pipeline: Callable[[Mapping[str, Any]], Any],
         embed: Callable[[np.ndarray], np.ndarray],
+        voices: VoiceBook | None = None,
     ) -> None:
         """``pipeline`` splits audio into turns with labels that are only
         valid for that one call. ``embed`` turns one speaker's mono samples
-        into a voice embedding, which is what links the calls together."""
+        into a voice embedding, which is what links the calls together.
+        ``voices``, when given, recognises people named in earlier meetings."""
         self._pipeline = pipeline
         self._embed = embed
         self._tracker = SpeakerTracker()
+        self._voices = voices
 
     @classmethod
-    def from_pretrained(cls, token: str, cache_dir: Path | None = None) -> "PyannoteDiarizer":
+    def from_pretrained(
+        cls, token: str, cache_dir: Path | None = None, voices: VoiceBook | None = None
+    ) -> "PyannoteDiarizer":
         """Load the pyannote pipeline, downloading it on first use.
 
         Raises:
@@ -79,14 +85,33 @@ class PyannoteDiarizer:
             # The pipeline's own voice model; it has no public accessor.
             return pipeline._embedding(torch.from_numpy(samples)[None, None])[0]
 
-        return cls(pipeline, embed)
+        return cls(pipeline, embed, voices)
 
     def speaker_merges(self) -> dict[str, str]:
         """Duplicate speakers found by comparing final voices; see :meth:`SpeakerTracker.merges`."""
         return self._tracker.merges()
 
+    def recognise(self, label: str) -> str | None:
+        """The remembered name of the person speaking as ``label``, if their voice is known."""
+        voice = self._tracker.voice(label)
+        if self._voices is None or voice is None:
+            return None
+        return self._voices.identify(voice)
+
+    def learn(self, label: str, name: str) -> None:
+        """Remember the voice of ``label`` as ``name`` for later meetings.
+
+        Raises:
+            OSError: if the remembered voices cannot be saved.
+        """
+        voice = self._tracker.voice(label)
+        if self._voices is not None and voice is not None:
+            self._voices.learn(name, voice)
+
     def reset(self) -> None:
-        """Forget all voices: the next meeting starts again at "Speaker 1"."""
+        """Forget this meeting's voices: the next meeting starts again at "Speaker 1".
+
+        Voices remembered by name are kept."""
         self._tracker = SpeakerTracker()
 
     def diarize(self, utterance: Utterance) -> list[SpeakerTurn]:

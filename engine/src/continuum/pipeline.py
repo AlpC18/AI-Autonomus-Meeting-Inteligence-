@@ -28,6 +28,7 @@ from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
+from continuum.diarization.voices import VoiceBook
 from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.factcheck.semantic import SemanticChecker
 from continuum.llm import Llm, LlmSettings, connect
@@ -205,8 +206,9 @@ async def run(settings: Settings) -> int:
     diarizer = None
     if settings.hf_token:
         try:
+            voices = VoiceBook(settings.voices_file) if settings.remember_voices else None
             diarizer = await asyncio.to_thread(
-                PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir
+                PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir, voices
             )
         except RuntimeError as error:
             # Speaker separation is an enhancement; transcription must still run.
