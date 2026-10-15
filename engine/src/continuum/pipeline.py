@@ -46,15 +46,17 @@ BlockSource = Callable[[], AsyncIterator[np.ndarray]]
 def _block_source(source: str) -> BlockSource:
     """Return the capture function for ``source``, importing it on demand.
 
-    Raises:
-        RuntimeError: if system audio is requested on an unsupported platform.
+    System audio uses ScreenCaptureKit on macOS and speaker loopback
+    (``soundcard``) on Windows and Linux.
     """
     if source == "mic":
         from continuum.audio.microphone import microphone_blocks
 
         return microphone_blocks
     if sys.platform != "darwin":
-        raise RuntimeError("System audio capture is only implemented for macOS.")
+        from continuum.audio.loopback import loopback_blocks
+
+        return loopback_blocks
     from continuum.audio.system_audio import system_audio_blocks
 
     return system_audio_blocks
