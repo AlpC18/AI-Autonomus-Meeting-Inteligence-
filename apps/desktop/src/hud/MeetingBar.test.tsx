@@ -9,7 +9,7 @@ import type { EngineCommand } from "./transcriptStream";
 
 afterEach(cleanup);
 
-function bar(sent: EngineCommand[], connected = true) {
+function bar(sent: EngineCommand[], connected = true, project: string | null = "web", projectError: string | null = null) {
   return (
     <MeetingBar
       title="Budget review"
@@ -22,6 +22,8 @@ function bar(sent: EngineCommand[], connected = true) {
       brief={null}
       liveItems={[{ task: "Send the report", owner: "Ana", due: "2026-11-30" }]}
       lastTalkTime={[{ speaker: "Ana", seconds: 95, share: 0.6, longestSeconds: 40, interruptions: 1 }]}
+      project={project}
+      projectError={projectError}
     />
   );
 }
@@ -49,5 +51,22 @@ describe("MeetingBar", () => {
     const sent: EngineCommand[] = [];
     render(bar(sent, false));
     expect((screen.getByRole("button", { name: "End meeting" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("switches the project for the next meeting", () => {
+    const sent: EngineCommand[] = [];
+    render(bar(sent));
+    expect(screen.getByText("Project: web")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Switch project"), { target: { value: " mobile " } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch" }));
+
+    expect(sent).toEqual([{ type: "switch_project", project: "mobile" }]);
+  });
+
+  it("hides the project switch when memory is off and shows switch errors", () => {
+    render(bar([], true, null, "Memory is off"));
+    expect(screen.queryByLabelText("Switch project")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain("Memory is off");
   });
 });

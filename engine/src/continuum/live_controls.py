@@ -59,7 +59,17 @@ class Brief:
     """The user asked for a brief on the current meeting from earlier ones."""
 
 
-Command = Note | Rename | Ask | EndMeeting | Brief
+@dataclass(frozen=True, slots=True)
+class SwitchProject:
+    """File this and later meetings under another project of the same workspace.
+
+    ``project`` is only trimmed here; the session checks it as a project ID.
+    """
+
+    project: str
+
+
+Command = Note | Rename | Ask | EndMeeting | Brief | SwitchProject
 
 MAX_QUESTION = 500
 _REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -87,7 +97,8 @@ def parse(raw: str) -> Command | None:
 
     Accepted: ``{"type": "note", "text": ...}``,
     ``{"type": "rename_speaker", "from": ..., "to": ...}``,
-    ``{"type": "ask", "id": ..., "question": ...}`` and ``{"type": "end_meeting"}``.
+    ``{"type": "ask", "id": ..., "question": ...}``, ``{"type": "end_meeting"}``,
+    ``{"type": "brief"}`` and ``{"type": "switch_project", "project": ...}``.
     """
     try:
         message = json.loads(raw)
@@ -119,6 +130,11 @@ def parse(raw: str) -> Command | None:
         return EndMeeting()
     if message.get("type") == "brief":
         return Brief()
+    if message.get("type") == "switch_project":
+        project = message.get("project")
+        if not isinstance(project, str) or not 0 < len(project.strip()) <= 64:
+            return None
+        return SwitchProject(project.strip())
     return None
 
 

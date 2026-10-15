@@ -33,7 +33,8 @@ from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.factcheck.semantic import SemanticChecker
 from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
-from continuum.memory.store import MemoryStore, ScopedMemory
+from continuum.memory.scope import TenantScope
+from continuum.memory.store import MemoryHit, MemoryStore, ScopedMemory
 from continuum.privacy import storage_settings, warn_if_disk_unencrypted
 from continuum.session import MeetingSession, queue_configured_proposals
 from continuum.transcript import Segment
@@ -222,7 +223,7 @@ async def run(settings: Settings) -> int:
         warn_if_disk_unencrypted()
     with contextlib.ExitStack() as stack:
         memory = None
-        check = None
+        open_scope = None
         if settings.scope is not None:
             model_name = settings.embedding_model or DEFAULT_MODEL
             embed, dimensions = await asyncio.to_thread(
@@ -231,12 +232,8 @@ async def run(settings: Settings) -> int:
             # Transcripts are private: only the current user may read the folder.
             settings.memory_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
             store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions, model_name))
-            memory = store.scoped(settings.scope)
-            if settings.retention_days is not None:
-                cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
-                forgotten = await asyncio.to_thread(memory.forget_before, cutoff)
-                logger.info("Forgot %d segments older than %d days", forgotten, settings.retention_days)
-            check = _checker(memory, llm if settings.llm_fact_check else None)
+            open_scope = _scope_opener(store, settings.retention_days)
+            memory = await asyncio.to_thread(open_scope, settings.scope)
             logger.info(
                 "Storing meetings for tenant %r, project %r",
                 settings.scope.tenant_id,
@@ -257,7 +254,9 @@ async def run(settings: Settings) -> int:
             title_for=_calendar_title(),
             propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
             stop=main_task.cancel,
+            open_scope=open_scope,
         )
+        check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
             session.connect(server.publish, server.publish_event)
             await session.start()
@@ -281,14 +280,31 @@ async def run(settings: Settings) -> int:
     return 0 if any(results) else 1
 
 
+def _scope_opener(store: MemoryStore, retention_days: int | None) -> Callable[[TenantScope], ScopedMemory]:
+    """Opens a project's memory, first forgetting what is older than ``retention_days``. Blocks."""
+
+    def open_scope(scope: TenantScope) -> ScopedMemory:
+        memory = store.scoped(scope)
+        if retention_days is not None:
+            cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+            forgotten = memory.forget_before(cutoff)
+            logger.info("Forgot %d segments older than %d days", forgotten, retention_days)
+        return memory
+
+    return open_scope
+
+
 def _checker(
-    memory: ScopedMemory, llm: Llm | None
+    search: Callable[[str, int], list[MemoryHit]], llm: Llm | None
 ) -> Callable[[Segment], FactCheckAlert | None]:
-    """Figures first; then, when an AI model is given, contradictions without figures."""
-    figures = FactChecker(memory.search).check
+    """Figures first; then, when an AI model is given, contradictions without figures.
+
+    ``search`` is the session's, so checks follow a project switch.
+    """
+    figures = FactChecker(search).check
     if llm is None:
         return figures
-    semantic = SemanticChecker(memory.search, llm).check
+    semantic = SemanticChecker(search, llm).check
     return lambda segment: figures(segment) or semantic(segment)
 
 

@@ -123,3 +123,11 @@ async def test_handler_errors_do_not_drop_the_connection() -> None:
         await client.send("anything")
         server.publish_rename("a", "b")
         assert json.loads(await client.recv())["type"] == "renamed"
+
+
+def test_switch_project_is_parsed_and_checked() -> None:
+    from continuum.live_controls import SwitchProject, parse
+
+    assert parse('{"type": "switch_project", "project": " mobile "}') == SwitchProject("mobile")
+    assert parse('{"type": "switch_project", "project": 3}') is None
+    assert parse('{"type": "switch_project", "project": ""}') is None

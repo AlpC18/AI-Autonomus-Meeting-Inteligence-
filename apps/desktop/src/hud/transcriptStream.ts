@@ -59,6 +59,10 @@ export interface TranscriptStream {
   liveItems: readonly LiveActionItem[];
   /** Who talked how much in the meeting that ended last. */
   lastTalkTime: readonly TalkTime[];
+  /** The project meetings are filed under, or `null` when memory is off. */
+  project: string | null;
+  /** Why the last project switch failed, if it did. */
+  projectError: string | null;
 }
 
 /** What the desktop app can ask the engine to do during a meeting. */
@@ -67,7 +71,8 @@ export type EngineCommand =
   | { type: "rename_speaker"; from: string; to: string }
   | { type: "ask"; id: string; question: string }
   | { type: "end_meeting" }
-  | { type: "brief" };
+  | { type: "brief" }
+  | { type: "switch_project"; project: string };
 
 /** A statement from memory that an answer cites. */
 export interface AnswerSource {
@@ -116,7 +121,8 @@ export type EngineEvent =
   | { type: "brief"; brief: Answer }
   | { type: "summary"; summary: MeetingSummaryEvent }
   | { type: "action_items"; items: LiveActionItem[] }
-  | { type: "meeting_started"; title: string }
+  | { type: "meeting_started"; title: string; project: string | null }
+  | { type: "project_error"; error: string }
   | { type: "meeting_ended"; reason: string; talkTime: TalkTime[] };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
@@ -272,7 +278,10 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
     return { type: "action_items", items };
   }
   if (message.type === "meeting_started" && typeof message.title === "string") {
-    return { type: "meeting_started", title: message.title };
+    return { type: "meeting_started", title: message.title, project: typeof message.project === "string" ? message.project : null };
+  }
+  if (message.type === "project_error" && typeof message.error === "string") {
+    return { type: "project_error", error: message.error };
   }
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
     const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
@@ -321,6 +330,8 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [brief, setBrief] = useState<Answer | null>(null);
   const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
   const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
+  const [project, setProject] = useState<string | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
     if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
@@ -370,9 +381,13 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLiveItems(engineEvent.items);
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
+        } else if (engineEvent?.type === "project_error") {
+          setProjectError(engineEvent.error);
         } else if (engineEvent?.type === "meeting_started") {
           // A new meeting starts with an empty transcript, no brief and no action items yet.
           setMeetingTitle(engineEvent.title);
+          setProject(engineEvent.project);
+          setProjectError(null);
           setSegments([]);
           setBrief(null);
           setLiveItems([]);
@@ -394,5 +409,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime };
+  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError };
 }
