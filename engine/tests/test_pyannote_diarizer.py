@@ -128,3 +128,22 @@ def test_a_named_voice_is_recognised_in_the_next_meeting(tmp_path) -> None:
     later.diarize(_utterance(0.0, (2.0, 2.0)))
     assert later.recognise("Speaker 1") == "Ayşe"
     assert PyannoteDiarizer(_replaying(), _embed).recognise("Speaker 1") is None
+
+
+def test_two_known_voices_heard_as_one_are_split_again() -> None:
+    diarizer = PyannoteDiarizer(
+        _replaying(
+            _annotation((0.0, 1.5, "SPEAKER_00"), (1.5, 3.0, "SPEAKER_01")),
+            # The model hears the second utterance as a single speaker.
+            _annotation((0.0, 4.0, "SPEAKER_00")),
+            _annotation((0.0, 4.0, "SPEAKER_00")),
+        ),
+        _embed,
+    )
+    diarizer.diarize(_utterance(0.0, (1.0, 1.5), (2.0, 1.5)))
+
+    mixed = diarizer.diarize(_utterance(10.0, (1.0, 2.0), (2.0, 2.0)))
+    alone = diarizer.diarize(_utterance(20.0, (2.0, 4.0)))
+
+    assert mixed == [SpeakerTurn(10.0, 12.0, "Speaker 1"), SpeakerTurn(12.0, 14.0, "Speaker 2")]
+    assert alone == [SpeakerTurn(20.0, 24.0, "Speaker 2")]

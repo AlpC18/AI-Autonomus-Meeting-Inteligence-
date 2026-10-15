@@ -21,6 +21,12 @@ MODEL = "pyannote/speaker-diarization-community-1"
 MIN_EMBED_S = 0.25
 """Speech shorter than this is not sent to the voice model at all."""
 
+WINDOW_S = 1.0
+"""Length of the pieces a one-speaker turn is re-checked in."""
+
+RESPLIT_MIN_S = 2.0
+"""One-speaker turns at least this long are re-checked for a second known voice."""
+
 
 class PyannoteDiarizer:
     """Finds who speaks when in one audio stream, utterance by utterance.
@@ -33,9 +39,11 @@ class PyannoteDiarizer:
     """
 
     # ponytail: the pipeline only sees one utterance (15 s at most), and with
-    # so little audio it often hears two people as one. Such an utterance gets
-    # a single name. Giving the model a longer window fixes that but cost
-    # about 0.9 s of CPU per second of window on an M1, too slow to run live.
+    # so little audio it often hears two people as one. Such turns are re-checked
+    # second by second against voices already known, which splits them again
+    # but cannot find a voice heard for the first time, nor an interjection
+    # shorter than WINDOW_S. Giving the model a longer window would, at about
+    # 0.9 s of CPU per second of window on an M1, too slow to run live.
     def __init__(
         self,
         pipeline: Callable[[Mapping[str, Any]], Any],
@@ -148,9 +156,40 @@ class PyannoteDiarizer:
                 else None
             )
 
+        named = [(start, end, name) for start, end, label in turns if (name := names[label]) is not None]
+        if len(names) == 1:
+            named = [
+                piece
+                for start, end, name in named
+                for piece in (
+                    self._resplit(utterance.samples, start, end, name)
+                    if end - start >= RESPLIT_MIN_S
+                    else [(start, end, name)]
+                )
+            ]
         offset = utterance.start_s
-        return [
-            SpeakerTurn(offset + start, offset + end, name)
-            for start, end, label in turns
-            if (name := names[label]) is not None
-        ]
+        return [SpeakerTurn(offset + start, offset + end, name) for start, end, name in named]
+
+    def _resplit(
+        self, samples: np.ndarray, start: float, end: float, name: str
+    ) -> list[tuple[float, float, str]]:
+        """Split a turn the model gave to ``name`` where a second known voice speaks.
+
+        Each :data:`WINDOW_S` piece is matched against the voices already
+        known, learning nothing from it; a piece that matches nobody stays
+        with ``name``. The turn is split only when its pieces name at least
+        two speakers, so it is never simply renamed on weaker evidence.
+        """
+        count = int((end - start) // WINDOW_S)
+        pieces: list[tuple[float, float, str]] = []
+        for index in range(count):
+            piece_start = start + index * WINDOW_S
+            piece_end = end if index == count - 1 else piece_start + WINDOW_S
+            piece = samples[int(piece_start * SAMPLE_RATE) : int(piece_end * SAMPLE_RATE)]
+            # 0 s of evidence: only a known voice can match, and none is updated.
+            heard = self._tracker.name(self._embed(piece), 0.0) or name
+            if pieces and pieces[-1][2] == heard:
+                pieces[-1] = (pieces[-1][0], piece_end, heard)
+            else:
+                pieces.append((piece_start, piece_end, heard))
+        return pieces if len({piece[2] for piece in pieces}) > 1 else [(start, end, name)]
