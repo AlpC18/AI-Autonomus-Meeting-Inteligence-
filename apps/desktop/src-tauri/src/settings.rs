@@ -248,17 +248,17 @@ pub const FIELDS: &[Field] = &[
     ),
     field(
         "CONTINUUM_WORKLOAD_CHECK",
-        "Check promised dates against Jira and GitHub",
+        "Check promised dates against Jira, GitHub and GitLab",
         "AI",
         Kind::Toggle(false),
-        "Warns when someone promises a date while holding many open Jira or GitHub issues, or a full sprint. Sends their name to Jira and GitHub.",
+        "Warns when someone promises a date while holding many open Jira, GitHub or GitLab issues, or a full sprint. Sends their name to those services.",
     ),
     field(
         "CONTINUUM_AUTO_PROPOSE",
         "Propose after each meeting",
         "AI",
         Kind::Text,
-        "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name. Each still needs your approval.",
+        "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name, gitlab:group/name. Each still needs your approval.",
     ),
     field(
         "CONTINUUM_GITHUB_REPOS",
@@ -273,6 +273,27 @@ pub const FIELDS: &[Field] = &[
         "Actions",
         Kind::Secret,
         "Fine-grained token with Issues: read and write.",
+    ),
+    field(
+        "CONTINUUM_GITLAB_PROJECTS",
+        "GitLab projects",
+        "Actions",
+        Kind::Text,
+        "Comma-separated group/name; issues can only be proposed for these.",
+    ),
+    field(
+        "CONTINUUM_GITLAB_URL",
+        "GitLab address",
+        "Actions",
+        Kind::Text,
+        "Leave empty for gitlab.com; https://… for a self-managed GitLab.",
+    ),
+    field(
+        "GITLAB_TOKEN",
+        "GitLab token",
+        "Actions",
+        Kind::Secret,
+        "Personal or project access token with the api scope.",
     ),
     field(
         "CONTINUUM_SLACK_WEBHOOK_URL",

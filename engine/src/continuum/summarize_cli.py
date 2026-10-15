@@ -52,7 +52,8 @@ def build_proposals(
     Targets: ``calendar`` (items with a due date), ``slack`` (one recap),
     ``email`` (one recap to the calendar event's ``attendees``), ``notion``
     (one page with the summary),
-    ``jira:KEY`` and ``github:owner/name`` (one issue per action item). An
+    ``jira:KEY``, ``github:owner/name`` and ``gitlab:group/name`` (one issue
+    per action item). An
     item that a target refuses is reported, not fatal.
     """
     built: list[proposals.Proposal] = []
@@ -109,6 +110,13 @@ def build_proposals(
                         settings, where, item.task, details
                     ),
                 )
+            elif kind == "gitlab":
+                attempt(
+                    f"gitlab ({item.task})",
+                    lambda item=item, details=details, where=where: proposals.gitlab_issue(
+                        settings, where, item.task, details
+                    ),
+                )
             elif kind == "github":
                 attempt(
                     f"github ({item.task})",
@@ -121,10 +129,10 @@ def build_proposals(
 
 def _target(value: str) -> str:
     kind, _, where = value.partition(":")
-    if (kind in {"calendar", "slack", "email", "notion"} and not where) or (kind in {"jira", "github"} and where):
+    if (kind in {"calendar", "slack", "email", "notion"} and not where) or (kind in {"jira", "github", "gitlab"} and where):
         return value
     raise argparse.ArgumentTypeError(
-        "use calendar, slack, notion, jira:PROJECT or github:owner/name"
+        "use calendar, slack, email, notion, jira:PROJECT, github:owner/name or gitlab:group/name"
     )
 
 
@@ -146,7 +154,7 @@ def main() -> None:
         default=[],
         type=_target,
         metavar="TARGET",
-        help="queue proposals: calendar, slack, notion, jira:PROJECT, github:owner/name (repeatable)",
+        help="queue proposals: calendar, slack, notion, jira:PROJECT, github:owner/name, gitlab:group/name (repeatable)",
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args()

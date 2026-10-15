@@ -12,7 +12,7 @@ import logging
 
 import httpx
 
-from continuum.actions import calendar, github, gmail, jira, notion, slack
+from continuum.actions import calendar, github, gitlab, gmail, jira, notion, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -53,6 +53,10 @@ def _execute(action: Action, settings: ActionSettings, client: httpx.Client) -> 
         if not settings.github_token:
             raise RuntimeError("GITHUB_TOKEN is not set, so the issue cannot be created")
         return github.create_issue(issue, settings.github_token, client)
+    if action.kind == gitlab.KIND:
+        gitlab_issue = gitlab.GitLabIssue.from_payload(action.payload)
+        gitlab.require_allowed_project(gitlab_issue, settings.gitlab_projects)
+        return gitlab.create_issue(gitlab_issue, gitlab.require_access(settings.gitlab), client)
     if action.kind == slack.KIND:
         message = slack.SlackMessage.from_payload(action.payload)
         return slack.send_message(message, slack.require_webhook(settings.slack_webhook_url), client)

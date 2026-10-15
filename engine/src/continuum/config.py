@@ -14,7 +14,7 @@ from continuum.memory.scope import TenantScope
 KNOWN_SOURCES = ("mic", "system")
 """Audio sources the engine can capture."""
 
-_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+")
+_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+|gitlab:[\w.-]+(?:/[\w.-]+)+")
 
 
 def _flag(env: Mapping[str, str], name: str, default: bool = False) -> bool:
@@ -48,7 +48,7 @@ class Settings:
     notes). ``retention_days`` deletes memories older than that many days
     each time the engine starts. When a meeting ends, its summary's action
     items are proposed to ``auto_propose`` targets (``calendar``, ``slack``, ``email``, ``notion``,
-    ``jira:KEY``, ``github:owner/name``). ``idle_end_minutes`` ends a meeting
+    ``jira:KEY``, ``github:owner/name``, ``gitlab:group/name``). ``idle_end_minutes`` ends a meeting
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
     audio next to its notes. ``llm_hesitations`` has the AI model read the transcript at
@@ -168,7 +168,8 @@ class Settings:
         bad_targets = [target for target in auto_propose if not _PROPOSAL_TARGET.fullmatch(target)]
         if bad_targets:
             raise ValueError(
-                "CONTINUUM_AUTO_PROPOSE takes calendar, slack, email, jira:PROJECT or github:owner/name, "
+                "CONTINUUM_AUTO_PROPOSE takes calendar, slack, email, notion, jira:PROJECT, github:owner/name "
+                "or gitlab:group/name, "
                 f"got {bad_targets[0]!r}"
             )
         idle_end_minutes = _minutes(env, "CONTINUUM_IDLE_END_MINUTES")

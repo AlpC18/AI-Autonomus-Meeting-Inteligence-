@@ -29,7 +29,12 @@ from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.context.code import CodeContext, CodeIndex
 from continuum.context.risk import RiskTracker, WorkloadLookup
-from continuum.context.workload import GitHubWorkload, JiraWorkload, combined
+from continuum.context.workload import (
+    GitHubWorkload,
+    GitLabWorkload,
+    JiraWorkload,
+    combined,
+)
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -308,7 +313,7 @@ async def _watchers(settings: Settings, stack: contextlib.ExitStack, llm: Llm | 
 
 
 def _workload(settings: Settings, stack: contextlib.ExitStack) -> WorkloadLookup | None:
-    """Jira and GitHub workload lookups, when turned on and those trackers are configured."""
+    """Jira, GitHub and GitLab workload lookups, when turned on and those trackers are configured."""
     if not settings.workload_check:
         return None
     try:
@@ -322,10 +327,13 @@ def _workload(settings: Settings, stack: contextlib.ExitStack) -> WorkloadLookup
         lookups.append(JiraWorkload(actions.jira, client))
     if actions.github_token and actions.github_repos:
         lookups.append(GitHubWorkload(actions.github_token, sorted(actions.github_repos), client))
+    if actions.gitlab is not None and actions.gitlab_projects:
+        lookups.append(GitLabWorkload(actions.gitlab, sorted(actions.gitlab_projects), client))
     if not lookups:
         logger.warning(
-            "Workload check needs Jira (CONTINUUM_JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN) "
-            "or GitHub (GITHUB_TOKEN and CONTINUUM_GITHUB_REPOS)"
+            "Workload check needs Jira (CONTINUUM_JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN), "
+            "GitHub (GITHUB_TOKEN and CONTINUUM_GITHUB_REPOS) or GitLab (GITLAB_TOKEN and "
+            "CONTINUUM_GITLAB_PROJECTS)"
         )
         return None
     return lookups[0] if len(lookups) == 1 else combined(lookups)

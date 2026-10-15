@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-"""A speaker's open Jira and GitHub issues, for checking the dates they promise.
+"""A speaker's open Jira, GitHub and GitLab issues, for checking the dates they promise.
 
 Read-only: it counts issues and never changes anything. The local user
 ("me") is the tracker's current user; another speaker is looked up by the
@@ -15,6 +15,7 @@ from datetime import date, datetime
 
 import httpx
 
+from continuum.actions.gitlab import GitLabAccess, project_path
 from continuum.actions.jira import JiraAccess
 from continuum.context.risk import Workload, WorkloadLookup
 
@@ -156,6 +157,75 @@ class GitHubWorkload:
         if login not in self._names:
             self._names[login] = str(self._get(f"/users/{login}").get("name") or "")
         return self._names[login]
+
+
+class GitLabWorkload:
+    """``(speaker, due) -> Workload`` from open GitLab issues in ``projects``. Blocks; errors give ``None``.
+
+    An issue is due by the promised date when its own due date, or else its
+    milestone's, is. Another speaker is matched, by username or name, only
+    among the projects' members.
+    """
+
+    # ponytail: first 100 members and 100 open issues per project; page
+    # through them if a team or backlog is larger.
+    def __init__(self, access: GitLabAccess, projects: Sequence[str], client: httpx.Client) -> None:
+        self._access = access
+        self._projects = tuple(sorted(projects))
+        self._client = client
+        self._usernames: dict[str, str | None] = {}
+
+    def __call__(self, speaker: str, due: date) -> Workload | None:
+        try:
+            username = self._username(speaker)
+            if username is None:
+                return None
+            issues = [
+                issue
+                for project in self._projects
+                for issue in self._get(
+                    f"/projects/{project_path(project)}/issues",
+                    assignee_username=username,
+                    state="opened",
+                    per_page=100,
+                )
+            ]
+            due_by = sum(1 for issue in issues if (day := _gitlab_due(issue)) is not None and day <= due)
+            return Workload(open=len(issues), due_by=due_by, source="GitLab")
+        except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
+            logger.warning("Could not read the GitLab workload (%s)", type(error).__name__)
+            return None
+
+    def _get(self, path: str, **params: object) -> list | dict:
+        response = self._client.get(self._access.api(path), params=params, headers=self._access.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def _username(self, speaker: str) -> str | None:
+        if _unnamed(speaker):
+            return None
+        if speaker not in self._usernames:
+            self._usernames[speaker] = self._find_username(speaker)
+        return self._usernames[speaker]
+
+    def _find_username(self, speaker: str) -> str | None:
+        if speaker == ME:
+            return str(self._get("/user")["username"])
+        wanted = speaker.casefold()
+        members = {
+            member["username"]: str(member.get("name") or "")
+            for project in self._projects
+            for member in self._get(f"/projects/{project_path(project)}/members/all", per_page=100)
+        }
+        matches = sorted(name for name in members if name.casefold() == wanted) or sorted(
+            name for name, full in members.items() if full.casefold() == wanted
+        )
+        return matches[0] if len(matches) == 1 else None
+
+
+def _gitlab_due(issue: dict) -> date | None:
+    raw = issue.get("due_date") or (issue.get("milestone") or {}).get("due_date")
+    return date.fromisoformat(raw) if raw else None
 
 
 def combined(lookups: Sequence[WorkloadLookup]) -> WorkloadLookup:
