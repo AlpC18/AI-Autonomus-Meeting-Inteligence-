@@ -60,7 +60,8 @@ class Settings:
     ``code_dirs`` are local checkouts indexed for code context hints.
     ``risk_tracking`` lists dated promises and moments of doubt in the notes;
     ``workload_check`` also counts the speaker's open Jira issues and warns
-    when a promised date looks unrealistic.
+    when a promised date looks unrealistic. ``meeting_apps_only`` captures
+    system audio only from meeting apps and browsers (macOS).
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -86,6 +87,7 @@ class Settings:
     code_dirs: tuple[Path, ...] = ()
     risk_tracking: bool = True
     workload_check: bool = False
+    meeting_apps_only: bool = False
 
     @property
     def voices_file(self) -> Path:
@@ -107,7 +109,8 @@ class Settings:
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
         ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
         it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
-        ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``. Unset variables
+        ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
+        ``CONTINUUM_MEETING_APPS_ONLY``. Unset variables
         use defaults.
 
         Raises:
@@ -204,4 +207,5 @@ class Settings:
             code_dirs=code_dirs,
             risk_tracking=_flag(env, "CONTINUUM_RISK_TRACKING", default=True),
             workload_check=_flag(env, "CONTINUUM_WORKLOAD_CHECK"),
+            meeting_apps_only=_flag(env, "CONTINUUM_MEETING_APPS_ONLY"),
         )

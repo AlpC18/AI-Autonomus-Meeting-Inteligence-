@@ -103,6 +103,13 @@ pub const FIELDS: &[Field] = &[
         "Your microphone, the other participants (system audio), or both.",
     ),
     field(
+        "CONTINUUM_MEETING_APPS_ONLY",
+        "Hear only meeting apps",
+        "Meetings",
+        Kind::Toggle(false),
+        "Other participants are heard only from Zoom, Teams, Meet in a browser and similar apps, so music and videos stay out. macOS only.",
+    ),
+    field(
         "CONTINUUM_WHISPER_MODEL",
         "Speech model",
         "Meetings",

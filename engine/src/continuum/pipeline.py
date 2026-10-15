@@ -9,6 +9,7 @@ diarization, or transport logic of its own.
 
 import asyncio
 import contextlib
+import functools
 import logging
 import os
 import signal
@@ -48,11 +49,12 @@ logger = logging.getLogger(__name__)
 BlockSource = Callable[[], AsyncIterator[np.ndarray]]
 
 
-def _block_source(source: str) -> BlockSource:
+def _block_source(source: str, only_meeting_apps: bool = False) -> BlockSource:
     """Return the capture function for ``source``, importing it on demand.
 
     System audio uses ScreenCaptureKit on macOS and speaker loopback
-    (``soundcard``) on Windows and Linux.
+    (``soundcard``) on Windows and Linux. ``only_meeting_apps`` limits
+    system audio to meeting apps; only macOS can do that.
     """
     if source == "mic":
         from continuum.audio.microphone import microphone_blocks
@@ -61,10 +63,12 @@ def _block_source(source: str) -> BlockSource:
     if sys.platform != "darwin":
         from continuum.audio.loopback import loopback_blocks
 
+        if only_meeting_apps:
+            logger.warning("Hearing only meeting apps needs macOS; capturing all system audio")
         return loopback_blocks
     from continuum.audio.system_audio import system_audio_blocks
 
-    return system_audio_blocks
+    return functools.partial(system_audio_blocks, only_meeting_apps)
 
 
 class Engine:
@@ -153,11 +157,15 @@ async def _tapped(
 
 
 async def _run_source_logged(
-    engine: Engine, source: str, record: Callable[[str, np.ndarray], None]
+    engine: Engine,
+    source: str,
+    record: Callable[[str, np.ndarray], None],
+    only_meeting_apps: bool = False,
 ) -> bool:
     """Run one source; log instead of raising so other sources keep going."""
     try:
-        await engine.run_source(source, _tapped(_block_source(source)(), source, record))
+        blocks = _block_source(source, only_meeting_apps)()
+        await engine.run_source(source, _tapped(blocks, source, record))
     except Exception:
         logger.exception("Audio source %r stopped", source)
         return False
@@ -276,7 +284,10 @@ async def run(settings: Settings) -> int:
             idle = asyncio.create_task(session.watch_idle())
             try:
                 results = await asyncio.gather(
-                    *(_run_source_logged(engine, source, session.record) for source in settings.sources)
+                    *(
+                        _run_source_logged(engine, source, session.record, settings.meeting_apps_only)
+                        for source in settings.sources
+                    )
                 )
             finally:
                 idle.cancel()
