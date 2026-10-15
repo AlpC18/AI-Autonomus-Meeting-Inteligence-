@@ -80,6 +80,16 @@
 - Auto-start: `continuum-detect-call` (CoreAudio via PyObjC, no Rust `unsafe`) + Rust supervisor.
 - Windows/Linux system audio via `soundcard` loopback (fake-tested only).
 
+### Phase 9 — Experience (2026-10-15, branch `feat/phase-9-experience`, stacked on #7)
+
+- Voices remembered across meetings; brief from earlier meetings when a calendar meeting starts; first-run checklist; recap e-mail to attendees (Gmail, approval-gated).
+- Notes start with YAML properties (Obsidian); `notion` target creates a summary page under one configured parent page after approval.
+- Live action items (opt-in, an AI call at most every 3 min); talk time / longest turn / interruptions per speaker in the notes and the app.
+- `CONTINUUM_REQUIRE_DISK_ENCRYPTION`: nothing stored unless FileVault is on.
+- Auto-update (Tauri updater, key in `~/.tauri/continuum-updater.key`) and `release.yml` on `v*` tags; call detection on Windows (registry) and Linux (`pactl`).
+- Component click tests (jsdom + mocked IPC); CI coverage floors 70% engine / 50% desktop lines (measured 78% / 54%).
+- Verified: 325 pytest, 24 vitest, 16 cargo, clippy, ruff; signed release build produced the updater archive + signature. Not verified: Notion/Gmail against real services, Windows/Linux call detection on real machines, an update served from a real GitHub release.
+
 ## Pending
 
 - **Speaker names:** check in a real meeting; separate two voices inside short utterances.

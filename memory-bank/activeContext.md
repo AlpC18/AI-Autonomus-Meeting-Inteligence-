@@ -8,6 +8,8 @@ Phase 6 (integration) is on branch `feat/phase-6-integration`, open as PR #5 sta
 
 Phase 8 (product completion) is on `feat/phase-8-product`, PR #7 stacked on #6: CI, in-app settings with Keychain secrets, packaged release app, meeting lifecycle (end meeting → summary, proposals, next meeting; idle end), ask your meetings, AI fact check, recording, duplicate-speaker merge, calendar titles, auto-start on calls, Windows/Linux loopback.
 
+Phase 9 (experience) is on `feat/phase-9-experience`, stacked on #7: voices across meetings, pre-meeting brief, first-run checklist, recap e-mail, Obsidian/Notion export, live action items, talk time, required disk encryption, auto-update + release workflow, Windows/Linux call detection, UI tests + coverage floors. Merging the stacked PRs into `main` is still the owner's step.
+
 ## What works end to end
 
 - Live transcript, memory and fact-check overlay (Phases 2-4).
@@ -21,6 +23,9 @@ Phase 8 (product completion) is on `feat/phase-8-product`, PR #7 stacked on #6: 
 - Verified live on 2026-10-15: release `Continuum.app` installed managed Python 3.12 + the locked environment and the window connected to its engine; Keychain round trip; call detection (mic used by another stream → true, released → false; watcher exits with the app); end_meeting/ask/note over the real engine socket with recording.
 
 ## Waiting on the owner
+
+- **Add GitHub secret `TAURI_SIGNING_PRIVATE_KEY`** (contents of `~/.tauri/continuum-updater.key`; back that file up, losing it means installed apps can't update). Apple signing secrets are optional.
+- **Merge PRs #1-#8** in order (blocked for the assistant by the permission check).
 
 - **Revoke the first Hugging Face token** that was shared and then withdrawn.
 - **`engine/.env` still lacks** `CONTINUUM_TENANT_ID` + `CONTINUUM_PROJECT_ID` (memory and fact checking are off without them), `CONTINUUM_GITHUB_REPOS` and `GITHUB_TOKEN`, `CONTINUUM_SLACK_WEBHOOK_URL`, the three `GOOGLE_*` values, and `CONTINUUM_JIRA_SITE` + `JIRA_EMAIL` + `JIRA_API_TOKEN` + `CONTINUUM_JIRA_PROJECTS` (actions).
