@@ -74,8 +74,13 @@ pub fn save_settings(
         .and_then(|reply| reply.get("problems").cloned())
         .and_then(|problems| serde_json::from_value::<Vec<String>>(problems).ok())
         .unwrap_or_else(|| vec![String::from("The settings could not be checked.")]);
-    app.state::<crate::engine::EngineSlot>()
-        .restart(&dir)
-        .map_err(|error| format!("Saved, but the engine could not be restarted: {error}"))?;
+    let slot = app.state::<crate::engine::EngineSlot>();
+    if crate::autostart::enabled() {
+        // Auto-start: the engine runs only during calls; the supervisor starts it.
+        slot.stop();
+    } else {
+        slot.restart(&dir)
+            .map_err(|error| format!("Saved, but the engine could not be restarted: {error}"))?;
+    }
     Ok(problems)
 }

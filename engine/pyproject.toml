@@ -14,6 +14,7 @@ dependencies = [
     "fastmcp>=4.1.0",
     "httpx>=0.28.1",
     "numpy>=2.5.4",
+    "pyobjc-framework-coreaudio>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-libdispatch>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-screencapturekit>=12.2.2 ; sys_platform == 'darwin'",
     "qdrant-client>=1.19.1",
@@ -31,6 +32,7 @@ continuum-summarize = "continuum.summarize_cli:main"
 continuum-library = "continuum.library:main"
 continuum-check-config = "continuum.config_check:main"
 continuum-ask = "continuum.ask:main"
+continuum-detect-call = "continuum.audio.call_detect:main"
 
 [project.optional-dependencies]
 diarization = [

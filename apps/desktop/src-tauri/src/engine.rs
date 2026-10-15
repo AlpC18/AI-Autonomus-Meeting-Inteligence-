@@ -37,9 +37,29 @@ impl EngineProcess {
     /// Returns the underlying I/O error if `uv` is not installed or
     /// `engine_dir` does not exist.
     pub fn spawn(engine_dir: &Path) -> io::Result<Self> {
+        Self::spawn_with(engine_dir, &[])
+    }
+
+    /// Like [`EngineProcess::spawn`], with extra environment variables on top of the settings.
+    ///
+    /// # Errors
+    /// Returns the I/O error if the engine cannot be started.
+    pub fn spawn_with(engine_dir: &Path, extra: &[(&str, &str)]) -> io::Result<Self> {
         let mut command = uv_run(engine_dir, "continuum-engine");
         command.env("CONTINUUM_EXIT_ON_STDIN_EOF", "1");
+        for (key, value) in extra {
+            command.env(key, value);
+        }
         Self::spawn_command(command)
+    }
+
+    /// Whether the engine has stopped by itself (or was already shut down).
+    pub fn exited(&self) -> bool {
+        self.child
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_mut()
+            .is_none_or(|child| !matches!(child.try_wait(), Ok(None)))
     }
 
     /// Starts `command` with a piped standard input that is held open.
@@ -204,12 +224,29 @@ impl EngineSlot {
     /// # Errors
     /// Returns the I/O error if the new engine cannot be started.
     pub fn restart(&self, engine_dir: &Path) -> io::Result<()> {
+        self.restart_with(engine_dir, &[])
+    }
+
+    /// Like [`EngineSlot::restart`], with extra environment variables for the new engine.
+    ///
+    /// # Errors
+    /// Returns the I/O error if the new engine cannot be started.
+    pub fn restart_with(&self, engine_dir: &Path, extra: &[(&str, &str)]) -> io::Result<()> {
         let mut slot = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(old) = slot.take() {
             old.shutdown(SHUTDOWN_GRACE);
         }
-        *slot = Some(EngineProcess::spawn(engine_dir)?);
+        *slot = Some(EngineProcess::spawn_with(engine_dir, extra)?);
         Ok(())
+    }
+
+    /// Whether an engine is running; forgets one that has exited.
+    pub fn running(&self) -> bool {
+        let mut slot = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if slot.as_ref().is_some_and(EngineProcess::exited) {
+            *slot = None;
+        }
+        slot.is_some()
     }
 
     /// Stops the running engine, if any.
@@ -218,6 +255,13 @@ impl EngineSlot {
             old.shutdown(SHUTDOWN_GRACE);
         }
     }
+}
+
+/// The current value of one setting, if set.
+pub fn settings_value(key: &str) -> Option<String> {
+    crate::settings::engine_env()
+        .into_iter()
+        .find_map(|(name, value)| (name == key).then_some(value))
 }
 
 /// Finds the engine directory to run, if any.

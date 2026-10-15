@@ -8,6 +8,7 @@
 //! in dedicated modules; this file only wires them up.
 
 pub mod actions;
+pub mod autostart;
 pub mod commands;
 pub mod engine;
 pub mod library;
@@ -23,6 +24,11 @@ use engine::EngineSlot;
 /// the window then shows that the engine is not running and keeps retrying.
 fn start_engine(app: &tauri::App) {
     app.manage(EngineSlot::default());
+    autostart::supervise(app.handle().clone());
+    if autostart::enabled() {
+        // The supervisor starts the engine when a call begins.
+        return;
+    }
     let Some(dir) = engine::engine_dir() else {
         eprintln!("Continuum engine not started: set CONTINUUM_ENGINE_DIR to its folder.");
         return;
