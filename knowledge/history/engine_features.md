@@ -4,6 +4,12 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 
 | Date | Module | Feature | Notes |
 | :--- | :--- | :--- | :--- |
+| 2026-10-15 | audio | Windows/Linux system audio | `audio/loopback.py` (soundcard WASAPI loopback / PulseAudio monitor). |
+| 2026-10-15 | desktop | Auto-start on calls | `continuum-detect-call` + `autostart.rs`; engine exits after idle end. |
+| 2026-10-15 | session | Meeting lifecycle | End meeting → speaker merge, AI summary in notes, auto-proposals, next meeting; idle end; recording; calendar titles. |
+| 2026-10-15 | factcheck | AI fact check | `SemanticChecker`; prompt in `factcheck/semantic.SYSTEM_PROMPT`; opt-in. |
+| 2026-10-15 | ask | Ask your meetings | `ask.SYSTEM_PROMPT`; answers cite memory excerpts by number. |
+| 2026-10-15 | desktop | Settings screen and packaging | Keychain secrets; `pnpm bundle` release app with bundled engine. |
 | 2026-10-14 | desktop | Past meetings viewer | `continuum-library` + Rust commands; search, filter, click-to-play recordings, summarize button. |
 | 2026-10-14 | transcribe | VTT, watch folder, import into memory | `--format vtt`, `--watch FOLDER`, `--remember` with content-hash meeting ids. |
 | 2026-10-14 | privacy | Redaction and retention | Personal data and secrets hidden before memory/notes; `CONTINUUM_RETENTION_DAYS`; FileVault warning. |

@@ -70,13 +70,22 @@
 - `library` + desktop "Past meetings" view: search across meetings, per-meeting filter, click-to-play for linked recordings (asset protocol scoped per file), "Summarize with AI".
 - Desktop tests now run with vitest (`pnpm test`).
 
+### Phase 8 — Product completion (2026-10-15, branch `feat/phase-8-product`, PR #7)
+
+- CI (GitHub Actions): ruff 0.17.0 + locked uv sync + pytest on Linux; pnpm typecheck/vitest/build; clippy -D warnings + cargo test on macOS. It caught a real bug (Claude client imported the SDK even when injected).
+- Settings screen: schema in `settings.rs`, values in a 0600 JSON file, secrets in the Keychain (never returned to the webview), checked by `continuum-check-config`, engine restarted on save.
+- Packaging: `pnpm bundle` ships engine sources + uv.lock + checksum-verified uv; first launch installs managed Python 3.12 into the app data folder.
+- `session.py`: meeting lifecycle. End (user or idle) → merge duplicate speakers → summary into notes → auto-proposals → next meeting. Ask over WebSocket. Recording (mixed WAV). Calendar titles.
+- AI fact check (`factcheck/semantic.py`), opt-in, cooldown-limited.
+- Auto-start: `continuum-detect-call` (CoreAudio via PyObjC, no Rust `unsafe`) + Rust supervisor.
+- Windows/Linux system audio via `soundcard` loopback (fake-tested only).
+
 ## Pending
 
 - **Speaker names:** check in a real meeting; separate two voices inside short utterances.
 - **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates.
 - **Actions:** real-service check of Slack, Calendar and Jira; summaries against a real AI provider.
-- Bundling the engine into release builds; choosing tenant/project from the UI; non-macOS system audio.
-- CI workflow and pre-commit checks (add when there is logic to guard).
+- Code-sign and notarise the release app; test loopback on real Windows/Linux machines.
 
 ## Known issues
 
