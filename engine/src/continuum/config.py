@@ -14,7 +14,7 @@ from continuum.memory.scope import TenantScope
 KNOWN_SOURCES = ("mic", "system")
 """Audio sources the engine can capture."""
 
-_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+")
+_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+")
 
 
 def _flag(env: Mapping[str, str], name: str, default: bool = False) -> bool:
@@ -47,7 +47,7 @@ class Settings:
     ``redact`` hides personal data and secrets in what is stored (memory and
     notes). ``retention_days`` deletes memories older than that many days
     each time the engine starts. When a meeting ends, its summary's action
-    items are proposed to ``auto_propose`` targets (``calendar``, ``slack``, ``email``,
+    items are proposed to ``auto_propose`` targets (``calendar``, ``slack``, ``email``, ``notion``,
     ``jira:KEY``, ``github:owner/name``). ``idle_end_minutes`` ends a meeting
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's

@@ -85,6 +85,15 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       approveLabel: "Approve and send",
     };
   }
+  if (kind === "notion_page" && text(payload.title) && text(payload.body)) {
+    return {
+      heading: "Notion page under your configured parent page",
+      title: text(payload.title),
+      detail: "",
+      body: text(payload.body),
+      approveLabel: "Approve and create",
+    };
+  }
   return null;
 }
 

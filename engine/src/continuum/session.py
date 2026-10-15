@@ -198,7 +198,9 @@ class MeetingSession:
             directory = self._settings.notes_dir
             if self._settings.scope is not None:
                 directory = directory / self._settings.scope.tenant_id / self._settings.scope.project_id
-            notes = MeetingNotes(directory, started_at, title or "Meeting")
+            notes = MeetingNotes(
+                directory, started_at, title or "Meeting", attendees=event.attendees if event else ()
+            )
             if self._settings.record_audio:
                 try:
                     recorder = MixRecorder(notes.path.with_suffix(".wav"), self._settings.sources)

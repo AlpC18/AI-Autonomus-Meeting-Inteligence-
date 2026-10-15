@@ -209,7 +209,7 @@ pub const FIELDS: &[Field] = &[
         "Propose after each meeting",
         "AI",
         Kind::Text,
-        "Comma-separated: calendar, slack, email (recap to the calendar attendees), jira:PROJECT, github:owner/name. Each still needs your approval.",
+        "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name. Each still needs your approval.",
     ),
     field(
         "CONTINUUM_GITHUB_REPOS",
@@ -259,6 +259,20 @@ pub const FIELDS: &[Field] = &[
         "Actions",
         Kind::Text,
         "Comma-separated project keys, e.g. WEB,OPS.",
+    ),
+    field(
+        "NOTION_TOKEN",
+        "Notion integration token",
+        "Actions",
+        Kind::Secret,
+        "From notion.so/profile/integrations. Share the parent page with the integration.",
+    ),
+    field(
+        "CONTINUUM_NOTION_PAGE_ID",
+        "Notion parent page",
+        "Actions",
+        Kind::Text,
+        "Link or id of the page meeting summaries go under.",
     ),
     field(
         "GOOGLE_CLIENT_ID",

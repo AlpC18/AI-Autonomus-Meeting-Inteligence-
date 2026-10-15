@@ -12,7 +12,7 @@ import logging
 
 import httpx
 
-from continuum.actions import calendar, github, gmail, jira, slack
+from continuum.actions import calendar, github, gmail, jira, notion, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -67,4 +67,7 @@ def _execute(action: Action, settings: ActionSettings, client: httpx.Client) -> 
     if action.kind == gmail.KIND:
         recap = gmail.EmailRecap.from_payload(action.payload)
         return gmail.send(recap, calendar.require_access(settings.google), client)
+    if action.kind == notion.KIND:
+        page = notion.NotionPage.from_payload(action.payload)
+        return notion.create_page(page, notion.require_access(settings.notion), client)
     raise ValueError(f"unknown action kind {action.kind!r}")

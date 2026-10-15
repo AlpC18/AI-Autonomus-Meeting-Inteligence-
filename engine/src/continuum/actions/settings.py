@@ -9,6 +9,7 @@ from pathlib import Path
 
 from continuum.actions.calendar import GoogleAccess
 from continuum.actions.jira import JiraAccess
+from continuum.actions.notion import NotionAccess, page_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,8 +21,9 @@ class ActionSettings:
     needed only to execute an approved action, never to propose one.
     ``slack_webhook_url`` is the single Slack destination and ``google`` the
     credentials for ``google_calendar_id``. ``jira`` is the Jira Cloud access
-    and ``jira_projects`` the allowlist of project keys. A connector left
-    unset accepts no proposals at all.
+    and ``jira_projects`` the allowlist of project keys. ``notion`` is the
+    integration token and the one parent page meeting pages go under. A
+    connector left unset accepts no proposals at all.
     """
 
     database: Path = Path.home() / ".continuum" / "actions.db"
@@ -32,6 +34,7 @@ class ActionSettings:
     google_calendar_id: str = "primary"
     jira: JiraAccess | None = None
     jira_projects: frozenset[str] = frozenset()
+    notion: NotionAccess | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "ActionSettings":
@@ -41,12 +44,14 @@ class ActionSettings:
         (comma-separated), ``GITHUB_TOKEN``, ``CONTINUUM_SLACK_WEBHOOK_URL``,
         ``GOOGLE_CLIENT_ID``, ``GOOGLE_CLIENT_SECRET``, ``GOOGLE_REFRESH_TOKEN``,
         ``CONTINUUM_GOOGLE_CALENDAR_ID``, ``CONTINUUM_JIRA_SITE``, ``JIRA_EMAIL``,
-        ``JIRA_API_TOKEN`` and ``CONTINUUM_JIRA_PROJECTS`` (comma-separated
-        keys). Google and Jira access each need all their values; with any
-        missing that connector is off.
+        ``JIRA_API_TOKEN``, ``CONTINUUM_JIRA_PROJECTS`` (comma-separated
+        keys), ``NOTION_TOKEN`` and ``CONTINUUM_NOTION_PAGE_ID`` (an id or the
+        page's URL). Google, Jira and Notion access each need all their
+        values; with any missing that connector is off.
 
         Raises:
-            ValueError: if ``CONTINUUM_JIRA_SITE`` is not an Atlassian Cloud site.
+            ValueError: if ``CONTINUUM_JIRA_SITE`` is not an Atlassian Cloud site
+                or ``CONTINUUM_NOTION_PAGE_ID`` is not a page id.
         """
         database = env.get("CONTINUUM_ACTIONS_DB")
         repos = env.get("CONTINUUM_GITHUB_REPOS", "")
@@ -61,6 +66,7 @@ class ActionSettings:
             env.get("JIRA_API_TOKEN"),
         )
         projects = env.get("CONTINUUM_JIRA_PROJECTS", "")
+        notion = (env.get("NOTION_TOKEN"), env.get("CONTINUUM_NOTION_PAGE_ID"))
         return cls(
             database=Path(database) if database else cls().database,
             github_repos=frozenset(part.strip() for part in repos.split(",") if part.strip()),
@@ -72,4 +78,5 @@ class ActionSettings:
             jira_projects=frozenset(
                 part.strip().upper() for part in projects.split(",") if part.strip()
             ),
+            notion=NotionAccess(notion[0], page_id(notion[1])) if all(notion) else None,
         )

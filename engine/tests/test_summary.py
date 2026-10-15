@@ -304,3 +304,19 @@ def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
 
     _built, errors = build_proposals(summary, ["email"], settings, "notes.md")
     assert errors and "recipients" in errors[0]
+
+
+def test_notion_target_proposes_one_page_titled_after_the_meeting(tmp_path: Path) -> None:
+    from continuum.actions.notion import NotionAccess
+
+    summary = parse_summary(REPLY)
+    settings = ActionSettings(tmp_path / "actions.db", notion=NotionAccess("t", "0" * 32))
+
+    built, errors = build_proposals(summary, ["notion"], settings, "notes.md", (), "Budget")
+    assert errors == []
+    ((kind, payload),) = built
+    assert kind == "notion_page" and payload["title"] == "Budget"
+    assert payload["body"].startswith("## Summary")
+
+    _built, errors = build_proposals(summary, ["notion"], ActionSettings(tmp_path / "a.db"), "notes.md")
+    assert errors and "Notion is not configured" in errors[0]

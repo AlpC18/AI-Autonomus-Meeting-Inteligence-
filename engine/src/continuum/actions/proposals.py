@@ -12,7 +12,7 @@ anything; a person approves each action later.
 from collections.abc import Sequence
 from typing import Any
 
-from continuum.actions import calendar, github, gmail, jira, slack
+from continuum.actions import calendar, github, gmail, jira, notion, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -82,6 +82,17 @@ def email_recap(settings: ActionSettings, to: Sequence[str], subject: str, body:
     """
     calendar.require_access(settings.google)
     return gmail.KIND, gmail.EmailRecap(tuple(to), subject, body).to_payload()
+
+
+def notion_page(settings: ActionSettings, title: str, body: str) -> Proposal:
+    """Validate a page for the configured Notion parent page.
+
+    Raises:
+        ValueError: if a field is invalid.
+        PermissionError: if Notion is not configured.
+    """
+    notion.require_access(settings.notion)
+    return notion.KIND, notion.NotionPage(title, body).to_payload()
 
 
 def queue(store: ActionStore, proposal: Proposal) -> Action:

@@ -72,11 +72,31 @@ def test_notes_grow_line_by_line_in_a_private_file(tmp_path: Path) -> None:
     notes.add(SOLO)
 
     lines = notes.path.read_text(encoding="utf-8").splitlines()
-    assert lines[0].startswith("# Meeting — 2026-10-12")
-    assert lines[2:] == markdown_lines(DUET) + markdown_lines(SOLO)
+    assert lines[:4] == ["---", 'title: "Meeting"', f"date: {notes_date(notes)}", "tags: [meeting]"]
+    heading = lines.index("---", 1) + 2
+    assert lines[heading].startswith("# Meeting — 2026-10-12")
+    assert lines[heading + 2 :] == markdown_lines(DUET) + markdown_lines(SOLO)
     assert notes.path.suffix == ".md"
     assert stat.S_IMODE(notes.path.stat().st_mode) == 0o600
     assert stat.S_IMODE(notes.path.parent.stat().st_mode) == 0o700
+
+
+def notes_date(notes: MeetingNotes) -> str:
+    return datetime(2026, 10, 12, 9, 30, tzinfo=UTC).astimezone().isoformat(timespec="seconds")
+
+
+def test_notes_properties_are_valid_yaml_for_obsidian(tmp_path: Path) -> None:
+    import yaml
+
+    started = datetime(2026, 10, 12, 9, 30, tzinfo=UTC)
+    notes = MeetingNotes(tmp_path, started, 'Q4 "Budget": Ayşe', attendees=("ana@acme.io",))
+    notes.add(SOLO)
+
+    _, front, _ = notes.path.read_text(encoding="utf-8").split("---\n", 2)
+    properties = yaml.safe_load(front)
+    assert properties["title"] == "Q4 Budget Ayşe"
+    assert properties["tags"] == ["meeting"] and properties["attendees"] == ["ana@acme.io"]
+    assert properties["date"] == started
 
 
 def test_a_stereo_recording_is_read_as_mono_16_khz(tmp_path: Path) -> None:

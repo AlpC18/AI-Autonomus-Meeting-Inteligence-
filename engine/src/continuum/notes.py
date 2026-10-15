@@ -7,6 +7,7 @@ Markdown notes are ordinary files, so they open in any editor and sync with
 Obsidian or Git without this app.
 """
 
+import json
 import logging
 import re
 from datetime import datetime
@@ -100,16 +101,32 @@ class MeetingNotes:
     """
 
     def __init__(
-        self, directory: Path, started_at: datetime, title: str = "Meeting", audio: Path | None = None
+        self,
+        directory: Path,
+        started_at: datetime,
+        title: str = "Meeting",
+        audio: Path | None = None,
+        attendees: tuple[str, ...] = (),
     ) -> None:
         """``started_at`` must be timezone-aware; it names the file.
 
         ``title`` is cleaned of characters that are unsafe in file names.
         ``audio`` names the meeting's recording in a comment, for playback.
+        The file starts with YAML properties (title, date, tags, attendees),
+        so an Obsidian vault used as the notes folder can query meetings.
         """
         local = started_at.astimezone()
         title = " ".join(re.sub(r'[\\/:*?"<>|\x00-\x1f]+', " ", title).split())[:80] or "Meeting"
-        self._title = f"# {title} — {local:%Y-%m-%d %H:%M}\n\n"
+        properties = [
+            "---",
+            f"title: {json.dumps(title, ensure_ascii=False)}",
+            f"date: {local.isoformat(timespec='seconds')}",
+            "tags: [meeting]",
+        ]
+        if attendees:
+            properties.append(f"attendees: {json.dumps(list(attendees), ensure_ascii=False)}")
+        properties.append("---")
+        self._title = "\n".join(properties) + f"\n\n# {title} — {local:%Y-%m-%d %H:%M}\n\n"
         self._marker = ""
         stem = f"{local:%Y-%m-%d %H%M%S} {title}"
         self.path = directory / f"{stem}.md"
