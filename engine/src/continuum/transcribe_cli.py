@@ -17,7 +17,7 @@ import sys
 import time
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import av
@@ -27,10 +27,12 @@ from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
+from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.store import Meeting
 from continuum.notes import markdown_lines, speaker_runs, srt, vtt
 from continuum.pipeline import Engine
 from continuum.privacy import redact_segment
+from continuum.summary import summarize, to_markdown
 from continuum.transcript import Segment
 
 logger = logging.getLogger(__name__)
@@ -107,6 +109,20 @@ def render(segments: list[Segment], fmt: str, recording: Path | None = None) -> 
     # "-->" would end the comment early; such paths are left out rather than mangled.
     marker = "" if "-->" in str(recording) else f"{AUDIO_MARKER}{recording.resolve()} -->\n\n"
     return f"# {recording.stem}\n\n{marker}{lines}"
+
+
+def with_summary(notes: str, llm: Llm) -> str:
+    """``notes`` with the AI summary appended; unchanged if summarising fails.
+
+    A failed summary is logged, not raised: the transcript is still worth
+    keeping, and the library can summarise it later.
+    """
+    try:
+        summary = summarize(notes, llm, today=date.today())
+    except (ValueError, RuntimeError) as error:
+        logger.warning("Not summarised: %s", error)
+        return notes
+    return notes + "\n" + to_markdown(summary)
 
 
 def meeting_for(path: Path, recorded_at: datetime | None) -> Meeting:
@@ -214,6 +230,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--interval", type=float, default=10.0, help="with --watch: seconds between scans")
     parser.add_argument("--remember", action="store_true", help="also add the transcript to memory")
     parser.add_argument(
+        "--summarize",
+        action="store_true",
+        help="with --format md: append an AI summary (sends the transcript to the configured AI provider)",
+    )
+    parser.add_argument(
         "--recorded-at",
         type=datetime.fromisoformat,
         help="with --remember: when the meeting took place (ISO time; default: file date)",
@@ -221,6 +242,8 @@ def _parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if (args.file is None) == (args.watch is None):
         parser.error("give a file, or --watch FOLDER (not both)")
+    if args.summarize and args.format != "md":
+        parser.error("--summarize needs --format md")
     if args.recorded_at is not None and args.recorded_at.tzinfo is None:
         args.recorded_at = args.recorded_at.astimezone()
     return args
@@ -233,8 +256,10 @@ def main() -> None:
     to standard output, or to ``--output``. ``--watch FOLDER`` instead keeps
     transcribing new recordings that appear there. Uses
     ``CONTINUUM_WHISPER_MODEL``, ``CONTINUUM_ASR_BACKEND``, ``CONTINUUM_MODEL_DIR``
-    and, for speaker names, ``HF_TOKEN``. Nothing leaves the machine; nothing
-    is stored in memory unless ``--remember`` is given.
+    and, for speaker names, ``HF_TOKEN``. Nothing leaves the machine unless
+    ``--summarize`` is given, which sends the transcript to the AI provider
+    set by ``CONTINUUM_LLM_PROVIDER``; nothing is stored in memory unless
+    ``--remember`` is given.
     """
     args = _parse_args()
     logging.basicConfig(level=logging.INFO if args.watch else logging.WARNING, format="%(levelname)s %(message)s")
@@ -245,6 +270,10 @@ def main() -> None:
     try:
         settings = Settings.from_env(os.environ)
         remember = memory_writer(settings, args.recorded_at) if args.remember else None
+        llm_settings = LlmSettings.from_env(os.environ) if args.summarize else None
+        if args.summarize and llm_settings is None:
+            raise LookupError("--summarize needs an AI model: set CONTINUUM_LLM_PROVIDER (see .env.example).")
+        llm = connect(llm_settings) if llm_settings is not None else None
         transcriber = load_transcriber(
             settings.asr_backend, settings.whisper_model, settings.model_dir, translate=args.translate
         )
@@ -272,7 +301,8 @@ def main() -> None:
         def write(path: Path, segments: list[Segment]) -> None:
             store(path, segments)
             target = output_path(path, args.format, args.output_dir)
-            write_text(target, render(segments, args.format, path))
+            text = render(segments, args.format, path)
+            write_text(target, with_summary(text, llm) if llm is not None else text)
             logger.info("Transcribed %s -> %s", path.name, target)
 
         logger.info("Watching %s for new recordings (Ctrl+C to stop)", args.watch)
@@ -296,6 +326,8 @@ def main() -> None:
     except RuntimeError as error:
         sys.exit(str(error))
     text = render(segments, args.format, args.file)
+    if llm is not None:
+        text = with_summary(text, llm)
     if args.output:
         write_text(args.output, text)
     else:
