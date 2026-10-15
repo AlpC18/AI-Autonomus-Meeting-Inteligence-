@@ -226,6 +226,20 @@ pub const FIELDS: &[Field] = &[
         "Show tasks as they are said. Sends the transcript to your AI provider at most every 3 minutes.",
     ),
     field(
+        "CONTINUUM_RISK_TRACKING",
+        "Commitments and hesitations",
+        "AI",
+        Kind::Toggle(true),
+        "Lists promised dates and moments of doubt in the notes. Runs on this computer.",
+    ),
+    field(
+        "CONTINUUM_WORKLOAD_CHECK",
+        "Check promised dates against Jira",
+        "AI",
+        Kind::Toggle(false),
+        "Warns when someone promises a date while holding many open Jira issues. Sends their name to your Jira site.",
+    ),
+    field(
         "CONTINUUM_AUTO_PROPOSE",
         "Propose after each meeting",
         "AI",

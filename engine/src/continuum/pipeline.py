@@ -15,7 +15,7 @@ import signal
 import sys
 import threading
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import numpy as np
@@ -27,6 +27,8 @@ from continuum.audio.chunker import Utterance, UtteranceChunker
 from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.context.code import CodeContext, CodeIndex
+from continuum.context.risk import RiskTracker
+from continuum.context.workload import JiraWorkload
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -256,7 +258,7 @@ async def run(settings: Settings) -> int:
             propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
             stop=main_task.cancel,
             open_scope=open_scope,
-            watchers=await _watchers(settings),
+            watchers=await _watchers(settings, stack),
         )
         check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
@@ -282,13 +284,30 @@ async def run(settings: Settings) -> int:
     return 0 if any(results) else 1
 
 
-async def _watchers(settings: Settings) -> list[Watcher]:
-    """The live hints the settings turn on."""
+async def _watchers(settings: Settings, stack: contextlib.ExitStack) -> list[Watcher]:
+    """The live hints the settings turn on (an HTTP client, if any, closes with ``stack``)."""
     watchers: list[Watcher] = []
     if settings.code_dirs:
         index = await asyncio.to_thread(CodeIndex.build, settings.code_dirs)
         watchers.append(CodeContext(index))
+    if settings.risk_tracking:
+        watchers.append(RiskTracker(date.today, _workload(settings, stack)))
     return watchers
+
+
+def _workload(settings: Settings, stack: contextlib.ExitStack) -> JiraWorkload | None:
+    """The Jira workload lookup, when turned on and Jira is configured."""
+    if not settings.workload_check:
+        return None
+    try:
+        access = ActionSettings.from_env(os.environ).jira
+    except ValueError as error:
+        logger.error("Workload check is off: %s", error)
+        return None
+    if access is None:
+        logger.warning("Workload check needs Jira: set CONTINUUM_JIRA_SITE, JIRA_EMAIL and JIRA_API_TOKEN")
+        return None
+    return JiraWorkload(access, stack.enter_context(httpx.Client(timeout=10)))
 
 
 def _scope_opener(store: MemoryStore, retention_days: int | None) -> Callable[[TenantScope], ScopedMemory]:

@@ -97,3 +97,9 @@ def test_code_dirs_must_be_folders(tmp_path) -> None:
     assert settings.code_dirs == (tmp_path,)
     with pytest.raises(ValueError, match="CONTINUUM_CODE_DIRS"):
         Settings.from_env({"CONTINUUM_CODE_DIRS": str(tmp_path / "missing")})
+
+
+def test_risk_tracking_is_on_and_workload_check_off_by_default() -> None:
+    settings = Settings.from_env({})
+    assert settings.risk_tracking and not settings.workload_check
+    assert not Settings.from_env({"CONTINUUM_RISK_TRACKING": "0"}).risk_tracking

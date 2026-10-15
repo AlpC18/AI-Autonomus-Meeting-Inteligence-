@@ -58,6 +58,9 @@ class Settings:
     FileVault is on. ``remember_voices`` keeps the
     voices of speakers the user named, so later meetings show their names.
     ``code_dirs`` are local checkouts indexed for code context hints.
+    ``risk_tracking`` lists dated promises and moments of doubt in the notes;
+    ``workload_check`` also counts the speaker's open Jira issues and warns
+    when a promised date looks unrealistic.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -81,6 +84,8 @@ class Settings:
     require_disk_encryption: bool = False
     remember_voices: bool = True
     code_dirs: tuple[Path, ...] = ()
+    risk_tracking: bool = True
+    workload_check: bool = False
 
     @property
     def voices_file(self) -> Path:
@@ -101,7 +106,8 @@ class Settings:
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
         ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
-        it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders). Unset variables
+        it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
+        ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``. Unset variables
         use defaults.
 
         Raises:
@@ -196,4 +202,6 @@ class Settings:
             require_disk_encryption=_flag(env, "CONTINUUM_REQUIRE_DISK_ENCRYPTION"),
             remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),
             code_dirs=code_dirs,
+            risk_tracking=_flag(env, "CONTINUUM_RISK_TRACKING", default=True),
+            workload_check=_flag(env, "CONTINUUM_WORKLOAD_CHECK"),
         )
