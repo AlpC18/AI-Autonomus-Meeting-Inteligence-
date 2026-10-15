@@ -142,7 +142,7 @@ async def test_ending_a_meeting_summarises_merges_proposes_and_starts_the_next(t
     memory, llm, speakers = FakeMemory(), FakeLlm(), FakeSpeakers({"Speaker 3": "Speaker 1"})
     proposed: list[str] = []
 
-    def propose(summary, source):
+    def propose(summary, source, event):
         proposed.append(summary.action_items[0].task)
         return 1, []
 

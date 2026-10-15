@@ -24,6 +24,7 @@ from typing import Any, Protocol
 
 import numpy as np
 
+from continuum.actions.calendar import CalendarEvent
 from continuum.ask import answer, brief
 from continuum.audio.recorder import MixRecorder
 from continuum.config import Settings
@@ -62,14 +63,16 @@ class Speakers(Protocol):
     def learn(self, label: str, name: str) -> None: ...
 
 
-Propose = Callable[[MeetingSummary, str], tuple[int, list[str]]]
-"""Queues a summary's action items; returns how many were queued and any errors."""
+Propose = Callable[[MeetingSummary, str, CalendarEvent | None], tuple[int, list[str]]]
+"""Queues a summary's action items (``source``: the notes file; the calendar
+event, if any, gives the recap e-mail's attendees and subject); returns how
+many were queued and any errors."""
 
 
 def queue_configured_proposals(targets: tuple[str, ...]) -> Propose:
     """Return a :data:`Propose` that queues action items to ``targets`` for approval."""
 
-    def propose(summary: MeetingSummary, source: str) -> tuple[int, list[str]]:
+    def propose(summary: MeetingSummary, source: str, event: CalendarEvent | None) -> tuple[int, list[str]]:
         from continuum.actions import proposals
         from continuum.actions.settings import ActionSettings
         from continuum.actions.store import ActionStore
@@ -79,7 +82,14 @@ def queue_configured_proposals(targets: tuple[str, ...]) -> Propose:
             action_settings = ActionSettings.from_env(os.environ)
         except ValueError as error:
             return 0, [str(error)]
-        built, errors = build_proposals(summary, list(targets), action_settings, source)
+        built, errors = build_proposals(
+            summary,
+            list(targets),
+            action_settings,
+            source,
+            event.attendees if event else (),
+            event.title if event else "",
+        )
         store = ActionStore(action_settings.database)
         queued = 0
         for proposal in built:
@@ -96,12 +106,16 @@ def queue_configured_proposals(targets: tuple[str, ...]) -> Propose:
 @dataclass
 class _Current:
     meeting: Meeting
-    title: str | None
+    event: CalendarEvent | None
     notes: MeetingNotes | None
     recorder: MixRecorder | None
     started: float
     last_speech: float
     segments: list[Segment] = field(default_factory=list)
+
+    @property
+    def title(self) -> str | None:
+        return self.event.title if self.event else None
 
     @property
     def spoken(self) -> bool:
@@ -123,7 +137,7 @@ class MeetingSession:
         memory: ScopedMemory | None = None,
         llm: Llm | None = None,
         speakers: Speakers | None = None,
-        title_for: Callable[[datetime], str | None] | None = None,
+        title_for: Callable[[datetime], CalendarEvent | str | None] | None = None,
         propose: Propose | None = None,
         stop: Callable[[], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
@@ -170,12 +184,15 @@ class MeetingSession:
     async def start(self) -> None:
         """Begin a new meeting, titled after the calendar event happening now, if any."""
         started_at = self._now()
-        title = None
+        event = None
         if self._title_for is not None:
             try:
-                title = await asyncio.to_thread(self._title_for, started_at)
+                found = await asyncio.to_thread(self._title_for, started_at)
             except Exception:
                 logger.exception("Could not read the calendar for a meeting title")
+            else:
+                event = CalendarEvent(found) if isinstance(found, str) else found
+        title = event.title if event else None
         notes = recorder = None
         if self._settings.notes_dir is not None:
             directory = self._settings.notes_dir
@@ -190,7 +207,7 @@ class MeetingSession:
                     logger.exception("Could not start recording")
             logger.info("Writing meeting notes to %s", notes.path)
         now = self._clock()
-        self._current = _Current(Meeting(str(uuid.uuid4()), started_at), title, notes, recorder, now, now)
+        self._current = _Current(Meeting(str(uuid.uuid4()), started_at), event, notes, recorder, now, now)
         self._publish_event({"type": "meeting_started", "title": title or "Meeting"})
         if title and self._memory is not None and self._llm is not None:
             # A calendar meeting gets its brief without blocking the transcript.
@@ -431,7 +448,7 @@ class MeetingSession:
                 logger.exception("Could not add the summary to the notes")
         if self._propose is not None and self._settings.auto_propose:
             source = current.notes.path.name if current.notes else "the meeting"
-            queued, errors = await asyncio.to_thread(self._propose, summary, source)
+            queued, errors = await asyncio.to_thread(self._propose, summary, source, current.event)
             event.update(queued=queued, errors=errors)
         self._publish_event(event)
 

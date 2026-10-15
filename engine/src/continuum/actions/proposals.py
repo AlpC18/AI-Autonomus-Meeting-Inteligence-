@@ -12,7 +12,7 @@ anything; a person approves each action later.
 from collections.abc import Sequence
 from typing import Any
 
-from continuum.actions import calendar, github, jira, slack
+from continuum.actions import calendar, github, gmail, jira, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -71,6 +71,17 @@ def calendar_deadline(
     """
     calendar.require_access(settings.google)
     return calendar.KIND, calendar.CalendarDeadline(title, due, description).to_payload()
+
+
+def email_recap(settings: ActionSettings, to: Sequence[str], subject: str, body: str) -> Proposal:
+    """Validate a recap e-mail to the meeting's attendees, sent from the user's Gmail.
+
+    Raises:
+        ValueError: if a field is invalid or there are no recipients.
+        PermissionError: if Google is not configured.
+    """
+    calendar.require_access(settings.google)
+    return gmail.KIND, gmail.EmailRecap(tuple(to), subject, body).to_payload()
 
 
 def queue(store: ActionStore, proposal: Proposal) -> Action:

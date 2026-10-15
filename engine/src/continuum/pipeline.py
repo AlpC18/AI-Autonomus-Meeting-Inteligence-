@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import numpy as np
 
-from continuum.actions.calendar import current_event_title
+from continuum.actions.calendar import CalendarEvent, current_event
 from continuum.actions.settings import ActionSettings
 from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
@@ -170,7 +170,7 @@ def _load_llm() -> Llm | None:
         return None
 
 
-def _calendar_title() -> Callable[[datetime], str | None] | None:
+def _calendar_title() -> Callable[[datetime], CalendarEvent | None] | None:
     """Looks up the current calendar event when Google Calendar is configured."""
     try:
         action_settings = ActionSettings.from_env(os.environ)
@@ -180,9 +180,9 @@ def _calendar_title() -> Callable[[datetime], str | None] | None:
     if access is None:
         return None
 
-    def title_for(now: datetime) -> str | None:
+    def title_for(now: datetime) -> CalendarEvent | None:
         with httpx.Client(timeout=10) as client:
-            return current_event_title(access, action_settings.google_calendar_id, client, now)
+            return current_event(access, action_settings.google_calendar_id, client, now)
 
     return title_for
 

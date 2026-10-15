@@ -441,3 +441,70 @@ def test_current_calendar_event_names_the_meeting() -> None:
     assert listing.method == "GET" and listing.url.params["singleEvents"] == "true"
     failing = FakeService(httpx.Response(401, json={"error": "invalid_grant"}))
     assert calendar.current_event_title(GOOGLE, "primary", failing.client(), now) is None
+
+
+def test_calendar_event_lists_other_attendees() -> None:
+    from datetime import UTC, datetime
+
+    fake = FakeService(
+        httpx.Response(200, json={"access_token": "short-lived"}),
+        httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "summary": "Budget",
+                        "start": {"dateTime": "2026-10-15T09:00:00Z"},
+                        "attendees": [
+                            {"email": "me@acme.io", "self": True},
+                            {"email": "ana@acme.io"},
+                            {"email": "room-1@resource.calendar.google.com", "resource": True},
+                            {"email": "ana@acme.io"},
+                            {"displayName": "no address"},
+                        ],
+                    }
+                ]
+            },
+        ),
+    )
+    event = calendar.current_event(GOOGLE, "primary", fake.client(), datetime(2026, 10, 15, 9, 30, tzinfo=UTC))
+    assert event == calendar.CalendarEvent("Budget", ("ana@acme.io",))
+
+
+def test_approved_recap_email_is_sent_from_gmail(store: ActionStore, tmp_path: Path) -> None:
+    import base64
+
+    from continuum.actions import proposals
+
+    kind, payload = proposals.email_recap(connected(tmp_path), ["ana@acme.io"], "Recap: Budget", "## Summary\nAgreed.")
+    action = store.propose(kind, payload)
+    fake = FakeService(
+        httpx.Response(200, json={"access_token": "short-lived"}),
+        httpx.Response(200, json={"id": "m1"}),
+    )
+
+    done = approve(store, action.id, connected(tmp_path), fake.client())
+
+    assert (done.status, done.result) == ("done", "Sent to 1 attendee(s)")
+    _token, sent = fake.requests
+    assert str(sent.url) == "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+    raw = base64.urlsafe_b64decode(json.loads(sent.content)["raw"]).decode()
+    assert "To: ana@acme.io" in raw and "Subject: Recap: Budget" in raw and "Agreed." in raw
+    with pytest.raises(PermissionError):
+        proposals.email_recap(ActionSettings(tmp_path / "a.db"), ["ana@acme.io"], "s", "b")
+
+
+@pytest.mark.parametrize(
+    ("to", "subject", "body"),
+    [
+        ((), "Recap", "body"),
+        (("not-an-address",), "Recap", "body"),
+        (("ana@acme.io",), "Recap\nBcc: evil@x.io", "body"),
+        (("ana@acme.io",), "Recap", " "),
+    ],
+)
+def test_malformed_emails_are_rejected(to: tuple, subject: str, body: str) -> None:
+    from continuum.actions.gmail import EmailRecap
+
+    with pytest.raises(ValueError):
+        EmailRecap(to, subject, body)

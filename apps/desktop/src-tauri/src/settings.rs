@@ -209,7 +209,7 @@ pub const FIELDS: &[Field] = &[
         "Propose after each meeting",
         "AI",
         Kind::Text,
-        "Comma-separated: calendar, slack, jira:PROJECT, github:owner/name. Each still needs your approval.",
+        "Comma-separated: calendar, slack, email (recap to the calendar attendees), jira:PROJECT, github:owner/name. Each still needs your approval.",
     ),
     field(
         "CONTINUUM_GITHUB_REPOS",

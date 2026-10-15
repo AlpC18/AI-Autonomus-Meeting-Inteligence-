@@ -288,3 +288,19 @@ def test_cli_explains_missing_model(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode != 0 and "CONTINUUM_LLM_PROVIDER" in result.stderr
+
+
+def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
+    from continuum.actions.calendar import GoogleAccess
+
+    summary = parse_summary(REPLY)
+    settings = ActionSettings(tmp_path / "actions.db", google=GoogleAccess("id", "secret", "refresh"))
+
+    built, errors = build_proposals(summary, ["email"], settings, "notes.md", ("ana@acme.io",), "Budget")
+    assert errors == []
+    ((kind, payload),) = built
+    assert kind == "email_recap" and payload["to"] == ["ana@acme.io"]
+    assert payload["subject"] == "Recap: Budget" and "Send the Q4 report" in payload["body"]
+
+    _built, errors = build_proposals(summary, ["email"], settings, "notes.md")
+    assert errors and "recipients" in errors[0]
