@@ -16,6 +16,8 @@ interface MeetingBarProps {
   /** Project the meeting is filed under; `null` when memory is off. */
   project: string | null;
   projectError: string | null;
+  /** What the live hints found in the meeting that ended last (Markdown). */
+  lastReport?: string | null;
 }
 
 function minutes(seconds: number): string {
@@ -31,7 +33,7 @@ function minutes(seconds: number): string {
  * what earlier meetings said about it; "Brief me" asks for it again.
  * Switching the project ends this meeting and files the next under it.
  */
-export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
   const [nextProject, setNextProject] = useState("");
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
@@ -140,6 +142,11 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
             </p>
           ))}
         </div>
+      )}
+      {lastReport && (
+        <pre aria-label="Hints from the last meeting" className="mt-2 whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-sm">
+          {lastReport}
+        </pre>
       )}
       {lastTalkTime.length > 0 && (
         <table aria-label="Talk time in the last meeting" className="mt-2 text-sm">

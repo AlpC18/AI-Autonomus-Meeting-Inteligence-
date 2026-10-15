@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseAlertMessage, type FactCheckAlert } from "./factCheck";
+import { parseHintMessage, type Hint } from "./hints";
 
 /** One transcribed word, timed in seconds since the engine started capturing. */
 export interface TranscriptWord {
@@ -33,6 +34,12 @@ export interface ShownAlert {
   alert: FactCheckAlert;
 }
 
+/** A live hint with a local id, so it can be listed and dismissed. */
+export interface ShownHint {
+  id: number;
+  hint: Hint;
+}
+
 /** Live engine state returned by {@link useTranscriptStream}. */
 export interface TranscriptStream {
   status: StreamStatus;
@@ -42,6 +49,11 @@ export interface TranscriptStream {
   alerts: readonly ShownAlert[];
   /** Removes one alert by its id. Unknown ids are ignored. */
   dismissAlert: (id: number) => void;
+  /** Undismissed live hints (code context, commitment risks), oldest first, capped at {@link MAX_ALERTS}. */
+  hints: readonly ShownHint[];
+  dismissHint: (id: number) => void;
+  /** What the hints found in the meeting that ended last (Markdown), if anything. */
+  lastReport: string | null;
   /**
    * Sends a message to the engine (a typed note or a speaker rename).
    * Returns `false` when the engine is not connected, so nothing was sent.
@@ -123,7 +135,7 @@ export type EngineEvent =
   | { type: "action_items"; items: LiveActionItem[] }
   | { type: "meeting_started"; title: string; project: string | null }
   | { type: "project_error"; error: string }
-  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[] };
+  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
 export interface Renamed {
@@ -295,7 +307,7 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
         ? [{ speaker: row.speaker, seconds: row.seconds, share: row.share, longestSeconds: row.longest_seconds, interruptions: row.interruptions }]
         : [],
     );
-    return { type: "meeting_ended", reason: message.reason, talkTime };
+    return { type: "meeting_ended", reason: message.reason, talkTime, report: typeof message.report === "string" ? message.report : null };
   }
   return null;
 }
@@ -331,6 +343,11 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
   const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
   const [project, setProject] = useState<string | null>(null);
+  const [hints, setHints] = useState<readonly ShownHint[]>([]);
+  const [lastReport, setLastReport] = useState<string | null>(null);
+  const dismissHint = useCallback((id: number) => {
+    setHints((current) => current.filter((shown) => shown.id !== id));
+  }, []);
   const [projectError, setProjectError] = useState<string | null>(null);
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
@@ -364,6 +381,12 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setAlerts((current) => [...current, shown].slice(-MAX_ALERTS));
           return;
         }
+        const hint = parseHintMessage(event.data);
+        if (hint) {
+          const shown = { id: nextAlertId++, hint };
+          setHints((current) => [...current, shown].slice(-MAX_ALERTS));
+          return;
+        }
         const renamed = parseRenamedMessage(event.data);
         if (renamed) {
           setSegments((current) => current.map((segment) => renameInSegment(segment, renamed)));
@@ -377,6 +400,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setBrief(engineEvent.brief);
         } else if (engineEvent?.type === "meeting_ended") {
           setLastTalkTime(engineEvent.talkTime);
+          setLastReport(engineEvent.report);
         } else if (engineEvent?.type === "action_items") {
           setLiveItems(engineEvent.items);
         } else if (engineEvent?.type === "summary") {
@@ -409,5 +433,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError };
 }

@@ -64,7 +64,13 @@ describe("engine events", () => {
       type: "meeting_ended",
       reason: "user",
       talkTime: [{ speaker: "Ana", seconds: 90, share: 0.75, longestSeconds: 60, interruptions: 2 }],
+      report: null,
     });
-    expect(parseEngineEvent('{"type":"meeting_ended","reason":"idle"}')).toEqual({ type: "meeting_ended", reason: "idle", talkTime: [] });
+    expect(parseEngineEvent('{"type":"meeting_ended","reason":"idle","report":"## Hesitations"}')).toEqual({
+      type: "meeting_ended",
+      reason: "idle",
+      talkTime: [],
+      report: "## Hesitations",
+    });
   });
 });

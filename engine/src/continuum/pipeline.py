@@ -26,6 +26,7 @@ from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
 from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
+from continuum.context.code import CodeContext, CodeIndex
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -36,7 +37,7 @@ from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.scope import TenantScope
 from continuum.memory.store import MemoryHit, MemoryStore, ScopedMemory
 from continuum.privacy import storage_settings, warn_if_disk_unencrypted
-from continuum.session import MeetingSession, queue_configured_proposals
+from continuum.session import MeetingSession, Watcher, queue_configured_proposals
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -255,6 +256,7 @@ async def run(settings: Settings) -> int:
             propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
             stop=main_task.cancel,
             open_scope=open_scope,
+            watchers=await _watchers(settings),
         )
         check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
@@ -278,6 +280,15 @@ async def run(settings: Settings) -> int:
                 idle.cancel()
                 await session.close()
     return 0 if any(results) else 1
+
+
+async def _watchers(settings: Settings) -> list[Watcher]:
+    """The live hints the settings turn on."""
+    watchers: list[Watcher] = []
+    if settings.code_dirs:
+        index = await asyncio.to_thread(CodeIndex.build, settings.code_dirs)
+        watchers.append(CodeContext(index))
+    return watchers
 
 
 def _scope_opener(store: MemoryStore, retention_days: int | None) -> Callable[[TenantScope], ScopedMemory]:

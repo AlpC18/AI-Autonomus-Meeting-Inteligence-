@@ -89,6 +89,13 @@ pub const FIELDS: &[Field] = &[
         "Set both workspace and project to keep a searchable memory.",
     ),
     field(
+        "CONTINUUM_CODE_DIRS",
+        "Code folders",
+        "Meetings",
+        Kind::Text,
+        "Comma-separated local checkouts. When a meeting names something in the code, the overlay lists the files. Nothing leaves this machine.",
+    ),
+    field(
         "CONTINUUM_SOURCES",
         "Listen to",
         "Meetings",

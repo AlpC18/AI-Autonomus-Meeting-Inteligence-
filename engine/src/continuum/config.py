@@ -57,6 +57,7 @@ class Settings:
     three minutes). ``require_disk_encryption`` stores nothing unless
     FileVault is on. ``remember_voices`` keeps the
     voices of speakers the user named, so later meetings show their names.
+    ``code_dirs`` are local checkouts indexed for code context hints.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -79,6 +80,7 @@ class Settings:
     live_action_items: bool = False
     require_disk_encryption: bool = False
     remember_voices: bool = True
+    code_dirs: tuple[Path, ...] = ()
 
     @property
     def voices_file(self) -> Path:
@@ -99,7 +101,7 @@ class Settings:
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
         ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
-        it off). Unset variables
+        it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders). Unset variables
         use defaults.
 
         Raises:
@@ -160,6 +162,15 @@ class Settings:
             )
         idle_end_minutes = _minutes(env, "CONTINUUM_IDLE_END_MINUTES")
 
+        code_dirs = tuple(
+            Path(part.strip()).expanduser()
+            for part in env.get("CONTINUUM_CODE_DIRS", "").split(",")
+            if part.strip()
+        )
+        missing = [str(path) for path in code_dirs if not path.is_dir()]
+        if missing:
+            raise ValueError(f"CONTINUUM_CODE_DIRS: not a folder: {missing[0]!r}")
+
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
         notes_dir = env.get("CONTINUUM_NOTES_DIR")
@@ -184,4 +195,5 @@ class Settings:
             live_action_items=_flag(env, "CONTINUUM_LIVE_ACTION_ITEMS"),
             require_disk_encryption=_flag(env, "CONTINUUM_REQUIRE_DISK_ENCRYPTION"),
             remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),
+            code_dirs=code_dirs,
         )

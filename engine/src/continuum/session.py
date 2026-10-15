@@ -16,7 +16,7 @@ import logging
 import os
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,6 +68,17 @@ class Speakers(Protocol):
     def reset(self) -> None: ...
     def recognise(self, label: str) -> str | None: ...
     def learn(self, label: str, name: str) -> None: ...
+
+
+class Watcher(Protocol):
+    """Looks at each spoken statement and may return hints for the overlay.
+
+    ``watch`` runs in a worker thread, one statement at a time; ``finish``
+    is called when the meeting ends and returns Markdown for the notes, if any.
+    """
+
+    def watch(self, segment: Segment) -> list[dict[str, Any]]: ...
+    def finish(self) -> str | None: ...
 
 
 Propose = Callable[[MeetingSummary, str, CalendarEvent | None], tuple[int, list[str]]]
@@ -150,6 +161,7 @@ class MeetingSession:
         propose: Propose | None = None,
         stop: Callable[[], None] | None = None,
         open_scope: Callable[[TenantScope], ScopedMemory] | None = None,
+        watchers: Sequence[Watcher] = (),
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -161,6 +173,9 @@ class MeetingSession:
         self._propose = propose
         self._stop = stop
         self._open_scope = open_scope
+        self._watchers = tuple(watchers)
+        self._watching = asyncio.Lock()
+        self._watch_tasks: set[asyncio.Task[None]] = set()
         self._scope = settings.scope
         self._next_scope: tuple[TenantScope, ScopedMemory] | None = None
         self._clock = clock
@@ -265,6 +280,9 @@ class MeetingSession:
                 current.recorder.close()
                 with contextlib.suppress(OSError):
                     current.recorder.path.unlink()
+            report = await self._finish_watchers(current)
+            if report:
+                ended["report"] = report
             self._learn_voices()
             self._publish_event(ended)
             if self._speakers is not None:
@@ -351,6 +369,44 @@ class MeetingSession:
             except OSError:
                 logger.exception("Could not write meeting notes")
         self._maybe_list_items(current)
+        if self._watchers and segment.source != NOTE_SOURCE:
+            task = asyncio.create_task(self._watch(segment))
+            self._watch_tasks.add(task)
+            task.add_done_callback(self._watch_tasks.discard)
+
+    async def _watch(self, segment: Segment) -> None:
+        """Run the watchers on ``segment`` (in order, off the event loop) and publish their hints."""
+        async with self._watching:
+            for watcher in self._watchers:
+                try:
+                    hints = await asyncio.to_thread(watcher.watch, segment)
+                except Exception:
+                    logger.exception("A live hint failed")
+                    continue
+                for hint in hints:
+                    self._publish_event({"type": "hint", "hint": hint})
+
+    async def _finish_watchers(self, current: _Current) -> str | None:
+        """Wait for pending hints, then add each watcher's report to the notes."""
+        if self._watch_tasks:
+            await asyncio.gather(*self._watch_tasks, return_exceptions=True)
+        reports = []
+        async with self._watching:
+            for watcher in self._watchers:
+                try:
+                    report = watcher.finish()
+                except Exception:
+                    logger.exception("A live hint could not report")
+                    continue
+                if report:
+                    reports.append(report)
+        markdown = "\n\n".join(reports)
+        if markdown and current.notes is not None:
+            try:
+                current.notes.append(markdown)
+            except OSError:
+                logger.exception("Could not add hints to the notes")
+        return markdown or None
 
     def _maybe_list_items(self, current: _Current) -> None:
         """Start a live action-item update when enough time and new speech have passed."""

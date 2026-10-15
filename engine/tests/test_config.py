@@ -90,3 +90,10 @@ def test_meeting_lifecycle_settings() -> None:
         Settings.from_env({"CONTINUUM_AUTO_PROPOSE": "e-mail"})
     with pytest.raises(ValueError, match="CONTINUUM_IDLE_END_MINUTES"):
         Settings.from_env({"CONTINUUM_IDLE_END_MINUTES": "0"})
+
+
+def test_code_dirs_must_be_folders(tmp_path) -> None:
+    settings = Settings.from_env({"CONTINUUM_CODE_DIRS": f"{tmp_path}, "})
+    assert settings.code_dirs == (tmp_path,)
+    with pytest.raises(ValueError, match="CONTINUUM_CODE_DIRS"):
+        Settings.from_env({"CONTINUUM_CODE_DIRS": str(tmp_path / "missing")})
