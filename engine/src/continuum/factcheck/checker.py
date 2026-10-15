@@ -60,13 +60,13 @@ class FactChecker:
     """Compares the figures in a statement with similar past statements.
 
     The rule: among past statements on the same topic that mention the same
-    kind of figure (money, percent, or a counted unit), the most recent one is
+    kind of figure (money, percent, a counted unit or a date), the most recent one is
     the record. If the live statement shares no value of that kind with the
     record, it is flagged. Statements without figures are never flagged, and
     are not even searched for, which keeps the common case free.
     """
 
-    # ponytail: numbers only, so "we chose Stripe" against "we chose Paddle"
+    # ponytail: figures and dates only, so "we chose Stripe" against "we chose Paddle"
     # passes unnoticed, and two different budgets on a similar topic can be
     # flagged wrongly. An LLM judge over the same retrieved hits fixes both.
     def __init__(
