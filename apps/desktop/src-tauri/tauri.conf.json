@@ -53,5 +53,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBRTU4OUJCREFGODU3MEUKUldRT1YvamF1NG5sK2xzWUJjWWc4ek9URFpyWm1hM2FuaTJKSUQ2MUI3QVdOb24xVkE1bXppRDAK",
+      "endpoints": [
+        "https://github.com/AlpC18/AI-Autonomus-Meeting-Inteligence-/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

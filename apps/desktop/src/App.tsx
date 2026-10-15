@@ -9,6 +9,7 @@ import { MeetingLibrary } from "./library/MeetingLibrary";
 import { Notepad } from "./notes/Notepad";
 import { parseSettings, type SettingsView } from "./settings/settings";
 import { SettingsPanel } from "./settings/SettingsPanel";
+import { UpdateBanner } from "./update/UpdateBanner";
 import { SetupChecklist } from "./setup/SetupChecklist";
 import { setupComplete, setupSteps } from "./setup/setup";
 
@@ -91,6 +92,7 @@ export default function App() {
     <main className="p-4">
       <h1 className="text-2xl font-bold">Continuum</h1>
       {error && <p role="alert">Could not reach the desktop backend: {error}</p>}
+      <UpdateBanner />
       {info && (
         <p>
           {info.name} v{info.version}
