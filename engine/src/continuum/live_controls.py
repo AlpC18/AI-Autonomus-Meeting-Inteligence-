@@ -54,7 +54,12 @@ class EndMeeting:
     """The user ended the meeting: summarise it and start a new one."""
 
 
-Command = Note | Rename | Ask | EndMeeting
+@dataclass(frozen=True, slots=True)
+class Brief:
+    """The user asked for a brief on the current meeting from earlier ones."""
+
+
+Command = Note | Rename | Ask | EndMeeting | Brief
 
 MAX_QUESTION = 500
 _REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -112,6 +117,8 @@ def parse(raw: str) -> Command | None:
         return Ask(request_id, " ".join(question.split()))
     if message.get("type") == "end_meeting":
         return EndMeeting()
+    if message.get("type") == "brief":
+        return Brief()
     return None
 
 

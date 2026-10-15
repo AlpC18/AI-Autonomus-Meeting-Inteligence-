@@ -24,12 +24,13 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from continuum.ask import answer
+from continuum.ask import answer, brief
 from continuum.audio.recorder import MixRecorder
 from continuum.config import Settings
 from continuum.live_controls import (
     NOTE_SOURCE,
     Ask,
+    Brief,
     EndMeeting,
     Note,
     Rename,
@@ -95,6 +96,7 @@ def queue_configured_proposals(targets: tuple[str, ...]) -> Propose:
 @dataclass
 class _Current:
     meeting: Meeting
+    title: str | None
     notes: MeetingNotes | None
     recorder: MixRecorder | None
     started: float
@@ -142,6 +144,7 @@ class MeetingSession:
         self._current: _Current | None = None
         self._ending = asyncio.Lock()
         self._asking = asyncio.Lock()
+        self._briefing: asyncio.Task[None] | None = None
 
     def connect(
         self,
@@ -187,8 +190,11 @@ class MeetingSession:
                     logger.exception("Could not start recording")
             logger.info("Writing meeting notes to %s", notes.path)
         now = self._clock()
-        self._current = _Current(Meeting(str(uuid.uuid4()), started_at), notes, recorder, now, now)
+        self._current = _Current(Meeting(str(uuid.uuid4()), started_at), title, notes, recorder, now, now)
         self._publish_event({"type": "meeting_started", "title": title or "Meeting"})
+        if title and self._memory is not None and self._llm is not None:
+            # A calendar meeting gets its brief without blocking the transcript.
+            self._briefing = asyncio.create_task(self._brief())
 
     async def end(self, reason: str = "user") -> None:
         """Finish the current meeting and, unless the engine should stop, start the next.
@@ -319,6 +325,8 @@ class MeetingSession:
             await self._answer(command)
         elif isinstance(command, EndMeeting):
             await self.end("user")
+        elif isinstance(command, Brief):
+            await self._brief()
         else:
             await self._note(command)
 
@@ -346,6 +354,28 @@ class MeetingSession:
             async with self._asking:
                 try:
                     result = await asyncio.to_thread(answer, command.question, memory.search, llm)
+                except (ValueError, RuntimeError) as error:
+                    reply["error"] = str(error)
+                else:
+                    reply.update(result.to_dict())
+        self._publish_event(reply)
+
+    async def _brief(self) -> None:
+        """Publish a brief for the current meeting from what was said in earlier ones."""
+        current = self._current
+        reply: dict[str, Any] = {"type": "brief"}
+        if current is None or not current.title:
+            reply["error"] = "This meeting has no calendar title to look up; ask a question instead."
+        elif self._memory is None:
+            reply["error"] = "Memory is off: set a workspace and project in Settings."
+        elif self._llm is None:
+            reply["error"] = "No AI model is configured: choose a provider in Settings."
+        else:
+            memory, llm, title = self._memory, self._llm, current.title
+            reply["title"] = title
+            async with self._asking:
+                try:
+                    result = await asyncio.to_thread(brief, title, memory.search, llm)
                 except (ValueError, RuntimeError) as error:
                     reply["error"] = str(error)
                 else:

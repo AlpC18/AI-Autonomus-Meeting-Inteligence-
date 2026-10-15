@@ -276,3 +276,25 @@ async def test_remembered_voices_are_named_and_named_voices_are_learned(tmp_path
 
     assert sorted(speakers.learned) == [("Speaker 1", "Ayşe"), ("Speaker 2", "Mark")]
     assert session.relabel(said("new meeting", "Speaker 2")).speaker == "Speaker 2"
+
+
+async def test_a_calendar_meeting_gets_a_brief_and_the_user_can_ask_again(tmp_path: Path) -> None:
+    import asyncio
+
+    llm = FakeLlm("Last time: budget $35,000 [1].")
+    session, _published, events = await make(
+        tmp_path, memory=FakeMemory(), llm=llm, title_for=lambda now: "Budget review"
+    )
+    await asyncio.sleep(0.05)
+    briefs = [event for event in events if event["type"] == "brief"]
+    assert briefs[0]["title"] == "Budget review" and briefs[0]["sources"][0]["number"] == 1
+
+    await session.handle('{"type": "brief"}')
+    assert len([event for event in events if event["type"] == "brief"]) == 2
+
+
+async def test_a_meeting_without_a_title_explains_why_there_is_no_brief(tmp_path: Path) -> None:
+    session, _published, events = await make(tmp_path, memory=FakeMemory(), llm=FakeLlm())
+    assert not [event for event in events if event["type"] == "brief"]
+    await session.handle('{"type": "brief"}')
+    assert "no calendar title" in events[-1]["error"]

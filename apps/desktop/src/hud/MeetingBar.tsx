@@ -2,22 +2,25 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import { useState } from "react";
-import type { EngineCommand, MeetingSummaryEvent } from "./transcriptStream";
+import { AnswerView } from "./AskPanel";
+import type { Answer, EngineCommand, MeetingSummaryEvent } from "./transcriptStream";
 
 interface MeetingBarProps {
   title: string;
   connected: boolean;
   send: (message: EngineCommand) => boolean;
   lastSummary: MeetingSummaryEvent | null;
+  brief: Answer | null;
 }
 
 /**
  * The current meeting's title with an "End meeting" button, and the summary
  * of the meeting that ended last. Ending a meeting asks the engine to write
  * the AI summary into the notes, queue proposed actions for approval and
- * start the next meeting.
+ * start the next meeting. A meeting titled from the calendar gets a brief of
+ * what earlier meetings said about it; "Brief me" asks for it again.
  */
-export function MeetingBar({ title, connected, send, lastSummary }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, brief }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
   // A summary arriving after "End meeting" finishes the ending state.
@@ -42,7 +45,21 @@ export function MeetingBar({ title, connected, send, lastSummary }: MeetingBarPr
         >
           {ending ? "Ending…" : "End meeting"}
         </button>
+        <button
+          type="button"
+          disabled={!connected}
+          onClick={() => send({ type: "brief" })}
+          className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Brief me
+        </button>
       </div>
+      {brief && (
+        <div aria-label="Brief from earlier meetings" className="mt-2 rounded-md border border-zinc-200 p-3">
+          <h3 className="text-sm font-semibold">From earlier meetings</h3>
+          <AnswerView answer={brief} />
+        </div>
+      )}
       {lastSummary && (
         <div role="status" className="mt-2 rounded-md bg-zinc-50 p-3 text-sm">
           {lastSummary.error ? (

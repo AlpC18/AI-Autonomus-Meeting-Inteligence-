@@ -32,4 +32,12 @@ describe("engine events", () => {
     expect(parseEngineEvent('{"type":"meeting_ended"}')).toBeNull();
     expect(parseEngineEvent("nope")).toBeNull();
   });
+
+  it("reads a brief with its cited statements", () => {
+    const event = parseEngineEvent(
+      '{"type":"brief","title":"Budget","text":"Budget $35,000 [1]","sources":[{"number":1,"speaker":"Ana","text":"Budget is $35,000","spoken_at":"2026-10-01T10:00:00+00:00"}]}',
+    );
+    expect(event).toMatchObject({ type: "brief", brief: { id: "brief", text: "Budget $35,000 [1]", error: null } });
+    expect(parseEngineEvent('{"type":"brief","error":"no calendar title"}')).toMatchObject({ brief: { error: "no calendar title" } });
+  });
 });

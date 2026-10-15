@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from continuum.ask import NOTHING_FOUND, answer
+from continuum.ask import NOTHING_FOUND, answer, brief
 from continuum.memory.store import MemoryHit
 
 
@@ -57,3 +57,21 @@ def test_excerpts_cannot_close_the_data_block() -> None:
 def test_bad_questions_are_refused(question: str) -> None:
     with pytest.raises(ValueError):
         answer(question, lambda query, limit: HITS, FakeLlm("x"))
+
+
+def test_brief_searches_by_meeting_title_and_cites() -> None:
+    llm = FakeLlm("## Decisions\n- Budget $35,000 [1]")
+    queries: list[tuple[str, int]] = []
+
+    def search(query: str, limit: int) -> list[MemoryHit]:
+        queries.append((query, limit))
+        return HITS
+
+    result = brief(" Budget  review ", search, llm)
+
+    assert queries == [("Budget review", 12)]
+    assert [number for number, _hit in result.sources] == [1]
+    assert llm.calls[0][1].endswith("Meeting: Budget review")
+    assert brief("Budget", lambda query, limit: [], llm).text == NOTHING_FOUND
+    with pytest.raises(ValueError):
+        brief("  ", search, llm)
