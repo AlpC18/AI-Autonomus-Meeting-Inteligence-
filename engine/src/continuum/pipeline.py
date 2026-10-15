@@ -34,7 +34,7 @@ from continuum.factcheck.semantic import SemanticChecker
 from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import MemoryStore, ScopedMemory
-from continuum.privacy import warn_if_disk_unencrypted
+from continuum.privacy import storage_settings, warn_if_disk_unencrypted
 from continuum.session import MeetingSession, queue_configured_proposals
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
@@ -192,6 +192,7 @@ async def run(settings: Settings) -> int:
 
     Returns a process exit code: 1 when all sources failed, otherwise 0.
     """
+    settings = storage_settings(settings)
     logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     try:
         transcriber = await asyncio.to_thread(

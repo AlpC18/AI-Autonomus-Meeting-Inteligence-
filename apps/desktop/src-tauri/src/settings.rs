@@ -138,6 +138,13 @@ pub const FIELDS: &[Field] = &[
         "Empty keeps everything.",
     ),
     field(
+        "CONTINUUM_REQUIRE_DISK_ENCRYPTION",
+        "Require disk encryption",
+        "Privacy",
+        Kind::Toggle(false),
+        "Store nothing unless FileVault is on. The live transcript still works.",
+    ),
+    field(
         "CONTINUUM_AUTO_START",
         "Start when a call begins",
         "Meetings",
@@ -203,6 +210,13 @@ pub const FIELDS: &[Field] = &[
         "AI",
         Kind::Toggle(false),
         "Also catch contradictions without numbers. Sends statements to your AI provider.",
+    ),
+    field(
+        "CONTINUUM_LIVE_ACTION_ITEMS",
+        "Live action items",
+        "AI",
+        Kind::Toggle(false),
+        "Show tasks as they are said. Sends the transcript to your AI provider at most every 3 minutes.",
     ),
     field(
         "CONTINUUM_AUTO_PROPOSE",

@@ -211,7 +211,7 @@ async def test_silence_ends_the_meeting_and_can_stop_the_engine(tmp_path: Path, 
     await asyncio.sleep(0.05)
     watcher.cancel()
     assert stopped == [True]
-    assert {"type": "meeting_ended", "reason": "idle"} in events
+    assert any(event["type"] == "meeting_ended" and event["reason"] == "idle" for event in events)
 
 
 async def test_recording_is_written_and_named_in_the_notes(tmp_path: Path) -> None:
@@ -298,3 +298,51 @@ async def test_a_meeting_without_a_title_explains_why_there_is_no_brief(tmp_path
     assert not [event for event in events if event["type"] == "brief"]
     await session.handle('{"type": "brief"}')
     assert "no calendar title" in events[-1]["error"]
+
+
+async def test_action_items_are_listed_during_the_meeting_at_most_every_few_minutes(tmp_path: Path) -> None:
+    from continuum.session import LIVE_ITEMS_INTERVAL_S
+
+    clock, llm = Clock(), FakeLlm()
+    session, _published, events = await make(
+        tmp_path, llm=llm, clock=clock, settings={"live_action_items": True}
+    )
+
+    session.publish(said("Ana will send the report by November"))
+    assert llm.calls == []  # too early in the meeting
+
+    clock.now += LIVE_ITEMS_INTERVAL_S
+    session.publish(said("Ana will send the report by November"))
+    session.publish(said("and the slides"))  # an update is already running
+    await session._listing
+    assert len(llm.calls) == 1
+    items = [event for event in events if event["type"] == "action_items"]
+    assert items == [{"type": "action_items", "items": [{"task": "Send the report", "owner": "Ana", "due": "2026-11-30"}]}]
+
+    clock.now += 10
+    session.publish(said("one more thing"))
+    assert session._listing.done() and len(llm.calls) == 1  # waits for the interval
+
+
+async def test_action_items_are_not_listed_live_unless_turned_on(tmp_path: Path) -> None:
+    clock, llm = Clock(), FakeLlm()
+    session, _published, _events = await make(tmp_path, llm=llm, clock=clock)
+    clock.now += 10_000
+    session.publish(said("Ana will send the report"))
+    assert session._listing is None and llm.calls == []
+
+
+async def test_talk_time_goes_into_the_notes_and_the_ended_event(tmp_path: Path) -> None:
+    session, _published, events = await make(tmp_path)
+    notes = session.notes_path
+    session.publish(said("Hello there", "Ana", start=1.0))
+    session.publish(said("Hi", "Mark", start=5.0))
+
+    await session.end()
+
+    (ended,) = [event for event in events if event["type"] == "meeting_ended"]
+    assert [row["speaker"] for row in ended["talk_time"]] == ["Ana", "Mark"]
+    assert ended["talk_time"][0] == {
+        "speaker": "Ana", "seconds": 1.0, "share": 0.5, "longest_seconds": 1.0, "interruptions": 0
+    }
+    assert "## Talk time" in notes.read_text()

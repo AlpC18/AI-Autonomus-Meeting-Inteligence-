@@ -52,7 +52,10 @@ class Settings:
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
     audio next to its notes. ``llm_fact_check`` also asks the AI model about
-    contradictions that involve no numbers. ``remember_voices`` keeps the
+    contradictions that involve no numbers. ``live_action_items`` shows the
+    action items said so far during the meeting (an AI call at most every
+    three minutes). ``require_disk_encryption`` stores nothing unless
+    FileVault is on. ``remember_voices`` keeps the
     voices of speakers the user named, so later meetings show their names.
     """
 
@@ -73,6 +76,8 @@ class Settings:
     exit_when_idle: bool = False
     record_audio: bool = False
     llm_fact_check: bool = False
+    live_action_items: bool = False
+    require_disk_encryption: bool = False
     remember_voices: bool = True
 
     @property
@@ -93,7 +98,7 @@ class Settings:
         ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``,
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
-        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
+        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
         it off). Unset variables
         use defaults.
 
@@ -176,5 +181,7 @@ class Settings:
             exit_when_idle=_flag(env, "CONTINUUM_EXIT_WHEN_IDLE"),
             record_audio=_flag(env, "CONTINUUM_RECORD_AUDIO"),
             llm_fact_check=_flag(env, "CONTINUUM_LLM_FACT_CHECK"),
+            live_action_items=_flag(env, "CONTINUUM_LIVE_ACTION_ITEMS"),
+            require_disk_encryption=_flag(env, "CONTINUUM_REQUIRE_DISK_ENCRYPTION"),
             remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),
         )

@@ -55,6 +55,10 @@ export interface TranscriptStream {
   lastSummary: MeetingSummaryEvent | null;
   /** The brief for the current meeting from earlier meetings, if one arrived. */
   brief: Answer | null;
+  /** Action items said so far in the current meeting (only with live action items on). */
+  liveItems: readonly LiveActionItem[];
+  /** Who talked how much in the meeting that ended last. */
+  lastTalkTime: readonly TalkTime[];
 }
 
 /** What the desktop app can ask the engine to do during a meeting. */
@@ -90,13 +94,30 @@ export interface MeetingSummaryEvent {
   error: string | null;
 }
 
+/** A task someone agreed to during the meeting, as the AI model heard it. */
+export interface LiveActionItem {
+  task: string;
+  owner: string | null;
+  due: string | null;
+}
+
+/** One speaker's share of a finished meeting. */
+export interface TalkTime {
+  speaker: string;
+  seconds: number;
+  share: number;
+  longestSeconds: number;
+  interruptions: number;
+}
+
 /** Meeting-level events from the engine, other than transcript and alerts. */
 export type EngineEvent =
   | { type: "answer"; answer: Answer }
   | { type: "brief"; brief: Answer }
   | { type: "summary"; summary: MeetingSummaryEvent }
+  | { type: "action_items"; items: LiveActionItem[] }
   | { type: "meeting_started"; title: string }
-  | { type: "meeting_ended"; reason: string };
+  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[] };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
 export interface Renamed {
@@ -241,11 +262,31 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
       },
     };
   }
+  if (message.type === "action_items" && Array.isArray(message.items)) {
+    const optional = (value: unknown) => (typeof value === "string" ? value : null);
+    const items = message.items.flatMap((item): LiveActionItem[] =>
+      isRecord(item) && typeof item.task === "string"
+        ? [{ task: item.task, owner: optional(item.owner), due: optional(item.due) }]
+        : [],
+    );
+    return { type: "action_items", items };
+  }
   if (message.type === "meeting_started" && typeof message.title === "string") {
     return { type: "meeting_started", title: message.title };
   }
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
-    return { type: "meeting_ended", reason: message.reason };
+    const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
+    const talkTime = rows.flatMap((row): TalkTime[] =>
+      isRecord(row) &&
+      typeof row.speaker === "string" &&
+      typeof row.seconds === "number" &&
+      typeof row.share === "number" &&
+      typeof row.longest_seconds === "number" &&
+      typeof row.interruptions === "number"
+        ? [{ speaker: row.speaker, seconds: row.seconds, share: row.share, longestSeconds: row.longest_seconds, interruptions: row.interruptions }]
+        : [],
+    );
+    return { type: "meeting_ended", reason: message.reason, talkTime };
   }
   return null;
 }
@@ -278,6 +319,8 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [answers, setAnswers] = useState<Readonly<Record<string, Answer>>>({});
   const [lastSummary, setLastSummary] = useState<MeetingSummaryEvent | null>(null);
   const [brief, setBrief] = useState<Answer | null>(null);
+  const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
+  const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
     if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
@@ -321,13 +364,18 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setAnswers((current) => ({ ...current, [answer.id]: answer }));
         } else if (engineEvent?.type === "brief") {
           setBrief(engineEvent.brief);
+        } else if (engineEvent?.type === "meeting_ended") {
+          setLastTalkTime(engineEvent.talkTime);
+        } else if (engineEvent?.type === "action_items") {
+          setLiveItems(engineEvent.items);
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
         } else if (engineEvent?.type === "meeting_started") {
-          // A new meeting starts with an empty transcript and no brief yet.
+          // A new meeting starts with an empty transcript, no brief and no action items yet.
           setMeetingTitle(engineEvent.title);
           setSegments([]);
           setBrief(null);
+          setLiveItems([]);
         }
       };
       socket.onclose = () => {
@@ -346,5 +394,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary, brief };
+  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime };
 }

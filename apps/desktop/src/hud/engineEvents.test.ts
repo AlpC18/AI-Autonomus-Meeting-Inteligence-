@@ -40,4 +40,29 @@ describe("engine events", () => {
     expect(event).toMatchObject({ type: "brief", brief: { id: "brief", text: "Budget $35,000 [1]", error: null } });
     expect(parseEngineEvent('{"type":"brief","error":"no calendar title"}')).toMatchObject({ brief: { error: "no calendar title" } });
   });
+
+  it("reads live action items and drops malformed ones", () => {
+    const event = parseEngineEvent(
+      '{"type":"action_items","items":[{"task":"Send the report","owner":"Ana","due":"2026-11-30"},{"task":"Book a room"},{"owner":"x"},7]}',
+    );
+    expect(event).toEqual({
+      type: "action_items",
+      items: [
+        { task: "Send the report", owner: "Ana", due: "2026-11-30" },
+        { task: "Book a room", owner: null, due: null },
+      ],
+    });
+  });
+
+  it("reads talk time when a meeting ends", () => {
+    const event = parseEngineEvent(
+      '{"type":"meeting_ended","reason":"user","talk_time":[{"speaker":"Ana","seconds":90,"share":0.75,"longest_seconds":60,"interruptions":2},{"speaker":5}]}',
+    );
+    expect(event).toEqual({
+      type: "meeting_ended",
+      reason: "user",
+      talkTime: [{ speaker: "Ana", seconds: 90, share: 0.75, longestSeconds: 60, interruptions: 2 }],
+    });
+    expect(parseEngineEvent('{"type":"meeting_ended","reason":"idle"}')).toEqual({ type: "meeting_ended", reason: "idle", talkTime: [] });
+  });
 });

@@ -43,6 +43,8 @@ from continuum.llm import Llm
 from continuum.memory.store import Meeting, ScopedMemory
 from continuum.notes import MeetingNotes, markdown_lines
 from continuum.privacy import redact_segment
+from continuum.stats import speaker_stats
+from continuum.stats import to_markdown as stats_markdown
 from continuum.summary import MeetingSummary, summarize, to_markdown
 from continuum.transcript import Segment
 
@@ -52,6 +54,9 @@ MAX_SEGMENTS = 20_000
 """Transcript kept per meeting for its summary (many hours of speech)."""
 
 IDLE_CHECK_S = 15.0
+
+LIVE_ITEMS_INTERVAL_S = 180.0
+"""Least time between two live action-item updates (each is one AI call)."""
 
 
 class Speakers(Protocol):
@@ -112,6 +117,8 @@ class _Current:
     started: float
     last_speech: float
     segments: list[Segment] = field(default_factory=list)
+    items_checked_at: float = 0.0
+    items_checked_segments: int = 0
 
     @property
     def title(self) -> str | None:
@@ -159,6 +166,7 @@ class MeetingSession:
         self._ending = asyncio.Lock()
         self._asking = asyncio.Lock()
         self._briefing: asyncio.Task[None] | None = None
+        self._listing: asyncio.Task[None] | None = None
 
     def connect(
         self,
@@ -225,17 +233,19 @@ class MeetingSession:
             current = self._current
             if current is None:
                 return
+            ended: dict[str, Any] = {"type": "meeting_ended", "reason": reason}
             if current.spoken:
                 await self._merge_duplicate_speakers(current)
                 if current.recorder is not None:
                     current.recorder.close()
+                ended["talk_time"] = self._talk_time(current)
                 await self._summarise(current)
             elif current.recorder is not None:
                 current.recorder.close()
                 with contextlib.suppress(OSError):
                     current.recorder.path.unlink()
             self._learn_voices()
-            self._publish_event({"type": "meeting_ended", "reason": reason})
+            self._publish_event(ended)
             if self._speakers is not None:
                 self._speakers.reset()
             self.names = SpeakerNames()
@@ -319,6 +329,39 @@ class MeetingSession:
                 current.notes.add(redact_segment(segment) if self._settings.redact else segment)
             except OSError:
                 logger.exception("Could not write meeting notes")
+        self._maybe_list_items(current)
+
+    def _maybe_list_items(self, current: _Current) -> None:
+        """Start a live action-item update when enough time and new speech have passed."""
+        if not self._settings.live_action_items or self._llm is None:
+            return
+        if self._listing is not None and not self._listing.done():
+            return
+        now = self._clock()
+        if now - max(current.items_checked_at, current.started) < LIVE_ITEMS_INTERVAL_S:
+            return
+        if len(current.segments) <= current.items_checked_segments or not current.spoken:
+            return
+        current.items_checked_at = now
+        current.items_checked_segments = len(current.segments)
+        self._listing = asyncio.create_task(self._list_items(current))
+
+    async def _list_items(self, current: _Current) -> None:
+        """Publish the action items said so far in ``current`` (AI failures are only logged)."""
+        try:
+            summary = await asyncio.to_thread(summarize, self._transcript(current), self._llm, self._now().date())
+        except (ValueError, RuntimeError) as error:
+            logger.warning("Could not list action items during the meeting: %s", error)
+            return
+        if self._current is not current:
+            return
+        items = [{"task": item.task, "owner": item.owner, "due": item.due} for item in summary.action_items]
+        self._publish_event({"type": "action_items", "items": items})
+
+    def _transcript(self, current: _Current) -> str:
+        """The meeting's transcript as the AI provider gets it: the (redacted) notes lines."""
+        clean = redact_segment if self._settings.redact else (lambda segment: segment)
+        return "\n".join(line for segment in current.segments for line in markdown_lines(clean(segment)))
 
     def remember(self, segment: Segment, disputed: bool) -> None:
         """Store ``segment`` in memory under the current meeting (redacted). Blocks."""
@@ -403,6 +446,25 @@ class MeetingSession:
 
     # --- ending a meeting ----------------------------------------------------------
 
+    def _talk_time(self, current: _Current) -> list[dict[str, Any]]:
+        """Add each speaker's talk time to the notes and return it for the app."""
+        stats = speaker_stats(current.segments)
+        if current.notes is not None and stats:
+            try:
+                current.notes.append(stats_markdown(stats))
+            except OSError:
+                logger.exception("Could not add talk time to the notes")
+        return [
+            {
+                "speaker": s.speaker,
+                "seconds": round(s.talk_s, 1),
+                "share": round(s.share, 3),
+                "longest_seconds": round(s.longest_s, 1),
+                "interruptions": s.interruptions,
+            }
+            for s in stats
+        ]
+
     async def _merge_duplicate_speakers(self, current: _Current) -> None:
         if self._speakers is None:
             return
@@ -429,14 +491,9 @@ class MeetingSession:
     async def _summarise(self, current: _Current) -> None:
         if self._llm is None:
             return
-        # The AI provider gets the same (redacted) text the notes file holds.
-        clean = redact_segment if self._settings.redact else (lambda segment: segment)
-        transcript = "\n".join(
-            line for segment in current.segments for line in markdown_lines(clean(segment))
-        )
         event: dict[str, Any] = {"type": "summary"}
         try:
-            summary = await asyncio.to_thread(summarize, transcript, self._llm, self._now().date())
+            summary = await asyncio.to_thread(summarize, self._transcript(current), self._llm, self._now().date())
         except (ValueError, RuntimeError) as error:
             event["error"] = str(error)
             self._publish_event(event)

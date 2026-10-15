@@ -15,8 +15,12 @@ import re
 import subprocess
 import sys
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from continuum.transcript import Segment
+
+if TYPE_CHECKING:
+    from continuum.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +97,23 @@ def disk_encryption_active() -> bool | None:
     except (OSError, subprocess.TimeoutExpired):
         return None
     return result.stdout.strip() == "true"
+
+
+def storage_settings(settings: "Settings") -> "Settings":
+    """Return ``settings`` with storing turned off when it requires an encrypted disk that is not.
+
+    With ``require_disk_encryption``, notes, memory, recordings and voices are
+    only kept when FileVault is confirmed on; otherwise the live transcript
+    still runs and nothing is written to disk.
+    """
+    if not settings.require_disk_encryption or disk_encryption_active() is True:
+        return settings
+    logger.error(
+        "Disk encryption is required but FileVault is not confirmed on: nothing will be stored "
+        "(no notes, memory, recordings or voices). Turn it on in System Settings > "
+        "Privacy & Security > FileVault."
+    )
+    return replace(settings, scope=None, notes_dir=None, record_audio=False, remember_voices=False)
 
 
 def warn_if_disk_unencrypted() -> None:
