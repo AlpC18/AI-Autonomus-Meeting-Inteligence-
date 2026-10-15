@@ -28,15 +28,19 @@ pub fn is_notes_path(path: &str) -> bool {
 
 /// Runs `continuum-library <args>` and returns its JSON, turning `{"error"}` into `Err`.
 fn library(args: &[&str]) -> Result<Value, String> {
-    let dir = engine::engine_dir()
-        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    let dir =
+        engine::engine_dir().ok_or_else(|| String::from("The engine folder is not configured."))?;
     let output = engine::uv_run(&dir, "continuum-library")
         .args(args)
         .output()
         .map_err(|error| format!("Could not run the library command: {error}"))?;
     let value: Value = serde_json::from_slice(&output.stdout).map_err(|_| {
         let message = String::from_utf8_lossy(&output.stderr);
-        message.lines().last().unwrap_or("The library command failed.").to_owned()
+        message
+            .lines()
+            .last()
+            .unwrap_or("The library command failed.")
+            .to_owned()
     })?;
     if let Some(error) = value.get("error").and_then(Value::as_str) {
         return Err(error.to_owned());

@@ -29,6 +29,7 @@ continuum-actions-review = "continuum.actions.review_cli:main"
 continuum-transcribe = "continuum.transcribe_cli:main"
 continuum-summarize = "continuum.summarize_cli:main"
 continuum-library = "continuum.library:main"
+continuum-check-config = "continuum.config_check:main"
 
 [project.optional-dependencies]
 diarization = [

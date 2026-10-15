@@ -7,6 +7,7 @@ import { PendingActions } from "./actions/PendingActions";
 import { SpeakerNamer, TranscriptFeed, useTranscriptStream } from "./hud";
 import { MeetingLibrary } from "./library/MeetingLibrary";
 import { Notepad } from "./notes/Notepad";
+import { SettingsPanel } from "./settings/SettingsPanel";
 
 /** Build identity returned by the Rust `app_info` command. */
 interface AppInfo {
@@ -28,7 +29,7 @@ export default function App() {
   // One connection to the engine, shared by the transcript, notes and names.
   const stream = useTranscriptStream();
   const connected = stream.status === "open";
-  const [view, setView] = useState<"live" | "meetings">("live");
+  const [view, setView] = useState<"live" | "meetings" | "settings">("live");
 
   useEffect(() => {
     invoke<AppInfo>("app_info")
@@ -46,7 +47,7 @@ export default function App() {
         </p>
       )}
       <nav aria-label="Views" className="mt-3 flex gap-2">
-        {(["live", "meetings"] as const).map((name) => (
+        {(["live", "meetings", "settings"] as const).map((name) => (
           <button
             key={name}
             type="button"
@@ -54,7 +55,7 @@ export default function App() {
             onClick={() => setView(name)}
             className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 aria-pressed:bg-zinc-900 aria-pressed:text-white"
           >
-            {name === "live" ? "Live meeting" : "Past meetings"}
+            {{ live: "Live meeting", meetings: "Past meetings", settings: "Settings" }[name]}
           </button>
         ))}
       </nav>
@@ -65,6 +66,7 @@ export default function App() {
         <Notepad connected={connected} send={stream.send} />
       </div>
       {view === "meetings" && <MeetingLibrary />}
+      {view === "settings" && <SettingsPanel />}
       <PendingActions />
     </main>
   );

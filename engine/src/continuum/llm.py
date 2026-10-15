@@ -85,7 +85,9 @@ class LlmSettings:
         if not self.base_url or urlsplit(self.base_url).scheme not in {"http", "https"}:
             raise ValueError(f"CONTINUUM_LLM_BASE_URL must be an http(s) URL for {self.provider!r}")
         if preset.key_variable and not self.api_key:
-            raise ValueError(f"{preset.key_variable} must be set to use {self.provider!r}")
+            raise ValueError(
+                f"{preset.key_variable} (or CONTINUUM_LLM_API_KEY) must be set to use {self.provider!r}"
+            )
         if self.api_key and self.base_url.startswith("http://") and not _is_local(self.base_url):
             raise ValueError("An API key may only be sent over https (or to this machine)")
 

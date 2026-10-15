@@ -94,16 +94,47 @@ impl Drop for EngineProcess {
 
 /// Builds the command `uv run <script>` for a console script of the engine.
 ///
-/// Runs in `engine_dir` and loads settings from `engine_dir/.env` when that
-/// file exists. The caller adds arguments and decides how to run it.
+/// Runs in `engine_dir` with the settings made in the app as environment
+/// variables. `engine_dir/.env` is also loaded when it exists; the app's
+/// settings take precedence over it. The caller adds arguments and decides
+/// how to run it.
 pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
     let mut command = Command::new("uv");
     command.arg("run");
     if engine_dir.join(".env").is_file() {
         command.args(["--env-file", ".env"]);
     }
-    command.arg(script).current_dir(engine_dir);
     command
+        .arg(script)
+        .current_dir(engine_dir)
+        .envs(crate::settings::engine_env());
+    command
+}
+
+/// The running engine, if any; replaced when the settings change.
+#[derive(Default)]
+pub struct EngineSlot(pub Mutex<Option<EngineProcess>>);
+
+impl EngineSlot {
+    /// Stops the running engine (if any) and starts a new one from `engine_dir`.
+    ///
+    /// # Errors
+    /// Returns the I/O error if the new engine cannot be started.
+    pub fn restart(&self, engine_dir: &Path) -> io::Result<()> {
+        let mut slot = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(old) = slot.take() {
+            old.shutdown(SHUTDOWN_GRACE);
+        }
+        *slot = Some(EngineProcess::spawn(engine_dir)?);
+        Ok(())
+    }
+
+    /// Stops the running engine, if any.
+    pub fn stop(&self) {
+        if let Some(old) = self.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
+            old.shutdown(SHUTDOWN_GRACE);
+        }
+    }
 }
 
 /// Finds the engine directory to run, if any.
