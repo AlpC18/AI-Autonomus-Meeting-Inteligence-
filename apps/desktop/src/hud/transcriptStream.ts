@@ -47,12 +47,52 @@ export interface TranscriptStream {
    * Returns `false` when the engine is not connected, so nothing was sent.
    */
   send: (message: EngineCommand) => boolean;
+  /** Title of the meeting being recorded (from the calendar, or "Meeting"). */
+  meetingTitle: string;
+  /** Answers received, keyed by question id. */
+  answers: Readonly<Record<string, Answer>>;
+  /** The summary of the meeting that ended last, if any. */
+  lastSummary: MeetingSummaryEvent | null;
 }
 
 /** What the desktop app can ask the engine to do during a meeting. */
 export type EngineCommand =
   | { type: "note"; text: string }
-  | { type: "rename_speaker"; from: string; to: string };
+  | { type: "rename_speaker"; from: string; to: string }
+  | { type: "ask"; id: string; question: string }
+  | { type: "end_meeting" };
+
+/** A statement from memory that an answer cites. */
+export interface AnswerSource {
+  number: number;
+  speaker: string;
+  text: string;
+  spokenAt: Date;
+  disputed: boolean;
+}
+
+/** The engine's reply to a question; `error` explains why there is no answer. */
+export interface Answer {
+  id: string;
+  text: string;
+  sources: AnswerSource[];
+  error: string | null;
+}
+
+/** What the engine reports when a meeting ends. */
+export interface MeetingSummaryEvent {
+  markdown: string | null;
+  queued: number;
+  errors: string[];
+  error: string | null;
+}
+
+/** Meeting-level events from the engine, other than transcript and alerts. */
+export type EngineEvent =
+  | { type: "answer"; answer: Answer }
+  | { type: "summary"; summary: MeetingSummaryEvent }
+  | { type: "meeting_started"; title: string }
+  | { type: "meeting_ended"; reason: string };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
 export interface Renamed {
@@ -146,6 +186,62 @@ export function parseRenamedMessage(raw: unknown): Renamed | null {
   return { from: message.from, to: message.to };
 }
 
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+/** Extracts an answer, summary or meeting change from one raw WebSocket message, or `null`. */
+export function parseEngineEvent(raw: unknown): EngineEvent | null {
+  if (typeof raw !== "string") return null;
+  let message: unknown;
+  try {
+    message = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(message)) return null;
+  if (message.type === "answer" && typeof message.id === "string") {
+    const sources = Array.isArray(message.sources)
+      ? message.sources.flatMap((source): AnswerSource[] =>
+          isRecord(source) &&
+          typeof source.number === "number" &&
+          typeof source.speaker === "string" &&
+          typeof source.text === "string" &&
+          typeof source.spoken_at === "string"
+            ? [{ number: source.number, speaker: source.speaker, text: source.text, spokenAt: new Date(source.spoken_at), disputed: source.disputed === true }]
+            : [],
+        )
+      : [];
+    return {
+      type: "answer",
+      answer: {
+        id: message.id,
+        text: typeof message.text === "string" ? message.text : "",
+        sources,
+        error: typeof message.error === "string" ? message.error : null,
+      },
+    };
+  }
+  if (message.type === "summary") {
+    return {
+      type: "summary",
+      summary: {
+        markdown: typeof message.markdown === "string" ? message.markdown : null,
+        queued: typeof message.queued === "number" ? message.queued : 0,
+        errors: strings(message.errors),
+        error: typeof message.error === "string" ? message.error : null,
+      },
+    };
+  }
+  if (message.type === "meeting_started" && typeof message.title === "string") {
+    return { type: "meeting_started", title: message.title };
+  }
+  if (message.type === "meeting_ended" && typeof message.reason === "string") {
+    return { type: "meeting_ended", reason: message.reason };
+  }
+  return null;
+}
+
 /** Returns `segment` with speaker `from` shown as `to`, in the segment and its words. */
 export function renameInSegment(segment: TranscriptSegment, { from, to }: Renamed): TranscriptSegment {
   const swap = (speaker: string) => (speaker === from ? to : speaker);
@@ -170,6 +266,9 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [segments, setSegments] = useState<readonly TranscriptSegment[]>([]);
   const [alerts, setAlerts] = useState<readonly ShownAlert[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
+  const [meetingTitle, setMeetingTitle] = useState("Meeting");
+  const [answers, setAnswers] = useState<Readonly<Record<string, Answer>>>({});
+  const [lastSummary, setLastSummary] = useState<MeetingSummaryEvent | null>(null);
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
     if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
@@ -205,6 +304,18 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
         const renamed = parseRenamedMessage(event.data);
         if (renamed) {
           setSegments((current) => current.map((segment) => renameInSegment(segment, renamed)));
+          return;
+        }
+        const engineEvent = parseEngineEvent(event.data);
+        if (engineEvent?.type === "answer") {
+          const { answer } = engineEvent;
+          setAnswers((current) => ({ ...current, [answer.id]: answer }));
+        } else if (engineEvent?.type === "summary") {
+          setLastSummary(engineEvent.summary);
+        } else if (engineEvent?.type === "meeting_started") {
+          // A new meeting starts with an empty transcript.
+          setMeetingTitle(engineEvent.title);
+          setSegments([]);
         }
       };
       socket.onclose = () => {
@@ -223,5 +334,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, send };
+  return { status, segments, alerts, dismissAlert, send, meetingTitle, answers, lastSummary };
 }

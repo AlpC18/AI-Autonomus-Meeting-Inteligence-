@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { PendingActions } from "./actions/PendingActions";
-import { SpeakerNamer, TranscriptFeed, useTranscriptStream } from "./hud";
+import { AskPanel, MeetingBar, SpeakerNamer, TranscriptFeed, useTranscriptStream } from "./hud";
 import { MeetingLibrary } from "./library/MeetingLibrary";
 import { Notepad } from "./notes/Notepad";
 import { SettingsPanel } from "./settings/SettingsPanel";
@@ -61,9 +61,11 @@ export default function App() {
       </nav>
       {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
       <div hidden={view !== "live"}>
+        <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} />
         <TranscriptFeed status={stream.status} segments={stream.segments} />
         <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
         <Notepad connected={connected} send={stream.send} />
+        <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
       </div>
       {view === "meetings" && <MeetingLibrary />}
       {view === "settings" && <SettingsPanel />}

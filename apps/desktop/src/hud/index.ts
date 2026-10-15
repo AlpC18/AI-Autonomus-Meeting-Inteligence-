@@ -10,6 +10,8 @@
  * fact-check overlay window.
  */
 export { HudOverlay } from "./HudOverlay";
+export { AskPanel } from "./AskPanel";
+export { MeetingBar } from "./MeetingBar";
 export { SpeakerNamer } from "./SpeakerNamer";
 export { TranscriptFeed } from "./TranscriptFeed";
 export { useTranscriptStream } from "./transcriptStream";

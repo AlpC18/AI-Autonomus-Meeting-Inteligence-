@@ -131,6 +131,27 @@ pub const FIELDS: &[Field] = &[
         "Empty keeps everything.",
     ),
     field(
+        "CONTINUUM_AUTO_START",
+        "Start when a call begins",
+        "Meetings",
+        Kind::Toggle,
+        "Listen only while another app (Zoom, Meet, Teams, ...) uses the microphone.",
+    ),
+    field(
+        "CONTINUUM_IDLE_END_MINUTES",
+        "End a meeting after silence (minutes)",
+        "Meetings",
+        Kind::Number,
+        "The meeting is summarised and a new one starts. Empty never ends it automatically.",
+    ),
+    field(
+        "CONTINUUM_RECORD_AUDIO",
+        "Record meeting audio",
+        "Privacy",
+        Kind::Toggle,
+        "Saves the audio next to the notes for playback. Recordings are not redacted.",
+    ),
+    field(
         "CONTINUUM_LLM_PROVIDER",
         "AI provider",
         "AI",
@@ -168,6 +189,20 @@ pub const FIELDS: &[Field] = &[
         "AI",
         Kind::Secret,
         "Not needed for ollama or lmstudio.",
+    ),
+    field(
+        "CONTINUUM_LLM_FACT_CHECK",
+        "AI fact check",
+        "AI",
+        Kind::Toggle,
+        "Also catch contradictions without numbers. Sends statements to your AI provider.",
+    ),
+    field(
+        "CONTINUUM_AUTO_PROPOSE",
+        "Propose after each meeting",
+        "AI",
+        Kind::Text,
+        "Comma-separated: calendar, slack, jira:PROJECT, github:owner/name. Each still needs your approval.",
     ),
     field(
         "CONTINUUM_GITHUB_REPOS",
