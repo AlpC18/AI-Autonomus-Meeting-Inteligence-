@@ -30,8 +30,8 @@ pub enum Kind {
     Text,
     /// A whole number of at least 1.
     Number,
-    /// "1" or "0".
-    Toggle,
+    /// "1" or "0"; whether it is on when unset.
+    Toggle(bool),
     /// One of the listed values (the first is the default).
     Choice(&'static [&'static str]),
     /// Stored in the credential store; never shown again.
@@ -117,10 +117,17 @@ pub const FIELDS: &[Field] = &[
         "Enables telling speakers apart (pyannote).",
     ),
     field(
+        "CONTINUUM_REMEMBER_VOICES",
+        "Recognise people you named",
+        "Meetings",
+        Kind::Toggle(true),
+        "Keeps the voices of speakers you name (on this computer only), so later meetings show their names.",
+    ),
+    field(
         "CONTINUUM_REDACT",
         "Hide personal data in saved notes",
         "Privacy",
-        Kind::Toggle,
+        Kind::Toggle(true),
         "E-mails, phone and card numbers, IBANs, keys and passwords are replaced before saving.",
     ),
     field(
@@ -134,7 +141,7 @@ pub const FIELDS: &[Field] = &[
         "CONTINUUM_AUTO_START",
         "Start when a call begins",
         "Meetings",
-        Kind::Toggle,
+        Kind::Toggle(false),
         "Listen only while another app (Zoom, Meet, Teams, ...) uses the microphone.",
     ),
     field(
@@ -148,7 +155,7 @@ pub const FIELDS: &[Field] = &[
         "CONTINUUM_RECORD_AUDIO",
         "Record meeting audio",
         "Privacy",
-        Kind::Toggle,
+        Kind::Toggle(false),
         "Saves the audio next to the notes for playback. Recordings are not redacted.",
     ),
     field(
@@ -194,7 +201,7 @@ pub const FIELDS: &[Field] = &[
         "CONTINUUM_LLM_FACT_CHECK",
         "AI fact check",
         "AI",
-        Kind::Toggle,
+        Kind::Toggle(false),
         "Also catch contradictions without numbers. Sends statements to your AI provider.",
     ),
     field(
@@ -310,7 +317,7 @@ pub fn problem(field: &Field, value: &str) -> Option<String> {
                 field.label
             ))
         }
-        Kind::Toggle if value != "1" && value != "0" => {
+        Kind::Toggle(_) if value != "1" && value != "0" => {
             Some(format!("{}: must be on or off.", field.label))
         }
         Kind::Choice(options) if !options.contains(&value) => Some(format!(
@@ -419,7 +426,9 @@ impl Settings {
                 let (kind, options) = match field.kind {
                     Kind::Text => ("text", &[][..]),
                     Kind::Number => ("number", &[][..]),
-                    Kind::Toggle => ("toggle", &[][..]),
+                    // The one option is the value used when the setting is unset.
+                    Kind::Toggle(true) => ("toggle", &["1"][..]),
+                    Kind::Toggle(false) => ("toggle", &["0"][..]),
                     Kind::Choice(options) => ("choice", options),
                     Kind::Secret => ("secret", &[][..]),
                 };
@@ -671,5 +680,27 @@ mod tests {
                 assert!(problem(field, options[0]).is_none(), "{}", field.key);
             }
         }
+    }
+
+    #[test]
+    fn toggles_show_the_engine_default_when_unset() {
+        let settings = Settings::load(
+            std::env::temp_dir().join("continuum-toggle-defaults.json"),
+            Box::new(MemoryStore::default()),
+        );
+        let view = settings.view();
+        let default_of = |key: &str| {
+            view["fields"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|field| field["key"] == key)
+                .map(|field| field["options"][0].clone())
+                .unwrap()
+        };
+        assert_eq!(default_of("CONTINUUM_REDACT"), "1");
+        assert_eq!(default_of("CONTINUUM_REMEMBER_VOICES"), "1");
+        assert_eq!(default_of("CONTINUUM_RECORD_AUDIO"), "0");
+        assert_eq!(default_of("CONTINUUM_LLM_FACT_CHECK"), "0");
     }
 }
