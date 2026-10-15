@@ -24,6 +24,7 @@ Release app: `cd apps/desktop && pnpm bundle` builds `Continuum.app` with the en
 Engine commands (run with `uv run` in `engine/`):
 
 - `continuum-transcribe FILE` / `--watch FOLDER` — transcribe recordings to Markdown, SRT, VTT or text; `--remember` adds them to memory, `--summarize` appends an AI summary.
+- `continuum-import-docs PATH...` — add Markdown, text or PDF documents (or folders) to the project's memory, so fact checks and answers cite them; `--forget` removes them. PDFs need `uv sync --extra documents`.
 - `continuum-summarize NOTES.md` — AI summary, decisions and action items with Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI or Claude; `--propose` queues them for approval.
 - `continuum-library` — past meetings for the desktop viewer.
 - `continuum-ask "question"` — answer from past meetings, with quotes (while the app is closed; in the app use "Ask your meetings").

@@ -35,6 +35,7 @@ continuum-check-config = "continuum.config_check:main"
 continuum-ask = "continuum.ask:main"
 continuum-detect-call = "continuum.audio.call_detect:main"
 continuum-google-login = "continuum.actions.google_login:main"
+continuum-import-docs = "continuum.memory.documents:main"
 
 [project.optional-dependencies]
 diarization = [
@@ -42,6 +43,9 @@ diarization = [
 ]
 claude = [
     "anthropic>=1",
+]
+documents = [
+    "pypdf>=5",
 ]
 apple = [
     "mlx-whisper>=0.4 ; platform_machine == 'arm64' and sys_platform == 'darwin'",
