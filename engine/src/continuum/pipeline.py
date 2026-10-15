@@ -266,7 +266,7 @@ async def run(settings: Settings) -> int:
             propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
             stop=main_task.cancel,
             open_scope=open_scope,
-            watchers=await _watchers(settings, stack),
+            watchers=await _watchers(settings, stack, llm),
         )
         check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
@@ -295,14 +295,15 @@ async def run(settings: Settings) -> int:
     return 0 if any(results) else 1
 
 
-async def _watchers(settings: Settings, stack: contextlib.ExitStack) -> list[Watcher]:
+async def _watchers(settings: Settings, stack: contextlib.ExitStack, llm: Llm | None) -> list[Watcher]:
     """The live hints the settings turn on (an HTTP client, if any, closes with ``stack``)."""
     watchers: list[Watcher] = []
     if settings.code_dirs:
         index = await asyncio.to_thread(CodeIndex.build, settings.code_dirs)
         watchers.append(CodeContext(index))
     if settings.risk_tracking:
-        watchers.append(RiskTracker(date.today, _workload(settings, stack)))
+        hesitation_llm = llm if settings.llm_hesitations else None
+        watchers.append(RiskTracker(date.today, _workload(settings, stack), hesitation_llm))
     return watchers
 
 

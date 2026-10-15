@@ -174,3 +174,38 @@ def test_a_full_sprint_alone_gets_a_hint() -> None:
     )
     (hint,) = tracker.watch(said("I'll have it done by Friday"))
     assert "8 in the current sprint" in hint["body"]
+
+
+class FakeLlm:
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+        self.prompts: list[str] = []
+
+    def complete(self, system: str, user: str) -> str:
+        self.prompts.append(user)
+        return self.reply
+
+
+def test_the_ai_finds_hesitations_the_phrase_list_misses() -> None:
+    llm = FakeLlm('{"hesitations": [{"line": 1, "reason": "agrees only half-heartedly"}, {"line": 9, "reason": "x"}]}')
+    tracker = RiskTracker(lambda: WEDNESDAY, None, llm)
+    tracker.watch(said("Let's go with the new vendor", "Bob", 10.0))
+    tracker.watch(said("Hmm, well, if you all think so", "Ana", 20.0))
+    tracker.watch(said("I'm not sure about the timeline", "Ana", 30.0))
+
+    report = tracker.finish()
+
+    assert "[1] Ana: Hmm, well, if you all think so" in llm.prompts[0]
+    assert report is not None
+    hesitations = report.split("## Hesitations\n\n")[1].splitlines()
+    assert hesitations == [
+        "- `00:00:20` **Ana:** Hmm, well, if you all think so (agrees only half-heartedly)",
+        "- `00:00:30` **Ana:** I'm not sure about the timeline (not sure)",
+    ]
+
+
+def test_a_failed_ai_pass_keeps_the_phrase_list_report() -> None:
+    tracker = RiskTracker(lambda: WEDNESDAY, None, FakeLlm("no json"))
+    tracker.watch(said("maybe we can do it"))
+    report = tracker.finish()
+    assert report is not None and "(maybe)" in report

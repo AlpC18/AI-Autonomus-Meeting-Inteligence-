@@ -394,7 +394,8 @@ class MeetingSession:
         async with self._watching:
             for watcher in self._watchers:
                 try:
-                    report = watcher.finish()
+                    # A report may ask the AI model, so it runs off the event loop.
+                    report = await asyncio.to_thread(watcher.finish)
                 except Exception:
                     logger.exception("A live hint could not report")
                     continue

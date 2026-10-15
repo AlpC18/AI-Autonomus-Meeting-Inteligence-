@@ -51,7 +51,8 @@ class Settings:
     ``jira:KEY``, ``github:owner/name``). ``idle_end_minutes`` ends a meeting
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
-    audio next to its notes. ``llm_fact_check`` also asks the AI model about
+    audio next to its notes. ``llm_hesitations`` has the AI model read the transcript at
+    the end for doubts the phrase list missed. ``llm_fact_check`` also asks the AI model about
     contradictions that involve no numbers. ``live_action_items`` shows the
     action items said so far during the meeting (an AI call at most every
     three minutes). ``require_disk_encryption`` stores nothing unless
@@ -81,6 +82,7 @@ class Settings:
     exit_when_idle: bool = False
     record_audio: bool = False
     llm_fact_check: bool = False
+    llm_hesitations: bool = False
     live_action_items: bool = False
     require_disk_encryption: bool = False
     remember_voices: bool = True
@@ -107,7 +109,7 @@ class Settings:
         ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``,
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
-        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
+        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LLM_HESITATIONS``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
         it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
         ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
         ``CONTINUUM_MEETING_APPS_ONLY``. Unset variables
@@ -201,6 +203,7 @@ class Settings:
             exit_when_idle=_flag(env, "CONTINUUM_EXIT_WHEN_IDLE"),
             record_audio=_flag(env, "CONTINUUM_RECORD_AUDIO"),
             llm_fact_check=_flag(env, "CONTINUUM_LLM_FACT_CHECK"),
+            llm_hesitations=_flag(env, "CONTINUUM_LLM_HESITATIONS"),
             live_action_items=_flag(env, "CONTINUUM_LIVE_ACTION_ITEMS"),
             require_disk_encryption=_flag(env, "CONTINUUM_REQUIRE_DISK_ENCRYPTION"),
             remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),

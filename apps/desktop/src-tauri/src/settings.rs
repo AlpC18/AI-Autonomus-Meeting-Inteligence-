@@ -219,6 +219,13 @@ pub const FIELDS: &[Field] = &[
         "Not needed for ollama or lmstudio.",
     ),
     field(
+        "CONTINUUM_LLM_HESITATIONS",
+        "AI hesitation finder",
+        "AI",
+        Kind::Toggle(false),
+        "When a meeting ends, also list doubts the phrase list missed. Sends the transcript to your AI provider.",
+    ),
+    field(
         "CONTINUUM_LLM_FACT_CHECK",
         "AI fact check",
         "AI",
@@ -798,5 +805,6 @@ mod tests {
         assert_eq!(default_of("CONTINUUM_REMEMBER_VOICES"), "1");
         assert_eq!(default_of("CONTINUUM_RECORD_AUDIO"), "0");
         assert_eq!(default_of("CONTINUUM_LLM_FACT_CHECK"), "0");
+        assert_eq!(default_of("CONTINUUM_LLM_HESITATIONS"), "0");
     }
 }
