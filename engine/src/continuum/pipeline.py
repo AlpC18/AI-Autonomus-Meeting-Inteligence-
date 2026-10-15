@@ -28,8 +28,8 @@ from continuum.audio.chunker import Utterance, UtteranceChunker
 from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.context.code import CodeContext, CodeIndex
-from continuum.context.risk import RiskTracker
-from continuum.context.workload import JiraWorkload
+from continuum.context.risk import RiskTracker, WorkloadLookup
+from continuum.context.workload import GitHubWorkload, JiraWorkload, combined
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -306,19 +306,28 @@ async def _watchers(settings: Settings, stack: contextlib.ExitStack) -> list[Wat
     return watchers
 
 
-def _workload(settings: Settings, stack: contextlib.ExitStack) -> JiraWorkload | None:
-    """The Jira workload lookup, when turned on and Jira is configured."""
+def _workload(settings: Settings, stack: contextlib.ExitStack) -> WorkloadLookup | None:
+    """Jira and GitHub workload lookups, when turned on and those trackers are configured."""
     if not settings.workload_check:
         return None
     try:
-        access = ActionSettings.from_env(os.environ).jira
+        actions = ActionSettings.from_env(os.environ)
     except ValueError as error:
         logger.error("Workload check is off: %s", error)
         return None
-    if access is None:
-        logger.warning("Workload check needs Jira: set CONTINUUM_JIRA_SITE, JIRA_EMAIL and JIRA_API_TOKEN")
+    lookups: list[WorkloadLookup] = []
+    client = stack.enter_context(httpx.Client(timeout=10))
+    if actions.jira is not None:
+        lookups.append(JiraWorkload(actions.jira, client))
+    if actions.github_token and actions.github_repos:
+        lookups.append(GitHubWorkload(actions.github_token, sorted(actions.github_repos), client))
+    if not lookups:
+        logger.warning(
+            "Workload check needs Jira (CONTINUUM_JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN) "
+            "or GitHub (GITHUB_TOKEN and CONTINUUM_GITHUB_REPOS)"
+        )
         return None
-    return JiraWorkload(access, stack.enter_context(httpx.Client(timeout=10)))
+    return lookups[0] if len(lookups) == 1 else combined(lookups)
 
 
 def _scope_opener(store: MemoryStore, retention_days: int | None) -> Callable[[TenantScope], ScopedMemory]:

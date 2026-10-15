@@ -28,6 +28,9 @@ WARN_DUE = 3
 WARN_OPEN = 10
 """Open issues in total that make any dated promise risky."""
 
+WARN_SPRINT = 8
+"""Unfinished issues in the person's current sprint that make a promise risky."""
+
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 _PROMISE = re.compile(
     r"\b(?:i'?ll|i will|we'?ll|we will|i can|we can|i'?m going to|we'?re going to|gonna|"
@@ -46,11 +49,13 @@ _ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 
 @dataclass(frozen=True, slots=True)
 class Workload:
-    """A person's open issues, and how many of them are due by a given date."""
+    """A person's open issues, how many are due by a given date, and how many
+    are in their current sprint (``0`` where the tracker has no sprints)."""
 
     open: int
     due_by: int
     source: str
+    sprint: int = 0
 
 
 WorkloadLookup = Callable[[str, date], Workload | None]
@@ -117,15 +122,16 @@ class RiskTracker:
             return []
         self._commitments.append(_Mark(segment.start, speaker, text, f"due {due.isoformat()}"))
         load = self._workload(speaker, due) if self._workload is not None else None
-        if load is None or (load.due_by < WARN_DUE and load.open < WARN_OPEN):
+        if load is None or (load.due_by < WARN_DUE and load.open < WARN_OPEN and load.sprint < WARN_SPRINT):
             return []
+        sprint = f", {load.sprint} in the current sprint" if load.sprint else ""
         return [
             {
                 "kind": "commitment",
                 "title": f"{speaker} promised a date: {due:%a %d %b}",
                 "body": (
                     f"{speaker} has {load.open} open {load.source} issues, "
-                    f"{load.due_by} due by then."
+                    f"{load.due_by} due by then{sprint}."
                 ),
                 "details": [" ".join(text.split())],
             }

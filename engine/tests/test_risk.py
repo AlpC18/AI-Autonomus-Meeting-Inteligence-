@@ -10,7 +10,7 @@ import pytest
 
 from continuum.actions.jira import JiraAccess
 from continuum.context.risk import RiskTracker, Workload, due_date
-from continuum.context.workload import JiraWorkload
+from continuum.context.workload import GitHubWorkload, JiraWorkload, combined
 from continuum.transcript import Segment
 
 WEDNESDAY = date(2026, 10, 14)
@@ -82,12 +82,12 @@ def test_jira_workload_counts_open_and_due_issues_of_the_named_person() -> None:
         if request.url.path == "/rest/api/3/user/search":
             return httpx.Response(200, json=[{"accountId": "abc123", "active": True, "displayName": "Ana"}])
         jql = request.read().decode()
-        return httpx.Response(200, json={"count": 4 if "duedate" in jql else 12})
+        return httpx.Response(200, json={"count": 4 if "duedate" in jql else 5 if "openSprints" in jql else 12})
 
     access = JiraAccess("https://acme.atlassian.net", "me@acme.io", "token")
     workload = JiraWorkload(access, httpx.Client(transport=httpx.MockTransport(handler)))
 
-    assert workload("Ana", date(2026, 10, 16)) == Workload(open=12, due_by=4, source="Jira")
+    assert workload("Ana", date(2026, 10, 16)) == Workload(open=12, due_by=4, source="Jira", sprint=5)
     assert 'assignee = \\"abc123\\"' in seen[1].read().decode()
     assert workload("me", date(2026, 10, 16)) is not None
     assert "currentUser()" in seen[-1].read().decode()
@@ -104,3 +104,73 @@ def test_jira_workload_gives_up_quietly_on_unknown_people_and_errors() -> None:
     workload = JiraWorkload(access, httpx.Client(transport=httpx.MockTransport(handler)))
     assert workload("Nobody", date(2026, 10, 16)) is None
     assert workload("me", date(2026, 10, 16)) is None
+
+
+def test_a_jira_site_without_sprints_still_counts_issues() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        jql = request.read().decode()
+        return httpx.Response(400) if "openSprints" in jql else httpx.Response(200, json={"count": 3})
+
+    access = JiraAccess("https://acme.atlassian.net", "me@acme.io", "token")
+    workload = JiraWorkload(access, httpx.Client(transport=httpx.MockTransport(handler)))
+
+    assert workload("me", date(2026, 10, 16)) == Workload(open=3, due_by=3, source="Jira", sprint=0)
+
+
+def _github(request: httpx.Request) -> httpx.Response:
+    path = request.url.path
+    if path == "/user":
+        return httpx.Response(200, json={"login": "me-login"})
+    if path == "/repos/acme/web/assignees":
+        return httpx.Response(200, json=[{"login": "bob"}, {"login": "ana-s"}])
+    if path.startswith("/users/"):
+        names = {"bob": "Bob Stone", "ana-s": "Ana Silva"}
+        return httpx.Response(200, json={"name": names[path.rsplit("/", 1)[1]]})
+    if path == "/repos/acme/web/issues":
+        assert request.url.params["state"] == "open"
+        assert request.url.params["assignee"] in {"me-login", "ana-s"}
+        return httpx.Response(
+            200,
+            json=[
+                {"number": 1, "milestone": {"due_on": "2026-10-15T07:00:00Z"}},
+                {"number": 2, "milestone": {"due_on": "2026-11-30T07:00:00Z"}},
+                {"number": 3, "milestone": None},
+                {"number": 4, "pull_request": {}, "milestone": None},
+            ],
+        )
+    return httpx.Response(404)
+
+
+def test_github_workload_counts_open_issues_and_milestones_due() -> None:
+    workload = GitHubWorkload("token", ("acme/web",), httpx.Client(transport=httpx.MockTransport(_github)))
+
+    expected = Workload(open=3, due_by=1, source="GitHub")
+    assert workload("me", date(2026, 10, 16)) == expected
+    assert workload("Ana Silva", date(2026, 10, 16)) == expected
+    assert workload("Nobody", date(2026, 10, 16)) is None
+    assert workload("Speaker 3", date(2026, 10, 16)) is None
+
+
+def test_github_errors_give_no_workload() -> None:
+    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(500)))
+    assert GitHubWorkload("token", ("acme/web",), client)("me", date(2026, 10, 16)) is None
+
+
+def test_workloads_from_several_trackers_are_added_up() -> None:
+    lookup = combined(
+        [
+            lambda speaker, due: Workload(open=4, due_by=1, source="Jira", sprint=3),
+            lambda speaker, due: None,
+            lambda speaker, due: Workload(open=7, due_by=2, source="GitHub"),
+        ]
+    )
+    assert lookup("Ana", WEDNESDAY) == Workload(open=11, due_by=3, source="Jira and GitHub", sprint=3)
+    assert combined([lambda speaker, due: None])("Ana", WEDNESDAY) is None
+
+
+def test_a_full_sprint_alone_gets_a_hint() -> None:
+    tracker = RiskTracker(
+        lambda: WEDNESDAY, lambda speaker, due: Workload(open=8, due_by=0, source="Jira", sprint=8)
+    )
+    (hint,) = tracker.watch(said("I'll have it done by Friday"))
+    assert "8 in the current sprint" in hint["body"]

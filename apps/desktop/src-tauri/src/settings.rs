@@ -241,10 +241,10 @@ pub const FIELDS: &[Field] = &[
     ),
     field(
         "CONTINUUM_WORKLOAD_CHECK",
-        "Check promised dates against Jira",
+        "Check promised dates against Jira and GitHub",
         "AI",
         Kind::Toggle(false),
-        "Warns when someone promises a date while holding many open Jira issues. Sends their name to your Jira site.",
+        "Warns when someone promises a date while holding many open Jira or GitHub issues, or a full sprint. Sends their name to Jira and GitHub.",
     ),
     field(
         "CONTINUUM_AUTO_PROPOSE",

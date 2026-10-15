@@ -1,21 +1,22 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-"""A speaker's open Jira issues, for checking the dates they promise.
+"""A speaker's open Jira and GitHub issues, for checking the dates they promise.
 
 Read-only: it counts issues and never changes anything. The local user
-("me") is Jira's current user; another speaker is looked up by the name the
-user gave them, and only an unambiguous, active match is used.
+("me") is the tracker's current user; another speaker is looked up by the
+name the user gave them, and only an unambiguous match is used.
 """
 
 import json
 import logging
-from datetime import date
+from collections.abc import Sequence
+from datetime import date, datetime
 
 import httpx
 
 from continuum.actions.jira import JiraAccess
-from continuum.context.risk import Workload
+from continuum.context.risk import Workload, WorkloadLookup
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class JiraWorkload:
                 open=self._count(open_jql),
                 due_by=self._count(f'{open_jql} AND duedate <= "{due.isoformat()}"'),
                 source="Jira",
+                sprint=self._sprint(open_jql),
             )
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
             logger.warning("Could not read the Jira workload (%s)", type(error).__name__)
@@ -50,7 +52,7 @@ class JiraWorkload:
         """A JQL assignee for ``speaker``; ``None`` for unnamed speakers or no single match."""
         if speaker == ME:
             return "currentUser()"
-        if speaker.startswith("Speaker ") or speaker == "others":
+        if _unnamed(speaker):
             return None
         if speaker not in self._accounts:
             response = self._client.get(
@@ -66,6 +68,13 @@ class JiraWorkload:
         # json.dumps quotes the id, so it cannot break out of the JQL string.
         return json.dumps(account) if account else None
 
+    def _sprint(self, open_jql: str) -> int:
+        """Open issues in an active sprint; 0 on sites without Jira Software sprints."""
+        try:
+            return self._count(f"{open_jql} AND sprint in openSprints()")
+        except httpx.HTTPStatusError:
+            return 0
+
     def _count(self, jql: str) -> int:
         response = self._client.post(
             f"{self._access.site}/rest/api/3/search/approximate-count",
@@ -75,3 +84,92 @@ class JiraWorkload:
         )
         response.raise_for_status()
         return int(response.json()["count"])
+
+
+def _unnamed(speaker: str) -> bool:
+    return speaker.startswith("Speaker ") or speaker == "others"
+
+
+class GitHubWorkload:
+    """``(speaker, due) -> Workload`` from open GitHub issues in ``repos``. Blocks; errors give ``None``.
+
+    GitHub issues have no due date, so an issue counts as due by the promised
+    date when its milestone is. Another speaker is matched, by login or
+    profile name, only among the people who can be assigned in ``repos``.
+    """
+
+    # ponytail: first 100 assignees and 100 open issues per repo; page through
+    # them if a team or backlog is larger.
+    def __init__(self, token: str, repos: Sequence[str], client: httpx.Client) -> None:
+        self._repos = tuple(sorted(repos))
+        self._client = client
+        self._headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        self._logins: dict[str, str | None] = {}
+        self._names: dict[str, str] = {}
+
+    def __call__(self, speaker: str, due: date) -> Workload | None:
+        try:
+            login = self._login(speaker)
+            if login is None:
+                return None
+            issues = [
+                issue
+                for repo in self._repos
+                for issue in self._get(f"/repos/{repo}/issues", assignee=login, state="open", per_page=100)
+                if "pull_request" not in issue
+            ]
+            due_by = sum(
+                1
+                for issue in issues
+                if (issue.get("milestone") or {}).get("due_on")
+                and datetime.fromisoformat(issue["milestone"]["due_on"]).date() <= due
+            )
+            return Workload(open=len(issues), due_by=due_by, source="GitHub")
+        except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
+            logger.warning("Could not read the GitHub workload (%s)", type(error).__name__)
+            return None
+
+    def _get(self, path: str, **params: object) -> list | dict:
+        response = self._client.get(f"https://api.github.com{path}", params=params, headers=self._headers)
+        response.raise_for_status()
+        return response.json()
+
+    def _login(self, speaker: str) -> str | None:
+        if _unnamed(speaker):
+            return None
+        if speaker not in self._logins:
+            self._logins[speaker] = self._find_login(speaker)
+        return self._logins[speaker]
+
+    def _find_login(self, speaker: str) -> str | None:
+        if speaker == ME:
+            return str(self._get("/user")["login"])
+        wanted = speaker.casefold()
+        logins = {user["login"] for repo in self._repos for user in self._get(f"/repos/{repo}/assignees", per_page=100)}
+        matches = [login for login in sorted(logins) if login.casefold() == wanted]
+        if not matches:
+            matches = [login for login in sorted(logins) if self._name(login).casefold() == wanted]
+        return matches[0] if len(matches) == 1 else None
+
+
+    def _name(self, login: str) -> str:
+        if login not in self._names:
+            self._names[login] = str(self._get(f"/users/{login}").get("name") or "")
+        return self._names[login]
+
+
+def combined(lookups: Sequence[WorkloadLookup]) -> WorkloadLookup:
+    """One lookup adding up the workloads of several trackers; ``None`` if none knows the speaker."""
+
+    def lookup(speaker: str, due: date) -> Workload | None:
+        found = [load for each in lookups if (load := each(speaker, due)) is not None]
+        if not found:
+            return None
+        return Workload(
+            open=sum(load.open for load in found),
+            due_by=sum(load.due_by for load in found),
+            source=" and ".join(load.source for load in found),
+            sprint=sum(load.sprint for load in found),
+        )
+
+    return lookup

@@ -59,7 +59,7 @@ class Settings:
     voices of speakers the user named, so later meetings show their names.
     ``code_dirs`` are local checkouts indexed for code context hints.
     ``risk_tracking`` lists dated promises and moments of doubt in the notes;
-    ``workload_check`` also counts the speaker's open Jira issues and warns
+    ``workload_check`` also counts the speaker's open Jira and GitHub issues and warns
     when a promised date looks unrealistic. ``meeting_apps_only`` captures
     system audio only from meeting apps and browsers (macOS).
     """
