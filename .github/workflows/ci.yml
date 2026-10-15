@@ -30,7 +30,7 @@ jobs:
       - name: Lint
         run: uvx ruff@0.17.0 check .
       - name: Install (lock file must be up to date)
-        run: uv sync --locked
+        run: uv sync --locked --extra claude
       - name: Test
         # Tests that need macOS `say` or Apple Silicon skip themselves here.
         run: uv run pytest -q

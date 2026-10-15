@@ -191,21 +191,26 @@ class Claude:
             RuntimeError: if the ``anthropic`` package is not installed.
         """
         self._settings = settings
-        if client is None:
-            try:
-                import anthropic
-            except ImportError:
+        try:
+            import anthropic
+        except ImportError:
+            if client is None:
                 raise RuntimeError(
                     "Claude needs the Anthropic SDK: run `uv sync --extra claude`"
                 ) from None
-            # Without an explicit key the SDK uses ANTHROPIC_API_KEY or an `ant auth login` profile.
-            client = anthropic.Anthropic(api_key=settings.api_key, timeout=_TIMEOUT_S)
+            # An injected client without the SDK installed: no SDK errors to translate.
+            self._unreachable: tuple[type[Exception], ...] = ()
+            self._refused: tuple[type[Exception], ...] = ()
+        else:
+            self._unreachable = (anthropic.APIConnectionError,)
+            self._refused = (anthropic.APIStatusError,)
+            if client is None:
+                # Without an explicit key the SDK uses ANTHROPIC_API_KEY or an `ant auth login` profile.
+                client = anthropic.Anthropic(api_key=settings.api_key, timeout=_TIMEOUT_S)
         self._client = client
 
     def complete(self, system: str, user: str) -> str:
         """Return Claude's text reply. See :meth:`Llm.complete`."""
-        import anthropic
-
         model = self._settings.model
         extra: dict[str, Any] = {}
         if model in _CLAUDE_FALLBACK_MODELS:
@@ -224,11 +229,12 @@ class Claude:
                 messages=[{"role": "user", "content": user}],
                 **extra,
             )
-        except anthropic.APIConnectionError:
+        except self._unreachable:
             raise RuntimeError("Claude could not be reached") from None
-        except anthropic.APIStatusError as error:
+        except self._refused as error:
+            status = getattr(error, "status_code", "?")
             raise RuntimeError(
-                f"Claude refused the request (HTTP {error.status_code}): {error.message}"
+                f"Claude refused the request (HTTP {status}): {getattr(error, 'message', error)}"
             ) from None
         if response.stop_reason == "refusal":
             raise RuntimeError("Claude declined to answer this request")
