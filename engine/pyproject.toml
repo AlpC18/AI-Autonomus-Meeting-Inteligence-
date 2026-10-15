@@ -34,6 +34,7 @@ continuum-library = "continuum.library:main"
 continuum-check-config = "continuum.config_check:main"
 continuum-ask = "continuum.ask:main"
 continuum-detect-call = "continuum.audio.call_detect:main"
+continuum-google-login = "continuum.actions.google_login:main"
 
 [project.optional-dependencies]
 diarization = [

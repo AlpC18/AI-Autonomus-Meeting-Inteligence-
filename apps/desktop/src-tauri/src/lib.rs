@@ -56,6 +56,7 @@ pub fn run() {
             commands::app_info,
             commands::get_settings,
             commands::save_settings,
+            commands::google_connect,
             actions::pending_actions,
             actions::decide_action,
             library::library_list,

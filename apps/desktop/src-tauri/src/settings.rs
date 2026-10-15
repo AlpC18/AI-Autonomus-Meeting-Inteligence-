@@ -314,7 +314,7 @@ pub const FIELDS: &[Field] = &[
         "Google client ID",
         "Actions",
         Kind::Text,
-        "For calendar deadlines and meeting titles.",
+        "For calendar, meeting titles and recap e-mails: an OAuth client of type 'Desktop app' in Google Cloud.",
     ),
     field(
         "GOOGLE_CLIENT_SECRET",
@@ -328,7 +328,7 @@ pub const FIELDS: &[Field] = &[
         "Google refresh token",
         "Actions",
         Kind::Secret,
-        "Needs the calendar.events scope.",
+        "Save the client ID and secret, then use Connect Google to fill this in.",
     ),
     field(
         "CONTINUUM_GOOGLE_CALENDAR_ID",
@@ -544,6 +544,20 @@ impl Settings {
     }
 }
 
+impl Settings {
+    /// Sets one secret and keeps every other setting as it is.
+    ///
+    /// # Errors
+    /// Returns the problems [`Settings::update`] finds.
+    pub fn set_secret(&mut self, key: &str, value: &str) -> Result<(), Vec<String>> {
+        let values = self.values.clone();
+        self.update(
+            &values,
+            &BTreeMap::from([(key.to_owned(), value.to_owned())]),
+        )
+    }
+}
+
 /// Writes `bytes` to `path` so that only the current user can read it.
 fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     if let Some(parent) = path.parent() {
@@ -658,6 +672,32 @@ mod tests {
                 .mode();
             assert_eq!(mode & 0o077, 0, "settings file must be private");
         }
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn setting_one_secret_keeps_the_other_settings() {
+        let dir =
+            std::env::temp_dir().join(format!("continuum-settings-one-{}", std::process::id()));
+        let store = MemoryStore::default();
+        let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
+        settings
+            .update(&map(&[("GOOGLE_CLIENT_ID", "id")]), &BTreeMap::new())
+            .unwrap();
+        settings
+            .set_secret("GOOGLE_REFRESH_TOKEN", "1//token")
+            .unwrap();
+
+        assert_eq!(
+            store.get("GOOGLE_REFRESH_TOKEN").as_deref(),
+            Some("1//token")
+        );
+        assert!(
+            settings
+                .env()
+                .contains(&("GOOGLE_CLIENT_ID".into(), "id".into()))
+        );
+        assert!(settings.set_secret("PATH", "/evil").is_err());
         let _ = fs::remove_dir_all(dir);
     }
 
