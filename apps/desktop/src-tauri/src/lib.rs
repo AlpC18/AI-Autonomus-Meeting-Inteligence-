@@ -59,6 +59,13 @@ pub fn run() {
             if let Ok(dir) = app.path().app_config_dir() {
                 settings::init(&dir);
             }
+            if let (Ok(resources), Ok(data), Ok(cache)) = (
+                app.path().resource_dir(),
+                app.path().app_data_dir(),
+                app.path().app_cache_dir(),
+            ) {
+                engine::use_bundle(&resources, &data, &cache);
+            }
             start_engine(app);
             Ok(())
         })

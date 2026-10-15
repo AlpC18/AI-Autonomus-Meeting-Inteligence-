@@ -11,7 +11,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -99,9 +99,15 @@ impl Drop for EngineProcess {
 /// settings take precedence over it. The caller adds arguments and decides
 /// how to run it.
 pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
-    let mut command = Command::new("uv");
+    let bundle = BUNDLE
+        .get()
+        .filter(|bundle| bundle.engine_dir == engine_dir);
+    let mut command =
+        Command::new(bundle.map_or_else(|| PathBuf::from("uv"), |bundle| bundle.uv.clone()));
     command.arg("run");
-    if engine_dir.join(".env").is_file() {
+    if let Some(bundle) = bundle {
+        command.args(bundle.run_args()).envs(bundle.env());
+    } else if engine_dir.join(".env").is_file() {
         command.args(["--env-file", ".env"]);
     }
     command
@@ -109,6 +115,83 @@ pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
         .current_dir(engine_dir)
         .envs(crate::settings::engine_env());
     command
+}
+
+/// The engine shipped inside a release build, with the `uv` that runs it.
+///
+/// On first use `uv` installs the locked Python environment into the app's
+/// data folder (this needs an internet connection once); later starts reuse it.
+#[derive(Debug)]
+pub struct Bundle {
+    /// The engine sources inside the app's resources (read-only).
+    pub engine_dir: PathBuf,
+    /// The bundled `uv` binary, next to the app's executable.
+    pub uv: PathBuf,
+    /// Writable folder for the Python environment.
+    pub data_dir: PathBuf,
+    /// Writable folder for downloads and caches.
+    pub cache_dir: PathBuf,
+}
+
+impl Bundle {
+    /// Optional engine features installed with the app on this platform.
+    pub fn extras() -> &'static [&'static str] {
+        if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+            &["claude", "apple"]
+        } else {
+            &["claude"]
+        }
+    }
+
+    /// Arguments after `uv run`: never touch the lock file, no dev tools.
+    pub fn run_args(&self) -> Vec<String> {
+        let mut args = vec![String::from("--frozen"), String::from("--no-dev")];
+        for extra in Self::extras() {
+            args.extend([String::from("--extra"), (*extra).to_owned()]);
+        }
+        args
+    }
+
+    /// Where uv and Python keep their files, all outside the read-only bundle.
+    ///
+    /// Python itself is a uv-managed 3.12 (what the lock file was made with),
+    /// never whatever happens to be installed on the machine.
+    pub fn env(&self) -> Vec<(&'static str, PathBuf)> {
+        vec![
+            ("UV_PYTHON", PathBuf::from("3.12")),
+            ("UV_PYTHON_PREFERENCE", PathBuf::from("only-managed")),
+            ("UV_PROJECT_ENVIRONMENT", self.data_dir.join("venv")),
+            ("UV_PYTHON_INSTALL_DIR", self.data_dir.join("python")),
+            ("UV_CACHE_DIR", self.cache_dir.join("uv")),
+            ("PYTHONPYCACHEPREFIX", self.cache_dir.join("pycache")),
+            ("HF_HOME", self.data_dir.join("models")),
+        ]
+    }
+}
+
+static BUNDLE: OnceLock<Bundle> = OnceLock::new();
+
+/// Uses the engine bundled in `resource_dir`, if the app has one.
+///
+/// Returns whether a bundled engine was found. `CONTINUUM_ENGINE_DIR` still
+/// takes precedence (see [`engine_dir`]).
+pub fn use_bundle(resource_dir: &Path, data_dir: &Path, cache_dir: &Path) -> bool {
+    let engine_dir = resource_dir.join("engine");
+    let uv = std::env::current_exe().ok().and_then(|exe| {
+        exe.parent()
+            .map(|dir| dir.join(if cfg!(windows) { "uv.exe" } else { "uv" }))
+    });
+    let (Some(uv), true) = (uv, engine_dir.join("pyproject.toml").is_file()) else {
+        return false;
+    };
+    BUNDLE
+        .set(Bundle {
+            engine_dir,
+            uv,
+            data_dir: data_dir.to_path_buf(),
+            cache_dir: cache_dir.to_path_buf(),
+        })
+        .is_ok()
 }
 
 /// The running engine, if any; replaced when the settings change.
@@ -139,13 +222,15 @@ impl EngineSlot {
 
 /// Finds the engine directory to run, if any.
 ///
-/// `CONTINUUM_ENGINE_DIR` wins when set. Otherwise development builds use the
-/// `engine/` folder of the repository they were compiled from. Release builds
-/// return `None` unless the variable is set, because the engine is not yet
-/// bundled with the app.
+/// `CONTINUUM_ENGINE_DIR` wins when set. Otherwise the engine bundled with a
+/// release build is used, and development builds use the `engine/` folder of
+/// the repository they were compiled from.
 pub fn engine_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("CONTINUUM_ENGINE_DIR") {
         return Some(PathBuf::from(dir));
+    }
+    if let Some(bundle) = BUNDLE.get() {
+        return Some(bundle.engine_dir.clone());
     }
     if cfg!(debug_assertions) {
         return Some(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../engine"));
@@ -181,6 +266,30 @@ mod tests {
         engine.shutdown(Duration::from_secs(5));
 
         assert!(!engine.shutdown(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn bundled_engine_never_writes_inside_the_app() {
+        let bundle = Bundle {
+            engine_dir: PathBuf::from("/App.app/Contents/Resources/engine"),
+            uv: PathBuf::from("/App.app/Contents/MacOS/uv"),
+            data_dir: PathBuf::from("/data"),
+            cache_dir: PathBuf::from("/cache"),
+        };
+        let args = bundle.run_args();
+        assert!(args.starts_with(&[String::from("--frozen"), String::from("--no-dev")]));
+        assert!(args.contains(&String::from("claude")));
+        for (_, path) in bundle.env() {
+            assert!(
+                !path.starts_with("/App.app"),
+                "{path:?} is inside the bundle"
+            );
+        }
+        assert!(
+            bundle
+                .env()
+                .contains(&("UV_PYTHON_PREFERENCE", PathBuf::from("only-managed")))
+        );
     }
 
     #[test]

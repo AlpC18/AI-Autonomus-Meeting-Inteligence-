@@ -150,9 +150,16 @@ async def run(settings: Settings) -> int:
     Returns a process exit code: 1 when all sources failed, otherwise 0.
     """
     logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
-    transcriber = await asyncio.to_thread(
-        load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
-    )
+    try:
+        transcriber = await asyncio.to_thread(
+            load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
+        )
+    except OSError as error:
+        # Model downloads fail as OSError subclasses (no connection, TLS errors).
+        raise RuntimeError(
+            f"Could not load the speech model {settings.whisper_model!r}. The first start "
+            f"downloads it, which needs an internet connection. ({type(error).__name__})"
+        ) from error
     diarizer = None
     if settings.hf_token:
         try:
