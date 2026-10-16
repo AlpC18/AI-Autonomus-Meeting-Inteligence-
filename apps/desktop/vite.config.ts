@@ -12,6 +12,11 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
 
+  // Coverage counts every source file, not only the ones a test happens to import.
+  test: {
+    coverage: { include: ["src/**/*.{ts,tsx}"], exclude: ["src/**/*.test.*", "src/main.tsx", "src/**/*.d.ts"] },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

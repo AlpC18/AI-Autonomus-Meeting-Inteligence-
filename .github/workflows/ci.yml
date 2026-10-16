@@ -46,11 +46,19 @@ jobs:
       - name: Test
         if: matrix.os != 'ubuntu-latest'
         timeout-minutes: 15
-        # Unbuffered so a hang can't swallow the failure report; a test stuck for
-        # two minutes dumps every thread's stack.
+        # Unbuffered and UTF-8 so the failure report reaches the log (the Windows
+        # console is cp1252); a test stuck for two minutes dumps every thread's stack.
         env:
           PYTHONUNBUFFERED: "1"
-        run: uv run pytest -q -rfE --tb=short -o faulthandler_timeout=120
+          PYTHONIOENCODING: utf-8
+        run: uv run pytest -q -rfE --tb=short -o faulthandler_timeout=120 --junitxml=pytest-report.xml
+      - name: Keep the test report
+        if: always() && matrix.os != 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-${{ matrix.os }}
+          path: engine/pytest-report.xml
+          if-no-files-found: ignore
 
   desktop:
     name: Desktop (TypeScript)
@@ -70,8 +78,8 @@ jobs:
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - name: Test with coverage (floor 50% of lines; raise, never lower)
-        run: pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.thresholds.lines=50
+      - name: Test with coverage (floor 90% of lines; raise, never lower)
+        run: pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.thresholds.lines=90
       - run: pnpm exec vite build
       - name: Browser extension
         working-directory: apps/browser-extension
