@@ -21,12 +21,21 @@
 - Verified: `uv run pytest` 21 passed (includes a real Whisper transcription of synthesised speech), `pnpm typecheck` clean, `cargo clippy -- -D warnings` clean, live run on macOS showed a spoken sentence in the app window.
 - Not verified: pyannote against the real model (no token yet); a real multi-person meeting; long-running sessions.
 
+### Phase 3 — Memory and engine lifecycle (2026-10-11, branch `feat/phase-3-memory-sidecar`)
+
+- Phases 1 and 2 committed and pushed to `origin/main` (private GitHub repo).
+- `memory`: tenant/project-scoped vector store on embedded Qdrant, local multilingual embeddings, search CLI.
+- `pipeline`: stores every published segment when a scope is configured; clean stop on SIGTERM or closed stdin.
+- `desktop`: Rust `engine.rs` starts the engine with the app and stops it with the app.
+- Verified: `uv run pytest` 40 passed; `cargo test` 4 passed; clippy and typecheck clean; live run stored a spoken sentence and found it only under its own tenant and project; the app launched the engine by itself and the engine exited after the app was force-killed.
+- **Not done: real pyannote check.** `engine/.env` with `HF_TOKEN` did not exist on this machine, so the model has still never been run.
+
 ## Pending
 
-- **Memory phase:** local Qdrant/SQLite memory with tenant scoping; persist transcript segments.
+- **Real pyannote run** once `HF_TOKEN` is in `engine/.env`; then stable speaker identity across utterances.
 - **HUD phase:** fact-checking overlay and notepad UI.
 - **Actions phase:** Jira/GitHub/Slack/Calendar MCP tools with approval gate; security review.
-- Cross-utterance speaker identity; engine as a Tauri sidecar; non-macOS system audio.
+- Bundling the engine into release builds; choosing tenant/project from the UI; non-macOS system audio.
 - CI workflow and pre-commit checks (add when there is logic to guard).
 
 ## Known issues

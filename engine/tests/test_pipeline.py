@@ -43,7 +43,12 @@ async def test_spoken_audio_is_published_as_timed_words(tmp_path: Path) -> None:
     samples = synthesise("The budget was revised to thirty five thousand.", tmp_path / "s.wav")
     model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
     published: list[Segment] = []
-    engine = Engine(Transcriber("tiny", Path(model_dir) if model_dir else None), published.append)
+    remembered: list[Segment] = []
+    engine = Engine(
+        Transcriber("tiny", Path(model_dir) if model_dir else None),
+        published.append,
+        remember=remembered.append,
+    )
 
     await engine.run_source("system", as_blocks(samples))
 
@@ -52,3 +57,23 @@ async def test_spoken_audio_is_published_as_timed_words(tmp_path: Path) -> None:
     words = [word for segment in published for word in segment.words]
     assert words and all(0.0 <= word.start <= word.end for word in words)
     assert {segment.speaker for segment in published} == {"others"}
+    assert remembered == published
+
+
+async def test_memory_failure_does_not_stop_the_live_transcript(tmp_path: Path) -> None:
+    samples = synthesise("The budget was revised.", tmp_path / "s.wav")
+    model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
+    published: list[Segment] = []
+
+    def failing_memory(_segment: Segment) -> None:
+        raise OSError("disk full")
+
+    engine = Engine(
+        Transcriber("tiny", Path(model_dir) if model_dir else None),
+        published.append,
+        remember=failing_memory,
+    )
+
+    await engine.run_source("system", as_blocks(samples))
+
+    assert published

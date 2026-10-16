@@ -6,5 +6,4 @@
 Every read and write must be scoped by tenant_id and project_id so one
 client's data can never be returned for another. It must not capture audio or
 dispatch actions.
-Intentionally empty until the memory phase.
 """

@@ -4,6 +4,10 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 
 | Date | Module | Feature | Notes |
 | :--- | :--- | :--- | :--- |
+| 2026-10-11 | desktop | Engine lifecycle (`engine.rs`) | App spawns the engine on launch, stops it on exit; engine also stops if the app crashes (stdin pipe closes). |
+| 2026-10-11 | pipeline | Memory ingestion and clean shutdown | Every published segment is stored when tenant and project are set; stops on SIGTERM or closed stdin. |
+| 2026-10-11 | memory | `continuum-memory-search` CLI | Semantic search within the configured tenant and project only. |
+| 2026-10-11 | memory | Tenant-isolated vector store | Embedded Qdrant, one collection per tenant/project plus payload filter; local multilingual embeddings. |
 | 2026-10-11 | hud | Live transcript feed | `useTranscriptStream` hook (validates messages, auto-reconnects) and `TranscriptFeed` component. |
 | 2026-10-11 | pipeline | `continuum-engine` console script | Captures the configured sources, transcribes, labels speakers, publishes. One failing source does not stop the others. |
 | 2026-10-11 | transport | Transcript WebSocket server | Loopback only, Origin allowlist, JSON segment messages. |
