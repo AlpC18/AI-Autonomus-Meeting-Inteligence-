@@ -35,6 +35,7 @@ Engine commands (run with `uv run` in `engine/`):
 - `continuum-transcribe FILE` / `--watch FOLDER` — transcribe recordings to Markdown, SRT, VTT or text; `--remember` adds them to memory, `--summarize` appends an AI summary.
 - `continuum-import-docs PATH...` — add Markdown, text or PDF documents (or folders) to the project's memory, so fact checks and answers cite them; `--forget` removes them. PDFs need `uv sync --extra documents`. While the engine runs, use **Add documents…** in the app instead (the command needs the engine stopped).
 - `continuum-check-connections` — signs in to every configured integration (GitHub, GitLab, Jira, Notion, Google, Hugging Face) and asks the AI provider for a one-word reply, so a wrong token shows up before a meeting. The Settings screen's **Test connections** button runs it.
+- `continuum-diagnostics` — a report for bug reports: versions, settings without secret values, configuration problems and the end of the engine log (`~/.continuum/logs/engine.log`) with secrets and personal data removed. The Settings screen's **Copy diagnostics** button copies it.
 - `continuum-summarize NOTES.md` — AI summary, decisions and action items with Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI or Claude; `--propose` queues them for approval.
 - `continuum-library` — past meetings for the desktop viewer.
 - `continuum-ask "question"` — answer from past meetings, with quotes (while the app is closed; in the app use "Ask your meetings").

@@ -35,6 +35,7 @@ from continuum.context.workload import (
     JiraWorkload,
     combined,
 )
+from continuum.diagnostics import log_to_file
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -461,6 +462,7 @@ async def _serve(settings: Settings) -> int:
 def main() -> None:
     """Console entry point (``continuum-engine``). Stops on Ctrl+C."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log_to_file()
     try:
         settings = Settings.from_env(os.environ)
     except ValueError as error:

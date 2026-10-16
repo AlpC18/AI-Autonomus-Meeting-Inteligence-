@@ -20,6 +20,7 @@ export function SettingsPanel() {
   const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
+  const [report, setReport] = useState<string | null>(null);
 
   const load = () => {
     invoke<unknown>("get_settings")
@@ -64,6 +65,23 @@ export function SettingsPanel() {
     setMessages([t("Testing the saved connections…")]);
     invoke<unknown>("check_connections")
       .then((reply) => setMessages(connectionLines(reply)))
+      .catch((cause: unknown) => setMessages([String(cause)]))
+      .finally(() => setBusy(false));
+  };
+
+  const copyDiagnostics = () => {
+    setBusy(true);
+    setReport(null);
+    invoke<string>("diagnostics")
+      .then(async (text) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setMessages([t("Diagnostics copied. Paste them into your bug report; secrets and personal data are left out.")]);
+        } catch {
+          setReport(text);
+          setMessages([t("Copy the diagnostics below into your bug report.")]);
+        }
+      })
       .catch((cause: unknown) => setMessages([String(cause)]))
       .finally(() => setBusy(false));
   };
@@ -179,7 +197,17 @@ export function SettingsPanel() {
         >
           {t("Test connections")}
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={copyDiagnostics}
+          title={t("Versions, settings without secrets, problems and recent engine log lines, for a bug report.")}
+          className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {t("Copy diagnostics")}
+        </button>
       </div>
+      {report && <textarea readOnly aria-label={t("Diagnostics")} value={report} rows={12} className="w-full rounded-md border border-zinc-300 p-2 font-mono text-xs" />}
       {messages.length > 0 && (
         <ul role="status" className="text-sm text-zinc-700">
           {messages.map((message) => (

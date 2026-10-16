@@ -310,6 +310,13 @@ export const TR: Readonly<Record<string, string>> = {
   "Google calendar": "Google takvimi",
   "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
   Translation: "Çeviri",
+  "Copy diagnostics": "Tanılama bilgilerini kopyala",
+  Diagnostics: "Tanılama bilgileri",
+  "Versions, settings without secrets, problems and recent engine log lines, for a bug report.":
+    "Hata bildirimi için sürümler, gizli bilgiler olmadan ayarlar, sorunlar ve son motor günlüğü satırları.",
+  "Diagnostics copied. Paste them into your bug report; secrets and personal data are left out.":
+    "Tanılama bilgileri kopyalandı. Hata bildiriminize yapıştırın; gizli bilgiler ve kişisel veriler dahil değildir.",
+  "Copy the diagnostics below into your bug report.": "Aşağıdaki tanılama bilgilerini hata bildiriminize kopyalayın.",
   "Fact-check shared slides": "Paylaşılan slaytları doğrula",
   "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.":
     "10 saniyede bir toplantı penceresini (asla başka pencereleri değil) cihaz üzerindeki metin tanıma ile okur ve paylaşılan slaytlardaki rakamları bellekle karşılaştırır. macOS; Ekran Kaydı izni gerekir.",
