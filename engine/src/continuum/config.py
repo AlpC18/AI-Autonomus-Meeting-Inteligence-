@@ -11,8 +11,10 @@ from pathlib import Path
 from continuum.audio.transcriber import BACKENDS
 from continuum.memory.scope import TenantScope
 
-KNOWN_SOURCES = ("mic", "system")
-"""Audio sources the engine can capture."""
+KNOWN_SOURCES = ("mic", "system", "tab")
+"""Audio sources the engine can capture; ``tab`` is a browser tab sent by the extension."""
+
+DEFAULT_SOURCES = ("mic", "system")
 
 _PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+|gitlab:[\w.-]+(?:/[\w.-]+)+")
 
@@ -63,9 +65,12 @@ class Settings:
     ``workload_check`` also counts the speaker's open Jira and GitHub issues and warns
     when a promised date looks unrealistic. ``meeting_apps_only`` captures
     system audio only from meeting apps and browsers (macOS).
+    ``browser_tab_audio`` takes calls in a browser from the browser extension,
+    which sends only the meeting tab, and leaves browsers out of system audio;
+    ``browser_extension_id`` limits that to one installed extension.
     """
 
-    sources: tuple[str, ...] = KNOWN_SOURCES
+    sources: tuple[str, ...] = DEFAULT_SOURCES
     ws_port: int = 8765
     whisper_model: str = "base"
     model_dir: Path | None = None
@@ -90,6 +95,8 @@ class Settings:
     risk_tracking: bool = True
     workload_check: bool = False
     meeting_apps_only: bool = False
+    browser_tab_audio: bool = False
+    browser_extension_id: str | None = None
 
     @property
     def voices_file(self) -> Path:
@@ -112,7 +119,8 @@ class Settings:
         ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LLM_HESITATIONS``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
         it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
         ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
-        ``CONTINUUM_MEETING_APPS_ONLY``. Unset variables
+        ``CONTINUUM_MEETING_APPS_ONLY``, ``CONTINUUM_BROWSER_TAB_AUDIO`` (adds the
+        ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``. Unset variables
         use defaults.
 
         Raises:
@@ -183,6 +191,16 @@ class Settings:
         if missing:
             raise ValueError(f"CONTINUUM_CODE_DIRS: not a folder: {missing[0]!r}")
 
+        browser_tab_audio = _flag(env, "CONTINUUM_BROWSER_TAB_AUDIO")
+        if browser_tab_audio and "tab" not in sources:
+            sources = (*sources, "tab")
+        extension_id = env.get("CONTINUUM_BROWSER_EXTENSION_ID", "").strip() or None
+        if extension_id is not None and not re.fullmatch(r"[a-p]{32}", extension_id):
+            raise ValueError(
+                "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions, "
+                f"got {extension_id!r}"
+            )
+
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
         notes_dir = env.get("CONTINUUM_NOTES_DIR")
@@ -212,4 +230,6 @@ class Settings:
             risk_tracking=_flag(env, "CONTINUUM_RISK_TRACKING", default=True),
             workload_check=_flag(env, "CONTINUUM_WORKLOAD_CHECK"),
             meeting_apps_only=_flag(env, "CONTINUUM_MEETING_APPS_ONLY"),
+            browser_tab_audio=browser_tab_audio,
+            browser_extension_id=extension_id,
         )

@@ -54,26 +54,38 @@ logger = logging.getLogger(__name__)
 BlockSource = Callable[[], AsyncIterator[np.ndarray]]
 
 
-def _block_source(source: str, only_meeting_apps: bool = False) -> BlockSource:
+def _block_source(source: str, settings: Settings) -> BlockSource:
     """Return the capture function for ``source``, importing it on demand.
 
     System audio uses ScreenCaptureKit on macOS and speaker loopback
-    (``soundcard``) on Windows and Linux. ``only_meeting_apps`` limits
-    system audio to meeting apps; only macOS can do that.
+    (``soundcard``) on Windows and Linux. ``meeting_apps_only`` limits
+    system audio to meeting apps; only macOS can do that. With browser tab
+    audio on, a browser call comes from the extension (``tab``), so on macOS
+    system audio is limited to the meeting apps that are not browsers.
     """
     if source == "mic":
         from continuum.audio.microphone import microphone_blocks
 
         return microphone_blocks
+    if source == "tab":
+        from continuum.audio.browser_tab import tab_audio_blocks
+
+        return functools.partial(tab_audio_blocks, extension_id=settings.browser_extension_id)
     if sys.platform != "darwin":
         from continuum.audio.loopback import loopback_blocks
 
-        if only_meeting_apps:
-            logger.warning("Hearing only meeting apps needs macOS; capturing all system audio")
+        if settings.meeting_apps_only or settings.browser_tab_audio:
+            logger.warning(
+                "Leaving apps or browsers out of system audio needs macOS; capturing all of it. "
+                "With browser tab audio, set CONTINUUM_SOURCES=mic,tab to avoid hearing the call twice."
+            )
         return loopback_blocks
+    from continuum.audio.apps import MEETING_APPS, NATIVE_MEETING_APPS
     from continuum.audio.system_audio import system_audio_blocks
 
-    return functools.partial(system_audio_blocks, only_meeting_apps)
+    if settings.browser_tab_audio:
+        return functools.partial(system_audio_blocks, True, NATIVE_MEETING_APPS)
+    return functools.partial(system_audio_blocks, settings.meeting_apps_only, MEETING_APPS)
 
 
 class Engine:
@@ -105,7 +117,7 @@ class Engine:
     async def process(self, utterance: Utterance, source: str) -> None:
         """Transcribe one utterance and publish its segments.
 
-        System audio is additionally split by speaker when a diarizer is set;
+        System audio and a browser tab are additionally split by speaker when a diarizer is set;
         the microphone is always the local user. ``relabel`` then applies the
         names the user gave to speakers. Segments are published
         first. Each is then fact-checked against memory (when ``check`` is
@@ -117,7 +129,7 @@ class Engine:
         """
         async with self._model_lock:
             segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
-            if segments and self._diarizer is not None and source == "system":
+            if segments and self._diarizer is not None and source != "mic":
                 turns = await asyncio.to_thread(self._diarizer.diarize, utterance)
                 segments = [label_segment(segment, turns) for segment in segments]
         if self._relabel is not None:
@@ -165,11 +177,11 @@ async def _run_source_logged(
     engine: Engine,
     source: str,
     record: Callable[[str, np.ndarray], None],
-    only_meeting_apps: bool = False,
+    settings: Settings,
 ) -> bool:
     """Run one source; log instead of raising so other sources keep going."""
     try:
-        blocks = _block_source(source, only_meeting_apps)()
+        blocks = _block_source(source, settings)()
         await engine.run_source(source, _tapped(blocks, source, record))
     except Exception:
         logger.exception("Audio source %r stopped", source)
@@ -290,7 +302,7 @@ async def run(settings: Settings) -> int:
             try:
                 results = await asyncio.gather(
                     *(
-                        _run_source_logged(engine, source, session.record, settings.meeting_apps_only)
+                        _run_source_logged(engine, source, session.record, settings)
                         for source in settings.sources
                     )
                 )

@@ -6,7 +6,7 @@
 from collections.abc import Iterable
 from typing import Any
 
-MEETING_APPS = frozenset(
+NATIVE_MEETING_APPS = frozenset(
     {
         "us.zoom.xos",
         "com.microsoft.teams",
@@ -19,8 +19,12 @@ MEETING_APPS = frozenset(
         "net.whatsapp.WhatsApp",
         "com.skype.skype",
         "com.around.Around",
-        # Browsers, for Google Meet and other calls in a tab. A browser's other
-        # tabs are captured too: ScreenCaptureKit separates apps, not tabs.
+    }
+)
+"""Bundle IDs of meeting apps other than browsers."""
+
+BROWSERS = frozenset(
+    {
         "com.google.Chrome",
         "com.apple.Safari",
         "org.mozilla.firefox",
@@ -31,6 +35,11 @@ MEETING_APPS = frozenset(
         "com.operasoftware.Opera",
     }
 )
+"""Browsers, for Google Meet and other calls in a tab. ScreenCaptureKit separates
+apps, not tabs, so all of a browser's tabs are heard; the browser extension
+(``CONTINUUM_BROWSER_TAB_AUDIO``) captures only the meeting tab instead."""
+
+MEETING_APPS = NATIVE_MEETING_APPS | BROWSERS
 """Bundle IDs of apps whose audio is captured when only meeting apps are heard."""
 
 

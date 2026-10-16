@@ -106,6 +106,7 @@
 - **Add documents…** in the meeting bar imports through the running engine (live command `import_documents`).
 - First-run checklist steps are filled in and saved in place (folder picker for notes; no key for local AI).
 - CI runs the engine tests on Ubuntu, macOS and Windows.
+- Workload lookups follow GitHub/GitLab pagination (up to 50 pages). Browser extension (`apps/browser-extension`, MV3) sends only the meeting tab's audio to the engine (`tab` source, ws://127.0.0.1:8766, extension origins only); with it on, browsers are left out of macOS system audio.
 - Verified: 409 pytest, 38 vitest, 17 cargo, clippy, ruff; connection check against the real GitHub, GitLab, Groq and Hugging Face APIs (wrong tokens rejected with readable reasons). Not verified: the Windows CI run (not pushed yet).
 
 ## Pending
@@ -116,5 +117,5 @@
 
 ## Known issues
 
-- With "Hear only meeting apps" off, system capture transcribes any other audio playing; with it on, a browser's other tabs are still heard.
+- With "Hear only meeting apps" off, system capture transcribes any other audio playing. A browser's other tabs are kept out only with the browser extension (`CONTINUUM_BROWSER_TAB_AUDIO`); Firefox and Safari have no tab-capture API for it.
 - Open questions are tracked in `activeContext.md`.

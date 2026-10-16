@@ -110,6 +110,20 @@ pub const FIELDS: &[Field] = &[
         "Other participants are heard only from Zoom, Teams, Meet in a browser and similar apps, so music and videos stay out. macOS only.",
     ),
     field(
+        "CONTINUUM_BROWSER_TAB_AUDIO",
+        "Calls in the browser from the extension",
+        "Meetings",
+        Kind::Toggle(false),
+        "Install the Continuum browser extension (apps/browser-extension) in Chrome, Edge, Brave or Arc and click it on the meeting tab: only that tab is heard, never your other tabs. Browsers are then left out of system audio (macOS).",
+    ),
+    field(
+        "CONTINUUM_BROWSER_EXTENSION_ID",
+        "Extension ID",
+        "Meetings",
+        Kind::Text,
+        "Optional: the ID chrome://extensions shows for the Continuum extension, so no other extension can send audio.",
+    ),
+    field(
         "CONTINUUM_WHISPER_MODEL",
         "Speech model",
         "Meetings",

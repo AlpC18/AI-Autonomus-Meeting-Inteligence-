@@ -15,7 +15,7 @@ export interface TranscriptWord {
 
 /** A run of speech from one audio source, as sent by the engine. */
 export interface TranscriptSegment {
-  /** Capture stream: "mic" or "system". */
+  /** Capture stream: "mic", "system" or "tab" (a browser tab, from the extension). */
   source: string;
   start: number;
   end: number;

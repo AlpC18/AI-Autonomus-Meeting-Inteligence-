@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Continuum tab audio",
+  "version": "0.1.0",
+  "description": "Sends the audio of the meeting tab you choose to the Continuum app on this computer, so other tabs stay out of the transcript.",
+  "minimum_chrome_version": "116",
+  "permissions": ["tabCapture", "offscreen"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Continuum: capture this tab's audio" }
+}

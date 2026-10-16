@@ -10,6 +10,7 @@ Open-source autonomous AI meeting intelligence: live fact-checking, approval-gat
 
 - `apps/desktop/` — Tauri 2 + React desktop app
 - `engine/` — Python engine (audio, diarization, memory, MCP actions)
+- `apps/browser-extension/` — Chrome/Edge/Brave/Arc extension that sends only the meeting tab's audio
 
 ## Run
 
@@ -20,6 +21,8 @@ cd engine && cp .env.example .env   # settings; the desktop app starts the engin
 ```
 
 Release app: `cd apps/desktop && pnpm bundle` builds `Continuum.app` with the engine inside; on first launch it installs its Python environment (needs internet once). Settings (and API keys, kept in the macOS Keychain) are set in the app.
+
+Calls in a browser tab: macOS hands over audio per app, so every tab of the browser would be heard. Instead, load `apps/browser-extension` in `chrome://extensions` (Developer mode → Load unpacked), turn on **Calls in the browser from the extension** in Settings, and click the extension's button on the meeting tab (it shows ON). Only that tab is heard, and browsers are left out of system audio.
 
 Engine commands (run with `uv run` in `engine/`):
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 
 from continuum.transcript import Segment, Word
 
-_SOURCE_SPEAKERS = {"mic": "me", "system": "others"}
+_SOURCE_SPEAKERS = {"mic": "me", "system": "others", "tab": "others"}
 
 
 @dataclass(frozen=True, slots=True)

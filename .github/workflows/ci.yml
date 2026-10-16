@@ -68,6 +68,9 @@ jobs:
       - name: Test with coverage (floor 50% of lines; raise, never lower)
         run: pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.thresholds.lines=50
       - run: pnpm exec vite build
+      - name: Browser extension
+        working-directory: apps/browser-extension
+        run: node --test worklet.test.mjs
 
   shell:
     name: Desktop shell (Rust)
