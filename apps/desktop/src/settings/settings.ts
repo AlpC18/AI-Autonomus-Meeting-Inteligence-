@@ -76,3 +76,17 @@ export function changedSecrets(drafts: Record<string, string>, cleared: Readonly
   for (const key of cleared) changed[key] = "";
   return changed;
 }
+
+/**
+ * One status line per service from a `check_connections` reply, e.g.
+ * "✓ GitHub: signed in as ana". Malformed entries are skipped.
+ */
+export function connectionLines(reply: unknown): string[] {
+  if (!Array.isArray(reply)) return ["The connection test returned nothing readable."];
+  const lines = reply.flatMap((entry): string[] =>
+    isRecord(entry) && typeof entry.service === "string" && typeof entry.detail === "string"
+      ? [`${entry.ok === true ? "✓" : entry.ok === false ? "✗" : "–"} ${entry.service}: ${entry.detail}`]
+      : [],
+  );
+  return lines.length > 0 ? lines : ["Nothing to test: no AI provider or integration is configured."];
+}
