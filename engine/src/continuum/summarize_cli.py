@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
@@ -39,11 +40,18 @@ def _slack_text(summary: MeetingSummary, title: str) -> str:
 
 
 def build_proposals(
-    summary: MeetingSummary, targets: list[str], settings: ActionSettings, source: str
+    summary: MeetingSummary,
+    targets: list[str],
+    settings: ActionSettings,
+    source: str,
+    attendees: Sequence[str] = (),
+    title: str = "",
 ) -> tuple[list[proposals.Proposal], list[str]]:
     """Turn the summary into proposals for each target; return them and any errors.
 
     Targets: ``calendar`` (items with a due date), ``slack`` (one recap),
+    ``email`` (one recap to the calendar event's ``attendees``), ``notion``
+    (one page with the summary),
     ``jira:KEY`` and ``github:owner/name`` (one issue per action item). An
     item that a target refuses is reported, not fatal.
     """
@@ -60,6 +68,22 @@ def build_proposals(
         kind, _, where = target.partition(":")
         if kind == "slack":
             attempt("slack", lambda: proposals.slack_message(settings, _slack_text(summary, source)))
+            continue
+        if kind == "email":
+            subject = f"Recap: {title or 'our meeting'}"[:200]
+            attempt(
+                "email",
+                lambda subject=subject: proposals.email_recap(
+                    settings, attendees, subject, to_markdown(summary)
+                ),
+            )
+            continue
+        if kind == "notion":
+            page_title = f"{title or source}"[:200]
+            attempt(
+                "notion",
+                lambda page_title=page_title: proposals.notion_page(settings, page_title, to_markdown(summary)),
+            )
             continue
         for item in summary.action_items:
             details = "\n".join(
@@ -97,10 +121,10 @@ def build_proposals(
 
 def _target(value: str) -> str:
     kind, _, where = value.partition(":")
-    if (kind in {"calendar", "slack"} and not where) or (kind in {"jira", "github"} and where):
+    if (kind in {"calendar", "slack", "email", "notion"} and not where) or (kind in {"jira", "github"} and where):
         return value
     raise argparse.ArgumentTypeError(
-        "use calendar, slack, jira:PROJECT or github:owner/name"
+        "use calendar, slack, notion, jira:PROJECT or github:owner/name"
     )
 
 
@@ -122,7 +146,7 @@ def main() -> None:
         default=[],
         type=_target,
         metavar="TARGET",
-        help="queue proposals: calendar, slack, jira:PROJECT, github:owner/name (repeatable)",
+        help="queue proposals: calendar, slack, notion, jira:PROJECT, github:owner/name (repeatable)",
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args()

@@ -74,6 +74,26 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       approveLabel: "Approve and schedule",
     };
   }
+  if (kind === "email_recap" && text(payload.subject) && Array.isArray(payload.to)) {
+    const to = payload.to.filter((address): address is string => typeof address === "string");
+    if (to.length === 0) return null;
+    return {
+      heading: "E-mail from your Gmail",
+      title: text(payload.subject),
+      detail: `To: ${to.join(", ")}`,
+      body: text(payload.body),
+      approveLabel: "Approve and send",
+    };
+  }
+  if (kind === "notion_page" && text(payload.title) && text(payload.body)) {
+    return {
+      heading: "Notion page under your configured parent page",
+      title: text(payload.title),
+      detail: "",
+      body: text(payload.body),
+      approveLabel: "Approve and create",
+    };
+  }
   return null;
 }
 

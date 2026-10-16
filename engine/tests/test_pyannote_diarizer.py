@@ -112,3 +112,19 @@ def test_silence_gives_no_turns() -> None:
     diarizer = PyannoteDiarizer(_replaying(Annotation()), _embed)
 
     assert diarizer.diarize(_utterance(0.0, (1.0, 1.0))) == []
+
+
+def test_a_named_voice_is_recognised_in_the_next_meeting(tmp_path) -> None:
+    from continuum.diarization.voices import VoiceBook
+
+    one = _annotation((0.0, 2.0, "SPEAKER_00"))
+    first = PyannoteDiarizer(_replaying(one), _embed, VoiceBook(tmp_path / "v.json"))
+    first.diarize(_utterance(0.0, (2.0, 2.0)))
+    assert first.recognise("Speaker 1") is None
+    first.learn("Speaker 1", "Ayşe")
+    first.learn("mic", "Me")  # no voice: nothing to remember
+
+    later = PyannoteDiarizer(_replaying(one), _embed, VoiceBook(tmp_path / "v.json"))
+    later.diarize(_utterance(0.0, (2.0, 2.0)))
+    assert later.recognise("Speaker 1") == "Ayşe"
+    assert PyannoteDiarizer(_replaying(), _embed).recognise("Speaker 1") is None

@@ -5,26 +5,34 @@
 
 Used by the desktop app's auto-start while the engine is stopped (so any
 microphone use is someone else's: Zoom, Meet in a browser, Teams, FaceTime).
-Only *whether* the default input device is running is read; no audio is
-captured here.
+Only *whether* the microphone is in use is read; no audio is captured here.
+macOS asks CoreAudio, Windows reads the privacy settings' record of which
+apps use the microphone now, Linux asks PulseAudio/PipeWire for recording
+streams.
 """
 
 import json
 import os
+import shutil
 import struct
+import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 POLL_S = 1.0
 
 
-def microphone_in_use() -> bool | None:
-    """Whether any process is using the default input device; ``None`` if unknown.
+_CONSENT_KEY = r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone"
 
-    Unknown on systems other than macOS, or when CoreAudio does not answer.
-    """
+
+def microphone_in_use() -> bool | None:
+    """Whether any process is using the microphone; ``None`` if it cannot be told."""
+    if sys.platform == "win32":
+        return _windows_in_use()
+    if sys.platform.startswith("linux"):
+        return _linux_in_use()
     if sys.platform != "darwin":
         return None
     try:
@@ -50,6 +58,62 @@ def microphone_in_use() -> bool | None:
     return None if running is None else running != 0
 
 
+def any_open_use(uses: Iterable[tuple[int, int]]) -> bool:
+    """Whether a ``(LastUsedTimeStart, LastUsedTimeStop)`` record shows use that has not stopped."""
+    return any(start > 0 and stop == 0 for start, stop in uses)
+
+
+def _windows_uses() -> Iterable[tuple[int, int]]:
+    import winreg
+
+    def times(key: "winreg.HKEYType") -> tuple[int, int]:
+        try:
+            return winreg.QueryValueEx(key, "LastUsedTimeStart")[0], winreg.QueryValueEx(key, "LastUsedTimeStop")[0]
+        except OSError:
+            return 0, 0
+
+    def children(key: "winreg.HKEYType") -> Iterable[str]:
+        index = 0
+        while True:
+            try:
+                yield winreg.EnumKey(key, index)
+            except OSError:
+                return
+            index += 1
+
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _CONSENT_KEY) as root:
+        for name in list(children(root)):
+            with winreg.OpenKey(root, name) as app:
+                if name != "NonPackaged":
+                    yield times(app)
+                    continue
+                # Desktop apps (Zoom, Chrome, Teams) are listed one level down.
+                for exe in list(children(app)):
+                    with winreg.OpenKey(app, exe) as entry:
+                        yield times(entry)
+
+
+def _windows_in_use() -> bool | None:
+    try:
+        return any_open_use(_windows_uses())
+    except OSError:
+        return None
+
+
+def _linux_in_use() -> bool | None:
+    # ponytail: any recording stream counts, including a screen recorder's; filter by app if that misfires.
+    pactl = shutil.which("pactl")
+    if pactl is None:
+        return None
+    try:
+        result = subprocess.run(
+            [pactl, "list", "short", "source-outputs"], capture_output=True, text=True, timeout=5, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return bool(result.stdout.strip()) if result.returncode == 0 else None
+
+
 def watch(
     probe: Callable[[], bool | None],
     emit: Callable[[str], None],
@@ -73,7 +137,9 @@ def watch(
 def main() -> None:
     """Entry point of ``continuum-detect-call``; stops when its standard input closes."""
     if microphone_in_use() is None:
-        sys.stdout.write(json.dumps({"error": "Call detection is only available on macOS."}) + "\n")
+        sys.stdout.write(
+            json.dumps({"error": "Call detection needs macOS, Windows, or Linux with PulseAudio or PipeWire."}) + "\n"
+        )
         sys.exit(1)
 
     def stop_with_parent() -> None:

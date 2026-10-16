@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import numpy as np
 
-from continuum.actions.calendar import current_event_title
+from continuum.actions.calendar import CalendarEvent, current_event
 from continuum.actions.settings import ActionSettings
 from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
@@ -28,12 +28,13 @@ from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
+from continuum.diarization.voices import VoiceBook
 from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.factcheck.semantic import SemanticChecker
 from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import MemoryStore, ScopedMemory
-from continuum.privacy import warn_if_disk_unencrypted
+from continuum.privacy import storage_settings, warn_if_disk_unencrypted
 from continuum.session import MeetingSession, queue_configured_proposals
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
@@ -169,7 +170,7 @@ def _load_llm() -> Llm | None:
         return None
 
 
-def _calendar_title() -> Callable[[datetime], str | None] | None:
+def _calendar_title() -> Callable[[datetime], CalendarEvent | None] | None:
     """Looks up the current calendar event when Google Calendar is configured."""
     try:
         action_settings = ActionSettings.from_env(os.environ)
@@ -179,9 +180,9 @@ def _calendar_title() -> Callable[[datetime], str | None] | None:
     if access is None:
         return None
 
-    def title_for(now: datetime) -> str | None:
+    def title_for(now: datetime) -> CalendarEvent | None:
         with httpx.Client(timeout=10) as client:
-            return current_event_title(access, action_settings.google_calendar_id, client, now)
+            return current_event(access, action_settings.google_calendar_id, client, now)
 
     return title_for
 
@@ -191,6 +192,7 @@ async def run(settings: Settings) -> int:
 
     Returns a process exit code: 1 when all sources failed, otherwise 0.
     """
+    settings = storage_settings(settings)
     logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     try:
         transcriber = await asyncio.to_thread(
@@ -205,8 +207,9 @@ async def run(settings: Settings) -> int:
     diarizer = None
     if settings.hf_token:
         try:
+            voices = VoiceBook(settings.voices_file) if settings.remember_voices else None
             diarizer = await asyncio.to_thread(
-                PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir
+                PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir, voices
             )
         except RuntimeError as error:
             # Speaker separation is an enhancement; transcription must still run.

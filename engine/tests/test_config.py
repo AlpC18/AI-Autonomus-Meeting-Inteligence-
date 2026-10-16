@@ -87,6 +87,6 @@ def test_meeting_lifecycle_settings() -> None:
     assert settings.idle_end_minutes == 5
     assert settings.exit_when_idle and settings.record_audio and not settings.llm_fact_check
     with pytest.raises(ValueError, match="CONTINUUM_AUTO_PROPOSE"):
-        Settings.from_env({"CONTINUUM_AUTO_PROPOSE": "email"})
+        Settings.from_env({"CONTINUUM_AUTO_PROPOSE": "e-mail"})
     with pytest.raises(ValueError, match="CONTINUUM_IDLE_END_MINUTES"):
         Settings.from_env({"CONTINUUM_IDLE_END_MINUTES": "0"})

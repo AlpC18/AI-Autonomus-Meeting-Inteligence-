@@ -441,3 +441,130 @@ def test_current_calendar_event_names_the_meeting() -> None:
     assert listing.method == "GET" and listing.url.params["singleEvents"] == "true"
     failing = FakeService(httpx.Response(401, json={"error": "invalid_grant"}))
     assert calendar.current_event_title(GOOGLE, "primary", failing.client(), now) is None
+
+
+def test_calendar_event_lists_other_attendees() -> None:
+    from datetime import UTC, datetime
+
+    fake = FakeService(
+        httpx.Response(200, json={"access_token": "short-lived"}),
+        httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "summary": "Budget",
+                        "start": {"dateTime": "2026-10-15T09:00:00Z"},
+                        "attendees": [
+                            {"email": "me@acme.io", "self": True},
+                            {"email": "ana@acme.io"},
+                            {"email": "room-1@resource.calendar.google.com", "resource": True},
+                            {"email": "ana@acme.io"},
+                            {"displayName": "no address"},
+                        ],
+                    }
+                ]
+            },
+        ),
+    )
+    event = calendar.current_event(GOOGLE, "primary", fake.client(), datetime(2026, 10, 15, 9, 30, tzinfo=UTC))
+    assert event == calendar.CalendarEvent("Budget", ("ana@acme.io",))
+
+
+def test_approved_recap_email_is_sent_from_gmail(store: ActionStore, tmp_path: Path) -> None:
+    import base64
+
+    from continuum.actions import proposals
+
+    kind, payload = proposals.email_recap(connected(tmp_path), ["ana@acme.io"], "Recap: Budget", "## Summary\nAgreed.")
+    action = store.propose(kind, payload)
+    fake = FakeService(
+        httpx.Response(200, json={"access_token": "short-lived"}),
+        httpx.Response(200, json={"id": "m1"}),
+    )
+
+    done = approve(store, action.id, connected(tmp_path), fake.client())
+
+    assert (done.status, done.result) == ("done", "Sent to 1 attendee(s)")
+    _token, sent = fake.requests
+    assert str(sent.url) == "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+    raw = base64.urlsafe_b64decode(json.loads(sent.content)["raw"]).decode()
+    assert "To: ana@acme.io" in raw and "Subject: Recap: Budget" in raw and "Agreed." in raw
+    with pytest.raises(PermissionError):
+        proposals.email_recap(ActionSettings(tmp_path / "a.db"), ["ana@acme.io"], "s", "b")
+
+
+@pytest.mark.parametrize(
+    ("to", "subject", "body"),
+    [
+        ((), "Recap", "body"),
+        (("not-an-address",), "Recap", "body"),
+        (("ana@acme.io",), "Recap\nBcc: evil@x.io", "body"),
+        (("ana@acme.io",), "Recap", " "),
+    ],
+)
+def test_malformed_emails_are_rejected(to: tuple, subject: str, body: str) -> None:
+    from continuum.actions.gmail import EmailRecap
+
+    with pytest.raises(ValueError):
+        EmailRecap(to, subject, body)
+
+
+NOTION_PAGE = "1a2b3c4d5e6f40718293a4b5c6d7e8f9"
+
+
+def test_approved_notion_page_goes_under_the_configured_parent(store: ActionStore, tmp_path: Path) -> None:
+    from continuum.actions import proposals
+    from continuum.actions.notion import NotionAccess
+
+    settings = ActionSettings(tmp_path / "a.db", notion=NotionAccess("secret-notion-token", NOTION_PAGE))
+    kind, payload = proposals.notion_page(
+        settings, "Budget", "## Summary\n\nAgreed.\n\n### Action items\n\n- [ ] Send invoice (Ana)\n- note"
+    )
+    action = store.propose(kind, payload)
+    fake = FakeService(httpx.Response(200, json={"url": "https://www.notion.so/Budget-abc"}))
+
+    done = approve(store, action.id, settings, fake.client())
+
+    assert (done.status, done.result) == ("done", "https://www.notion.so/Budget-abc")
+    (sent,) = fake.requests
+    assert str(sent.url) == "https://api.notion.com/v1/pages"
+    assert sent.headers["Authorization"] == "Bearer secret-notion-token"
+    body = json.loads(sent.content)
+    assert body["parent"] == {"page_id": NOTION_PAGE}
+    assert [block["type"] for block in body["children"]] == [
+        "heading_2", "paragraph", "heading_3", "to_do", "bulleted_list_item"
+    ]
+    with pytest.raises(PermissionError):
+        proposals.notion_page(ActionSettings(tmp_path / "a.db"), "Budget", "body")
+
+
+def test_notion_errors_never_show_the_token(store: ActionStore, tmp_path: Path) -> None:
+    from continuum.actions.notion import KIND, NotionAccess, NotionPage
+
+    settings = ActionSettings(tmp_path / "a.db", notion=NotionAccess("secret-notion-token", NOTION_PAGE))
+    action = store.propose(KIND, NotionPage("Budget", "Agreed.").to_payload())
+    fake = FakeService(httpx.Response(404, json={"message": "Could not find page"}))
+
+    done = approve(store, action.id, settings, fake.client())
+
+    assert done.status == "failed" and "Could not find page" in done.result
+    assert "secret-notion-token" not in done.result + repr(settings)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        NOTION_PAGE,
+        "1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9",
+        f"https://www.notion.so/acme/Meeting-notes-{NOTION_PAGE}?pvs=4",
+    ],
+)
+def test_notion_page_id_is_read_from_an_id_or_a_link(raw: str) -> None:
+    env = {"NOTION_TOKEN": "t", "CONTINUUM_NOTION_PAGE_ID": raw}
+    assert ActionSettings.from_env(env).notion.parent_page_id == NOTION_PAGE
+
+
+def test_a_bad_notion_page_id_is_refused() -> None:
+    with pytest.raises(ValueError):
+        ActionSettings.from_env({"NOTION_TOKEN": "t", "CONTINUUM_NOTION_PAGE_ID": "not a page"})

@@ -132,13 +132,22 @@ def _access_token(access: GoogleAccess, client: httpx.Client) -> str:
     return str(granted.json()["access_token"])
 
 
-def current_event_title(
-    access: GoogleAccess, calendar_id: str, client: httpx.Client, now: datetime
-) -> str | None:
-    """Title of the timed event happening at ``now`` (``now`` timezone-aware), if any.
+@dataclass(frozen=True, slots=True)
+class CalendarEvent:
+    """The meeting on the calendar now: its title and the other attendees' e-mail addresses."""
 
-    Read-only. All-day events are ignored. Returns ``None`` when nothing is on
-    or Google cannot answer, so a meeting can always start without a title.
+    title: str
+    attendees: tuple[str, ...] = ()
+
+
+def current_event(
+    access: GoogleAccess, calendar_id: str, client: httpx.Client, now: datetime
+) -> CalendarEvent | None:
+    """The timed event happening at ``now`` (``now`` timezone-aware), if any.
+
+    Read-only. All-day events are ignored, and so are the user themself and
+    rooms among the attendees. Returns ``None`` when nothing is on or Google
+    cannot answer, so a meeting can always start without a title.
     """
     window_end = now + timedelta(minutes=1)
     try:
@@ -166,8 +175,30 @@ def current_event_title(
         if isinstance(item, dict) and "dateTime" in item.get("start", {}):
             title = " ".join(str(item.get("summary", "")).split())
             if title:
-                return title[:120]
+                return CalendarEvent(title[:120], _attendees(item.get("attendees")))
     return None
+
+
+def _attendees(raw: object) -> tuple[str, ...]:
+    if not isinstance(raw, list):
+        return ()
+    emails = [
+        attendee["email"]
+        for attendee in raw
+        if isinstance(attendee, dict)
+        and isinstance(attendee.get("email"), str)
+        and not attendee.get("self")
+        and not attendee.get("resource")
+    ]
+    return tuple(dict.fromkeys(emails))[:50]
+
+
+def current_event_title(
+    access: GoogleAccess, calendar_id: str, client: httpx.Client, now: datetime
+) -> str | None:
+    """Title of the event happening at ``now``; see :func:`current_event`."""
+    event = current_event(access, calendar_id, client, now)
+    return event.title if event else None
 
 
 # ponytail: the refresh token must be obtained once outside this app (for

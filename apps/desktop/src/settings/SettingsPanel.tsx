@@ -82,7 +82,7 @@ export function SettingsPanel() {
         <input
           id={id}
           type="checkbox"
-          checked={value !== "0"}
+          checked={(value || field.options[0]) === "1"}
           onChange={(event) => set(event.target.checked ? "1" : "0")}
           className="mt-1 h-4 w-4"
         />

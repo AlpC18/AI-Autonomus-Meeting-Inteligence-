@@ -67,3 +67,24 @@ def test_segment_text_and_words_are_redacted_with_timings_kept() -> None:
     assert [word.text for word in clean.words] == ["email", "[email]", "now"]
     assert [word.start for word in clean.words] == [0.0, 0.5, 1.5]
     assert redact_segment(clean) is clean
+
+
+def test_nothing_is_stored_when_required_encryption_is_off(monkeypatch, tmp_path) -> None:
+    from continuum import privacy
+    from continuum.config import Settings
+    from continuum.memory.scope import TenantScope
+
+    wanted = Settings(
+        notes_dir=tmp_path, scope=TenantScope("acme", "web"), record_audio=True, require_disk_encryption=True
+    )
+    monkeypatch.setattr(privacy, "disk_encryption_active", lambda: False)
+    off = privacy.storage_settings(wanted)
+    assert (off.notes_dir, off.scope, off.record_audio, off.remember_voices) == (None, None, False, False)
+
+    monkeypatch.setattr(privacy, "disk_encryption_active", lambda: None)  # cannot be told
+    assert privacy.storage_settings(wanted).notes_dir is None
+
+    monkeypatch.setattr(privacy, "disk_encryption_active", lambda: True)
+    assert privacy.storage_settings(wanted) == wanted
+    monkeypatch.setattr(privacy, "disk_encryption_active", lambda: False)
+    assert privacy.storage_settings(Settings(notes_dir=tmp_path)).notes_dir == tmp_path

@@ -53,27 +53,32 @@ export function AskPanel({ connected, send, answers }: AskPanelProps) {
         </button>
       </form>
       {asked && !answer && <p className="mt-2 text-sm text-zinc-600">Looking through your meetings…</p>}
-      {answer && (
-        <div role="status" className="mt-2 text-sm">
-          {answer.error ? (
-            <p className="text-red-700">{answer.error}</p>
-          ) : (
-            <>
-              <p className="whitespace-pre-wrap">{answer.text}</p>
-              {answer.sources.length > 0 && (
-                <ol className="mt-2 flex flex-col gap-1 text-xs text-zinc-700">
-                  {answer.sources.map((source) => (
-                    <li key={source.number}>
-                      [{source.number}] {source.spokenAt.toLocaleString()} · <strong>{source.speaker}</strong>
-                      {source.disputed ? " (disputed)" : ""}: “{source.text}”
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {answer && <AnswerView answer={answer} />}
     </section>
+  );
+}
+
+/** An answer or brief from memory, with the numbered statements it cites. */
+export function AnswerView({ answer }: { answer: Answer }) {
+  return (
+    <div role="status" className="mt-2 text-sm">
+      {answer.error ? (
+        <p className="text-red-700">{answer.error}</p>
+      ) : (
+        <>
+          <p className="whitespace-pre-wrap">{answer.text}</p>
+          {answer.sources.length > 0 && (
+            <ol className="mt-2 flex flex-col gap-1 text-xs text-zinc-700">
+              {answer.sources.map((source) => (
+                <li key={source.number}>
+                  [{source.number}] {source.spokenAt.toLocaleString()} · <strong>{source.speaker}</strong>
+                  {source.disputed ? " (disputed)" : ""}: “{source.text}”
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </div>
   );
 }
