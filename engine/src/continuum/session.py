@@ -51,6 +51,7 @@ from continuum.privacy import redact_segment
 from continuum.stats import speaker_stats
 from continuum.stats import to_markdown as stats_markdown
 from continuum.summary import MeetingSummary, follow_up_email, summarize, to_markdown
+from continuum.templates import for_meeting
 from continuum.transcript import Segment
 from continuum.translate import Translator
 
@@ -461,7 +462,9 @@ class MeetingSession:
     async def _list_items(self, current: _Current) -> None:
         """Publish the action items said so far in ``current`` (AI failures are only logged)."""
         try:
-            summary = await asyncio.to_thread(summarize, self._transcript(current), self._llm, self._now().date())
+            summary = await asyncio.to_thread(
+                summarize, self._transcript(current), self._llm, self._now().date(), for_meeting(current.title)
+            )
         except (ValueError, RuntimeError) as error:
             logger.warning("Could not list action items during the meeting: %s", error)
             return

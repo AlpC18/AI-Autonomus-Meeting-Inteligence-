@@ -23,6 +23,7 @@ from continuum.language import heading_pattern
 from continuum.llm import LlmSettings, connect
 from continuum.summarize_cli import split_summary
 from continuum.summary import summarize, to_markdown
+from continuum.templates import for_meeting
 
 _LINE = re.compile(r"^- `(\d{2}):(\d{2}):(\d{2})` \*\*(.+?):\*\* (.*)$")
 _AUDIO = re.compile(r"^<!-- continuum:audio (.+) -->$")
@@ -153,7 +154,7 @@ class Library:
         file = self.resolve(path)
         text = file.read_text(encoding="utf-8")
         body = split_summary(text)
-        summary = summarize(body, connect(llm_settings), today=date.today())
+        summary = summarize(body, connect(llm_settings), today=date.today(), template=for_meeting(title_of(text, file)))
         file.write_text(body + "\n" + to_markdown(summary), encoding="utf-8")
         return self.show(str(file))
 

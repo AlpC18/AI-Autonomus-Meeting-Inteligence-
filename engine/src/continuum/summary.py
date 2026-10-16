@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from continuum import templates
 from continuum.language import t
 from continuum.llm import Llm
 
@@ -60,12 +61,15 @@ class MeetingSummary:
     overview: str
     decisions: tuple[str, ...] = ()
     action_items: tuple[ActionItem, ...] = ()
+    sections: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    """A template's extra sections, as ``(heading, points)``; see :mod:`continuum.templates`."""
 
 
-def summarize(transcript: str, llm: Llm, today: date | None = None) -> MeetingSummary:
+def summarize(transcript: str, llm: Llm, today: date | None = None, template: str | None = None) -> MeetingSummary:
     """Ask ``llm`` for the summary of ``transcript`` (Markdown notes or plain text).
 
-    ``today`` lets the model resolve "next Friday" into a date.
+    ``today`` lets the model resolve "next Friday" into a date. ``template``
+    (a key of :data:`continuum.templates.TEMPLATES`) adds its sections.
 
     Raises:
         ValueError: if the transcript is empty or longer than
@@ -83,8 +87,9 @@ def summarize(transcript: str, llm: Llm, today: date | None = None) -> MeetingSu
     hint = f"\n\nToday is {today.isoformat()}." if today else ""
     # A closing tag inside the transcript must not end the data block early.
     body = transcript.replace("</transcript>", "</ transcript>")
-    reply = llm.complete(SYSTEM_PROMPT.replace("{today}", hint), f"<transcript>\n{body}\n</transcript>")
-    return parse_summary(reply)
+    system = SYSTEM_PROMPT.replace("{today}", hint) + (templates.prompt(template) if template else "")
+    reply = llm.complete(system, f"<transcript>\n{body}\n</transcript>")
+    return parse_summary(reply, template)
 
 
 def _text(value: object, limit: int) -> str | None:
@@ -103,7 +108,7 @@ def _due(value: object) -> str | None:
         return None
 
 
-def parse_summary(reply: str) -> MeetingSummary:
+def parse_summary(reply: str, template: str | None = None) -> MeetingSummary:
     """Read a model reply into a :class:`MeetingSummary`, dropping anything malformed.
 
     Accepts the JSON object bare, in a code fence, or surrounded by prose.
@@ -132,7 +137,20 @@ def parse_summary(reply: str) -> MeetingSummary:
         task = _text(raw.get("task"), 250) if isinstance(raw, dict) else None
         if task:
             items.append(ActionItem(task, _text(raw.get("owner"), 80), _due(raw.get("due"))))
-    return MeetingSummary(overview, decisions, tuple(items[:_MAX_ITEMS]))
+    return MeetingSummary(overview, decisions, tuple(items[:_MAX_ITEMS]), _sections(data.get("sections"), template))
+
+
+def _sections(raw: object, template: str | None) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """The template's sections from the reply, in the template's order; empty ones dropped."""
+    if template is None or not isinstance(raw, dict):
+        return ()
+    found = []
+    for key, heading, _what in templates.TEMPLATES[template]:
+        points = raw.get(key)
+        cleaned = tuple(text for text in (_text(point, 500) for point in (points if isinstance(points, list) else [])) if text)
+        if cleaned:
+            found.append((heading, cleaned[:_MAX_ITEMS]))
+    return tuple(found)
 
 
 def follow_up_email(summary: MeetingSummary, title: str = "") -> tuple[str, str]:
@@ -141,6 +159,8 @@ def follow_up_email(summary: MeetingSummary, title: str = "") -> tuple[str, str]
     lines = [t("Hi all,"), "", t("Thanks for joining. Here is a short recap."), "", summary.overview, ""]
     if summary.decisions:
         lines += [t("Decisions"), *(f"- {decision}" for decision in summary.decisions), ""]
+    for heading, points in summary.sections:
+        lines += [t(heading), *(f"- {point}" for point in points), ""]
     if summary.action_items:
         lines.append(t("Next steps"))
         for item in summary.action_items:
@@ -158,6 +178,8 @@ def to_markdown(summary: MeetingSummary) -> str:
     lines = [f"## {t('Summary')}", "", summary.overview, ""]
     if summary.decisions:
         lines += [f"### {t('Decisions')}", "", *(f"- {decision}" for decision in summary.decisions), ""]
+    for heading, points in summary.sections:
+        lines += [f"### {t(heading)}", "", *(f"- {point}" for point in points), ""]
     if summary.action_items:
         lines += [f"### {t('Action items')}", ""]
         for item in summary.action_items:

@@ -310,6 +310,9 @@ export const TR: Readonly<Record<string, string>> = {
   "Google calendar": "Google takvimi",
   "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
   Translation: "Çeviri",
+  "Meeting template": "Toplantı şablonu",
+  "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.":
+    "Yapay zekâ özetine toplantı türüne göre bölümler ekler: standup (yapılanlar, sıradakiler, engeller), one_on_one, sales, interview, retro. auto, türü takvim başlığından seçer.",
   "Copy follow-up email": "Toplantı sonrası e-postayı kopyala",
   "Open in mail app": "E-posta uygulamasında aç",
   "Copied.": "Kopyalandı.",

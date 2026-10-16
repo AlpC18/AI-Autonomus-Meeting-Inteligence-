@@ -82,6 +82,13 @@ pub const FIELDS: &[Field] = &[
         "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.",
     ),
     field(
+        "CONTINUUM_MEETING_TEMPLATE",
+        "Meeting template",
+        "AI",
+        Kind::Choice(&["auto", "general", "standup", "one_on_one", "sales", "interview", "retro"]),
+        "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.",
+    ),
+    field(
         "CONTINUUM_TRANSLATE_TO",
         "Live translation",
         "AI",

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from continuum.audio.transcriber import BACKENDS
 from continuum.memory.scope import TenantScope
+from continuum.templates import CHOICES as TEMPLATE_CHOICES
 from continuum.translate import TARGETS as TRANSLATION_TARGETS
 
 KNOWN_SOURCES = ("mic", "system", "tab")
@@ -105,6 +106,7 @@ class Settings:
     extra_meeting_apps: frozenset[str] = frozenset()
     translate_to: str | None = None
     screen_fact_check: bool = False
+    meeting_template: str = "auto"
 
     @property
     def voices_file(self) -> Path:
@@ -132,7 +134,8 @@ class Settings:
         bundle IDs; ``*`` at the end matches a prefix), ``CONTINUUM_LANGUAGE`` (``en`` or
         ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`),
         ``CONTINUUM_TRANSLATE_TO`` (a code from :data:`continuum.translate.TARGETS`),
-        ``CONTINUUM_SCREEN_FACT_CHECK``. Unset variables
+        ``CONTINUUM_SCREEN_FACT_CHECK``, ``CONTINUUM_MEETING_TEMPLATE`` (see
+        :data:`continuum.templates.CHOICES`). Unset variables
         use defaults.
 
         Raises:
@@ -225,6 +228,12 @@ class Settings:
                 f"CONTINUUM_TRANSLATE_TO must be one of {', '.join(sorted(TRANSLATION_TARGETS))}, got {translate_to!r}"
             )
 
+        meeting_template = env.get("CONTINUUM_MEETING_TEMPLATE", "").strip().lower() or "auto"
+        if meeting_template not in TEMPLATE_CHOICES:
+            raise ValueError(
+                f"CONTINUUM_MEETING_TEMPLATE must be one of {', '.join(TEMPLATE_CHOICES)}, got {meeting_template!r}"
+            )
+
         extra_apps = frozenset(
             part.strip() for part in env.get("CONTINUUM_MEETING_APPS", "").split(",") if part.strip()
         )
@@ -268,4 +277,5 @@ class Settings:
             extra_meeting_apps=extra_apps,
             translate_to=translate_to,
             screen_fact_check=_flag(env, "CONTINUUM_SCREEN_FACT_CHECK"),
+            meeting_template=meeting_template,
         )

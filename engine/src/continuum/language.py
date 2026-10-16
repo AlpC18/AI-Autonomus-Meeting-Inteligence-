@@ -42,6 +42,20 @@ _TR = {
     "Next steps": "Sonraki adımlar",
     "Let me know if I missed anything.": "Atladığım bir şey varsa lütfen haber verin.",
     "Best regards": "Saygılarımla",
+    "Done": "Yapılanlar",
+    "Next": "Sıradakiler",
+    "Blockers": "Engeller",
+    "Feedback": "Geri bildirim",
+    "Concerns": "Endişeler",
+    "Growth": "Gelişim",
+    "Customer needs": "Müşteri ihtiyaçları",
+    "Objections": "İtirazlar",
+    "Budget and timeline": "Bütçe ve zaman planı",
+    "Competitors": "Rakipler",
+    "Strengths": "Güçlü yönler",
+    "Recommendation": "Öneri",
+    "What went well": "İyi gidenler",
+    "What to improve": "Geliştirilecekler",
 }
 _TABLES = {"tr": _TR}
 _current: str | None = None
