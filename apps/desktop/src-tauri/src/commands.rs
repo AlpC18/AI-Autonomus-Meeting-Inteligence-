@@ -76,6 +76,25 @@ pub fn save_settings(
     Ok(problems)
 }
 
+/// Tries every configured outside service and the AI provider once with the
+/// saved settings; returns one `{service, ok, detail}` entry per service.
+///
+/// # Errors
+/// Returns a user-facing message if the check could not run.
+#[tauri::command(async)]
+pub fn check_connections() -> Result<Vec<serde_json::Value>, String> {
+    let dir = crate::engine::engine_dir()
+        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    let output = crate::engine::uv_run(&dir, "continuum-check-connections")
+        .output()
+        .map_err(|error| format!("Could not start the connection test: {error}"))?;
+    serde_json::from_slice::<serde_json::Value>(&output.stdout)
+        .ok()
+        .and_then(|reply| reply.get("results").cloned())
+        .and_then(|results| serde_json::from_value(results).ok())
+        .ok_or_else(|| String::from("The connection test ended without an answer."))
+}
+
 /// Restarts the engine with the saved settings (or stops it under auto-start).
 fn restart_engine(app: &tauri::AppHandle, dir: &std::path::Path) -> Result<(), String> {
     use tauri::Manager;

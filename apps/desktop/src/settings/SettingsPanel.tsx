@@ -3,7 +3,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { canConnectGoogle, changedSecrets, groupFields, parseSettings, type SettingField, type SettingsView } from "./settings";
+import { canConnectGoogle, changedSecrets, connectionLines, groupFields, parseSettings, type SettingField, type SettingsView } from "./settings";
 
 const INPUT = "mt-1 w-full rounded-md border border-zinc-300 p-1.5 text-sm text-zinc-900";
 
@@ -54,6 +54,15 @@ export function SettingsPanel() {
         setMessages([message]);
         load();
       })
+      .catch((cause: unknown) => setMessages([String(cause)]))
+      .finally(() => setBusy(false));
+  };
+
+  const testConnections = () => {
+    setBusy(true);
+    setMessages(["Testing the saved connections…"]);
+    invoke<unknown>("check_connections")
+      .then((reply) => setMessages(connectionLines(reply)))
       .catch((cause: unknown) => setMessages([String(cause)]))
       .finally(() => setBusy(false));
   };
@@ -158,7 +167,16 @@ export function SettingsPanel() {
           disabled={busy}
           className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save and restart engine"}
+          {busy ? "Working…" : "Save and restart engine"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={testConnections}
+          title="Signs in to each saved integration and asks the AI provider for a one-word reply."
+          className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Test connections
         </button>
       </div>
       {messages.length > 0 && (

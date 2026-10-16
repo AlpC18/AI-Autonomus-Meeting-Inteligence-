@@ -25,7 +25,7 @@ class Word:
 class Segment:
     """A run of speech transcribed from one audio source.
 
-    ``source`` is the capture stream it came from (``"mic"`` or ``"system"``).
+    ``source`` is the capture stream it came from (``"mic"``, ``"system"`` or ``"tab"``, a browser tab).
     ``speaker`` is the dominant speaker; individual words may differ when
     several people talk within one segment.
     """

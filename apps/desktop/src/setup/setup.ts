@@ -73,3 +73,42 @@ export const PRIVACY_PANES = {
   Microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
   "Screen Recording": "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
 } as const;
+
+/** The settings each step can be completed with, right in the checklist. */
+export const STEP_FIELDS: Record<SetupStep["id"], readonly string[]> = {
+  permissions: [],
+  ai: ["CONTINUUM_LLM_PROVIDER", "CONTINUUM_LLM_API_KEY"],
+  memory: ["CONTINUUM_TENANT_ID", "CONTINUUM_PROJECT_ID"],
+  notes: ["CONTINUUM_NOTES_DIR"],
+  speakers: ["HF_TOKEN"],
+};
+
+/** Whether `key` should be shown for the step given what is typed so far (no key for a local AI). */
+export function fieldShown(key: string, drafts: Record<string, string>, settings: SettingsView): boolean {
+  if (key !== "CONTINUUM_LLM_API_KEY") return true;
+  const provider = (drafts.CONTINUUM_LLM_PROVIDER ?? settings.values.CONTINUUM_LLM_PROVIDER ?? "").trim();
+  return !LOCAL_PROVIDERS.has(provider);
+}
+
+/**
+ * The `save_settings` arguments for what was typed into one step: every
+ * other saved value is kept (saving replaces all values), secrets go
+ * separately, and empty secret drafts leave the saved secret alone.
+ */
+export function stepSave(
+  settings: SettingsView,
+  drafts: Record<string, string>,
+): { values: Record<string, string>; secrets: Record<string, string> } {
+  const secretKeys = new Set(settings.fields.filter((field) => field.kind === "secret").map((field) => field.key));
+  const values = { ...settings.values };
+  const secrets: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(drafts)) {
+    const value = raw.trim();
+    if (secretKeys.has(key)) {
+      if (value !== "") secrets[key] = value;
+    } else {
+      values[key] = value;
+    }
+  }
+  return { values, secrets };
+}

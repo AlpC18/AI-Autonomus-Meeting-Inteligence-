@@ -3,6 +3,7 @@
 
 """Transcripts rendered as Markdown notes and SRT subtitles."""
 
+import os
 import stat
 import wave
 from datetime import UTC, datetime
@@ -77,8 +78,9 @@ def test_notes_grow_line_by_line_in_a_private_file(tmp_path: Path) -> None:
     assert lines[heading].startswith("# Meeting — 2026-10-12")
     assert lines[heading + 2 :] == markdown_lines(DUET) + markdown_lines(SOLO)
     assert notes.path.suffix == ".md"
-    assert stat.S_IMODE(notes.path.stat().st_mode) == 0o600
-    assert stat.S_IMODE(notes.path.parent.stat().st_mode) == 0o700
+    if os.name == "posix":  # Windows has no permission bits
+        assert stat.S_IMODE(notes.path.stat().st_mode) == 0o600
+        assert stat.S_IMODE(notes.path.parent.stat().st_mode) == 0o700
 
 
 def notes_date(notes: MeetingNotes) -> str:

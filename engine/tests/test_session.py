@@ -415,3 +415,36 @@ async def test_watchers_send_hints_and_add_their_report_when_the_meeting_ends(tm
     ended = next(event for event in events if event["type"] == "meeting_ended")
     assert ended["report"] == "## Hesitations\n\n- maybe"
     assert "## Hesitations" in notes.read_text()
+
+
+class DocumentMemory(FakeMemory):
+    def forget_meeting(self, meeting_id: str) -> None:
+        self.stored = [entry for entry in self.stored if entry[1] != meeting_id]
+
+
+async def test_documents_are_imported_into_the_open_memory_during_a_meeting(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "pricing.md").write_text("A seat costs $49 per month.\nAnnual plans get two months free.")
+    (tmp_path / "docs" / "logo.png").write_bytes(b"x")
+    memory = DocumentMemory()
+    session, _published, events = await make(tmp_path, memory=memory)
+
+    missing = str(tmp_path / "missing.md")
+    await session.handle(json.dumps({"type": "import_documents", "paths": [str(tmp_path / "docs"), missing]}))
+
+    assert events[-1] == {
+        "type": "documents_imported",
+        "imported": [{"name": "pricing.md", "passages": 2}],
+        "errors": [f"{missing}: not found"],
+    }
+    assert [entry[0].speaker for entry in memory.stored] == ["pricing.md", "pricing.md"]
+
+
+async def test_importing_documents_needs_memory(tmp_path: Path) -> None:
+    session, _published, events = await make(tmp_path)
+    await session.handle(json.dumps({"type": "import_documents", "paths": [str(tmp_path / "a.md")]}))
+    assert events[-1] == {
+        "type": "documents_imported",
+        "imported": [],
+        "errors": ["Memory is off: set a workspace and project in Settings first."],
+    }

@@ -74,3 +74,13 @@ describe("engine events", () => {
     });
   });
 });
+
+describe("documents_imported", () => {
+  it("reads the imported files and errors, skipping malformed entries", () => {
+    expect(
+      parseEngineEvent(
+        JSON.stringify({ type: "documents_imported", imported: [{ name: "a.md", passages: 3 }, { name: 1 }], errors: ["b: not found", 2] }),
+      ),
+    ).toEqual({ type: "documents_imported", result: { imported: [{ name: "a.md", passages: 3 }], errors: ["b: not found"] } });
+  });
+});

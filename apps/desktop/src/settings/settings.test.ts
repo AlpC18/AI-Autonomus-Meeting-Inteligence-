@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import { describe, expect, it } from "vitest";
-import { canConnectGoogle, changedSecrets, groupFields, parseSettings } from "./settings";
+import { canConnectGoogle, changedSecrets, connectionLines, groupFields, parseSettings } from "./settings";
 
 const field = (key: string, group: string, kind = "text") => ({ key, label: key, group, kind, options: [], help: "" });
 
@@ -37,5 +37,23 @@ describe("canConnectGoogle", () => {
     expect(canConnectGoogle(view)).toBe(true);
     expect(canConnectGoogle({ ...view, secretsSet: [] })).toBe(false);
     expect(canConnectGoogle({ ...view, values: {} })).toBe(false);
+  });
+});
+
+describe("connectionLines", () => {
+  it("marks each service as working, failing or unchecked", () => {
+    expect(
+      connectionLines([
+        { service: "GitHub", ok: true, detail: "signed in as ana" },
+        { service: "Jira", ok: false, detail: "HTTP 401: Unauthorized" },
+        { service: "Slack", ok: null, detail: "configured" },
+        { service: 3 },
+      ]),
+    ).toEqual(["✓ GitHub: signed in as ana", "✗ Jira: HTTP 401: Unauthorized", "– Slack: configured"]);
+  });
+
+  it("explains an empty or unreadable reply", () => {
+    expect(connectionLines([])).toEqual(["Nothing to test: no AI provider or integration is configured."]);
+    expect(connectionLines("oops")).toEqual(["The connection test returned nothing readable."]);
   });
 });

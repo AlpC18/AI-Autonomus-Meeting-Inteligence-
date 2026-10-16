@@ -20,7 +20,7 @@ import objc
 import ScreenCaptureKit as SCK
 from Foundation import NSObject
 
-from continuum.audio.apps import bundle_ids, meeting_apps
+from continuum.audio.apps import MEETING_APPS, bundle_ids, meeting_apps
 from continuum.audio.blocks import SAMPLE_RATE, BlockQueue
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ def _content_filter(display: Any, apps: list[Any] | None) -> Any:
     )
 
 
-async def _follow_meeting_apps(stream: Any, heard: frozenset[str]) -> None:
+async def _follow_meeting_apps(stream: Any, heard: frozenset[str], allowed: frozenset[str]) -> None:
     """Keep the capture on the meeting apps running now, as they open and close."""
     while True:
         await asyncio.sleep(APP_REFRESH_S)
@@ -96,7 +96,7 @@ async def _follow_meeting_apps(stream: Any, heard: frozenset[str]) -> None:
         )
         if content is None or not content.displays():
             continue
-        apps = meeting_apps(content.applications())
+        apps = meeting_apps(content.applications(), allowed)
         if bundle_ids(apps) == heard:
             continue
         content_filter = _content_filter(content.displays()[0], apps)
@@ -108,11 +108,13 @@ async def _follow_meeting_apps(stream: Any, heard: frozenset[str]) -> None:
             logger.info("Hearing meeting apps: %s", ", ".join(sorted(heard)) or "none running")
 
 
-async def system_audio_blocks(only_meeting_apps: bool = False) -> AsyncIterator[np.ndarray]:
+async def system_audio_blocks(
+    only_meeting_apps: bool = False, allowed: frozenset[str] = MEETING_APPS
+) -> AsyncIterator[np.ndarray]:
     """Yield mono float32 blocks at 16 kHz of what the machine plays.
 
-    With ``only_meeting_apps`` only the audio of running meeting apps and
-    browsers is captured (see :data:`continuum.audio.apps.MEETING_APPS`), so
+    With ``only_meeting_apps`` only the audio of running apps in ``allowed``
+    is captured (meeting apps and browsers by default), so
     music or videos in other apps stay out of the transcript. The engine's own
     audio output is always excluded. Runs until the consumer stops iterating,
     then stops the capture.
@@ -143,7 +145,7 @@ async def system_audio_blocks(only_meeting_apps: bool = False) -> AsyncIterator[
 
     queue = BlockQueue("System", max_blocks=_QUEUE_BLOCKS)
     receiver = _StreamReceiver.alloc().initWithQueue_(queue)
-    apps = meeting_apps(content.applications()) if only_meeting_apps else None
+    apps = meeting_apps(content.applications(), allowed) if only_meeting_apps else None
     content_filter = _content_filter(displays[0], apps)
     stream = SCK.SCStream.alloc().initWithFilter_configuration_delegate_(
         content_filter, config, receiver
@@ -163,7 +165,7 @@ async def system_audio_blocks(only_meeting_apps: bool = False) -> AsyncIterator[
     following = None
     if apps is not None:
         logger.info("Hearing meeting apps: %s", ", ".join(sorted(bundle_ids(apps))) or "none running")
-        following = asyncio.create_task(_follow_meeting_apps(stream, bundle_ids(apps)))
+        following = asyncio.create_task(_follow_meeting_apps(stream, bundle_ids(apps), allowed))
     try:
         async for block in queue:
             yield block

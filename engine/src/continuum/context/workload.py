@@ -24,6 +24,28 @@ logger = logging.getLogger(__name__)
 ME = "me"
 """Speaker label of the local user (the microphone)."""
 
+MAX_PAGES = 50
+"""Pages of 100 read per list (5,000 issues or members), so one huge backlog cannot stall a meeting."""
+
+
+def _all_pages(client: httpx.Client, url: str, params: dict[str, object], headers: dict[str, str]) -> list:
+    """Every item of a paginated GitHub or GitLab list, following its ``Link: rel="next"`` header.
+
+    Raises:
+        httpx.HTTPStatusError: if a page is refused.
+    """
+    items: list = []
+    next_url: str | None = url
+    for page in range(MAX_PAGES):
+        response = client.get(next_url, params={**params, "per_page": 100} if page == 0 else None, headers=headers)
+        response.raise_for_status()
+        items += response.json()
+        next_url = response.links.get("next", {}).get("url")
+        if next_url is None:
+            return items
+    logger.warning("Read only the first %d items of %s", len(items), url)
+    return items
+
 
 class JiraWorkload:
     """``(speaker, due) -> Workload`` from Jira Cloud. Blocks; errors give ``None``."""
@@ -99,8 +121,6 @@ class GitHubWorkload:
     profile name, only among the people who can be assigned in ``repos``.
     """
 
-    # ponytail: first 100 assignees and 100 open issues per repo; page through
-    # them if a team or backlog is larger.
     def __init__(self, token: str, repos: Sequence[str], client: httpx.Client) -> None:
         self._repos = tuple(sorted(repos))
         self._client = client
@@ -116,7 +136,7 @@ class GitHubWorkload:
             issues = [
                 issue
                 for repo in self._repos
-                for issue in self._get(f"/repos/{repo}/issues", assignee=login, state="open", per_page=100)
+                for issue in self._list(f"/repos/{repo}/issues", assignee=login, state="open")
                 if "pull_request" not in issue
             ]
             due_by = sum(
@@ -130,10 +150,13 @@ class GitHubWorkload:
             logger.warning("Could not read the GitHub workload (%s)", type(error).__name__)
             return None
 
-    def _get(self, path: str, **params: object) -> list | dict:
-        response = self._client.get(f"https://api.github.com{path}", params=params, headers=self._headers)
+    def _get(self, path: str) -> dict:
+        response = self._client.get(f"https://api.github.com{path}", headers=self._headers)
         response.raise_for_status()
         return response.json()
+
+    def _list(self, path: str, **params: object) -> list:
+        return _all_pages(self._client, f"https://api.github.com{path}", params, self._headers)
 
     def _login(self, speaker: str) -> str | None:
         if _unnamed(speaker):
@@ -146,7 +169,7 @@ class GitHubWorkload:
         if speaker == ME:
             return str(self._get("/user")["login"])
         wanted = speaker.casefold()
-        logins = {user["login"] for repo in self._repos for user in self._get(f"/repos/{repo}/assignees", per_page=100)}
+        logins = {user["login"] for repo in self._repos for user in self._list(f"/repos/{repo}/assignees")}
         matches = [login for login in sorted(logins) if login.casefold() == wanted]
         if not matches:
             matches = [login for login in sorted(logins) if self._name(login).casefold() == wanted]
@@ -167,8 +190,6 @@ class GitLabWorkload:
     among the projects' members.
     """
 
-    # ponytail: first 100 members and 100 open issues per project; page
-    # through them if a team or backlog is larger.
     def __init__(self, access: GitLabAccess, projects: Sequence[str], client: httpx.Client) -> None:
         self._access = access
         self._projects = tuple(sorted(projects))
@@ -183,11 +204,8 @@ class GitLabWorkload:
             issues = [
                 issue
                 for project in self._projects
-                for issue in self._get(
-                    f"/projects/{project_path(project)}/issues",
-                    assignee_username=username,
-                    state="opened",
-                    per_page=100,
+                for issue in self._list(
+                    f"/projects/{project_path(project)}/issues", assignee_username=username, state="opened"
                 )
             ]
             due_by = sum(1 for issue in issues if (day := _gitlab_due(issue)) is not None and day <= due)
@@ -196,10 +214,13 @@ class GitLabWorkload:
             logger.warning("Could not read the GitLab workload (%s)", type(error).__name__)
             return None
 
-    def _get(self, path: str, **params: object) -> list | dict:
-        response = self._client.get(self._access.api(path), params=params, headers=self._access.headers)
+    def _get(self, path: str) -> dict:
+        response = self._client.get(self._access.api(path), headers=self._access.headers)
         response.raise_for_status()
         return response.json()
+
+    def _list(self, path: str, **params: object) -> list:
+        return _all_pages(self._client, self._access.api(path), params, self._access.headers)
 
     def _username(self, speaker: str) -> str | None:
         if _unnamed(speaker):
@@ -215,7 +236,7 @@ class GitLabWorkload:
         members = {
             member["username"]: str(member.get("name") or "")
             for project in self._projects
-            for member in self._get(f"/projects/{project_path(project)}/members/all", per_page=100)
+            for member in self._list(f"/projects/{project_path(project)}/members/all")
         }
         matches = sorted(name for name in members if name.casefold() == wanted) or sorted(
             name for name, full in members.items() if full.casefold() == wanted

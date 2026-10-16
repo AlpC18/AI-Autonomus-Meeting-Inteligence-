@@ -2,8 +2,19 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import { useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { AnswerView } from "./AskPanel";
-import type { Answer, EngineCommand, LiveActionItem, MeetingSummaryEvent, TalkTime } from "./transcriptStream";
+import type { Answer, DocumentImport, EngineCommand, LiveActionItem, MeetingSummaryEvent, TalkTime } from "./transcriptStream";
+
+/** Asks the user for documents with the system file picker; `null` when cancelled. */
+async function pickDocuments(): Promise<string[] | null> {
+  const picked = await open({
+    multiple: true,
+    title: "Add documents to this project's memory",
+    filters: [{ name: "Documents", extensions: ["md", "markdown", "txt", "pdf"] }],
+  });
+  return picked === null ? null : Array.isArray(picked) ? picked : [picked];
+}
 
 interface MeetingBarProps {
   title: string;
@@ -18,6 +29,9 @@ interface MeetingBarProps {
   projectError: string | null;
   /** What the live hints found in the meeting that ended last (Markdown). */
   lastReport?: string | null;
+  lastImport?: DocumentImport | null;
+  /** Chooses documents to import; the system file picker unless replaced (in tests). */
+  pick?: () => Promise<string[] | null>;
 }
 
 function minutes(seconds: number): string {
@@ -33,7 +47,7 @@ function minutes(seconds: number): string {
  * what earlier meetings said about it; "Brief me" asks for it again.
  * Switching the project ends this meeting and files the next under it.
  */
-export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null, lastImport = null, pick = pickDocuments }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
   const [nextProject, setNextProject] = useState("");
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
@@ -93,7 +107,34 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
           >
             Switch
           </button>
+          <button
+            type="button"
+            disabled={!connected}
+            title="Company documents in memory are used by fact checks and answers."
+            onClick={() =>
+              void pick()
+                .then((paths) => paths && paths.length > 0 && send({ type: "import_documents", paths }))
+                .catch(() => undefined)
+            }
+            className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add documents…
+          </button>
         </form>
+      )}
+      {lastImport && (
+        <div role="status" aria-label="Document import" className="mt-1 text-sm text-zinc-700">
+          {lastImport.imported.map((item) => (
+            <p key={item.name}>
+              Added {item.name} ({item.passages} passages)
+            </p>
+          ))}
+          {lastImport.errors.map((error) => (
+            <p key={error} className="text-red-700">
+              Not added: {error}
+            </p>
+          ))}
+        </div>
       )}
       {projectError && (
         <p role="alert" className="mt-1 text-sm text-red-700">

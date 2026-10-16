@@ -110,7 +110,8 @@ def main() -> None:
 
     Imports files or folders into the memory of ``CONTINUUM_TENANT_ID`` /
     ``CONTINUUM_PROJECT_ID``; ``--forget`` removes them again. Stop the
-    engine first: only one process can open the memory at a time.
+    engine first: only one process can open the memory at a time. While it
+    runs, the app's Add documents… button imports through the engine instead.
     """
     parser = argparse.ArgumentParser(description="Add company documents to project memory for fact checks.")
     parser.add_argument("paths", type=Path, nargs="+", help="Markdown, text or PDF files, or folders of them")

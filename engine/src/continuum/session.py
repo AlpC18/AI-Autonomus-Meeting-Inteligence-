@@ -33,6 +33,7 @@ from continuum.live_controls import (
     Ask,
     Brief,
     EndMeeting,
+    ImportDocuments,
     Note,
     Rename,
     SpeakerNames,
@@ -41,6 +42,7 @@ from continuum.live_controls import (
     parse,
 )
 from continuum.llm import Llm
+from continuum.memory.documents import document_files, import_document
 from continuum.memory.scope import TenantScope
 from continuum.memory.store import Meeting, MemoryHit, ScopedMemory
 from continuum.notes import MeetingNotes, markdown_lines
@@ -469,6 +471,8 @@ class MeetingSession:
             await self._brief()
         elif isinstance(command, SwitchProject):
             await self._switch_project(command.project)
+        elif isinstance(command, ImportDocuments):
+            await self._import_documents(command.paths)
         else:
             await self._note(command)
 
@@ -499,6 +503,15 @@ class MeetingSession:
                         await self.end("project")
                     return
         self._publish_event({"type": "project_error", "error": error})
+
+    async def _import_documents(self, paths: tuple[str, ...]) -> None:
+        """Import documents into the open memory, so the engine need not stop for it."""
+        memory = self._memory
+        if memory is None:
+            reply = {"imported": [], "errors": ["Memory is off: set a workspace and project in Settings first."]}
+        else:
+            reply = await asyncio.to_thread(_import_into, memory, paths, self._settings.redact)
+        self._publish_event({"type": "documents_imported", **reply})
 
     async def _note(self, command: Note | Rename) -> None:
         if isinstance(command, Rename):
@@ -618,6 +631,26 @@ class MeetingSession:
             queued, errors = await asyncio.to_thread(self._propose, summary, source, current.event)
             event.update(queued=queued, errors=errors)
         self._publish_event(event)
+
+
+def _import_into(memory: ScopedMemory, paths: tuple[str, ...], redact: bool) -> dict[str, list[Any]]:
+    """Import the documents at ``paths`` (files or folders); report each file or error."""
+    imported: list[Any] = []
+    errors: list[Any] = []
+    for raw in paths:
+        path = Path(raw)
+        if not path.exists():
+            errors.append(f"{raw}: not found")
+            continue
+        files = document_files([path])
+        if not files:
+            errors.append(f"{raw}: no Markdown, text or PDF files")
+        for file in files:
+            try:
+                imported.append({"name": file.name, "passages": import_document(memory, file, redact)})
+            except (OSError, RuntimeError, ValueError) as error:
+                errors.append(f"{file}: {error}")
+    return {"imported": imported, "errors": errors}
 
 
 def _rename(segment: Segment, names: dict[str, str]) -> Segment:

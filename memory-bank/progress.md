@@ -99,13 +99,23 @@
 - GitLab issues as approval-gated actions; long utterances cut at a quiet moment; Info.plist and audio-input entitlement for the notarised app.
 - Verified: 398 pytest, desktop action tests, 17 cargo, ruff; ad-hoc signed `.app` with hardened runtime. Not verified: the AI hesitation pass against a real model, GitLab/GitHub workload against real services, notarisation (needs Apple secrets).
 
+## Phase 11 (polish, `feat/phase-11-polish`, stacked on phase 10)
+
+- Outside services retried on 429 (Retry-After) and, for reads, 502-504 (`continuum.net`); a change is never repeated after a server error.
+- `continuum-check-connections` and the Settings **Test connections** button: read-only sign-in to GitHub, GitLab, Jira, Notion, Google, Hugging Face (plus each allowed repo/project) and a one-word AI reply.
+- **Add documents…** in the meeting bar imports through the running engine (live command `import_documents`).
+- First-run checklist steps are filled in and saved in place (folder picker for notes; no key for local AI).
+- CI runs the engine tests on Ubuntu, macOS and Windows.
+- Workload lookups follow GitHub/GitLab pagination (up to 50 pages). Browser extension (`apps/browser-extension`, MV3) sends only the meeting tab's audio to the engine (`tab` source, ws://127.0.0.1:8766, extension origins only); with it on, browsers are left out of macOS system audio.
+- Verified: 409 pytest, 38 vitest, 17 cargo, clippy, ruff; connection check against the real GitHub, GitLab, Groq and Hugging Face APIs (wrong tokens rejected with readable reasons). Not verified: the Windows CI run (not pushed yet).
+
 ## Pending
 
 - Merge the stacked PRs into main; add `TAURI_SIGNING_PRIVATE_KEY` and the Apple secrets, then tag a release.
 - **Real use:** speaker names and voice re-splitting in a real meeting; Slack, Calendar, Jira, GitHub, GitLab and AI summaries against real services.
-- Test loopback on real Windows/Linux machines.
+- Test loopback on real Windows/Linux machines (CI now runs the engine tests there, not audio capture).
 
 ## Known issues
 
-- With "Hear only meeting apps" off, system capture transcribes any other audio playing; with it on, a browser's other tabs are still heard.
+- With "Hear only meeting apps" off, system capture transcribes any other audio playing. A browser's other tabs are kept out only with the browser extension (`CONTINUUM_BROWSER_TAB_AUDIO`); Firefox and Safari have no tab-capture API for it.
 - Open questions are tracked in `activeContext.md`.

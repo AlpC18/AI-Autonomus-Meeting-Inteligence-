@@ -26,6 +26,8 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 
+from continuum import net
+
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SCOPES = (
@@ -146,7 +148,7 @@ def main() -> None:
         print(json.dumps({"error": "Set the Google client ID and secret first (a 'Desktop app' OAuth client)."}))
         sys.exit(1)
     try:
-        with httpx.Client(timeout=20) as client:
+        with net.client(20) as client:
             token = authorize(client_id, client_secret, webbrowser.open, client)
     except RuntimeError as error:
         print(json.dumps({"error": str(error)}))

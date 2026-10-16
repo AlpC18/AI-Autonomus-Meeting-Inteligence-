@@ -8,8 +8,7 @@ import json
 import os
 import sys
 
-import httpx
-
+from continuum import net
 from continuum.actions.approval import approve
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
@@ -82,7 +81,7 @@ def main() -> None:
             sys.stdout.write(_describe(action))
             if input("Create this for real? [y/N] ").strip().lower() != "y":
                 sys.exit("Not approved; nothing was sent.")
-        with httpx.Client(timeout=30) as client:
+        with net.client(30) as client:
             done = approve(store, args.id, settings, client)
         emit([done])
         if done.status != "done":
