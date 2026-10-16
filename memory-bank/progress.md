@@ -113,7 +113,6 @@
 - Merge the stacked PRs into main; add `TAURI_SIGNING_PRIVATE_KEY` and the Apple secrets, then tag a release.
 - **Real use:** speaker names and voice re-splitting in a real meeting; Slack, Calendar, Jira, GitHub, GitLab and AI summaries against real services.
 - Test loopback on real Windows/Linux machines (CI now runs the engine tests there, not audio capture).
-- Workload lookups read the first 100 issues/members per repo or project (marked `ponytail:`); page through if teams outgrow it.
 
 ## Known issues
 

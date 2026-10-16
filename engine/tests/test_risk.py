@@ -209,3 +209,27 @@ def test_a_failed_ai_pass_keeps_the_phrase_list_report() -> None:
     tracker.watch(said("maybe we can do it"))
     report = tracker.finish()
     assert report is not None and "(maybe)" in report
+
+
+def test_workload_reads_every_page_of_a_large_backlog(monkeypatch: pytest.MonkeyPatch) -> None:
+    from continuum.context import workload as module
+
+    seen: list[str] = []
+
+    def paged(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if request.url.path == "/user":
+            return httpx.Response(200, json={"login": "me"})
+        page = int(request.url.params.get("page", "1"))
+        issues = [{"number": page * 1000 + n, "milestone": None} for n in range(100 if page < 3 else 7)]
+        headers = {"Link": f'<https://api.github.com/repos/acme/web/issues?page={page + 1}>; rel="next"'} if page < 3 else {}
+        return httpx.Response(200, json=issues, headers=headers)
+
+    workload = GitHubWorkload("token", ("acme/web",), httpx.Client(transport=httpx.MockTransport(paged)))
+    assert workload("me", date(2026, 10, 16)) == Workload(open=207, due_by=0, source="GitHub")
+    assert "per_page=100" in seen[1] and seen[2].endswith("page=2")
+
+    monkeypatch.setattr(module, "MAX_PAGES", 2)
+    seen.clear()
+    capped = GitHubWorkload("token", ("acme/web",), httpx.Client(transport=httpx.MockTransport(paged)))
+    assert capped("me", date(2026, 10, 16)) == Workload(open=200, due_by=0, source="GitHub")
