@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from continuum.language import t
 from continuum.llm import Llm
 
 MAX_TRANSCRIPT_CHARS = 400_000
@@ -135,15 +136,15 @@ def parse_summary(reply: str) -> MeetingSummary:
 
 
 def to_markdown(summary: MeetingSummary) -> str:
-    """Render ``summary`` as a Markdown section starting with ``## Summary``."""
-    lines = ["## Summary", "", summary.overview, ""]
+    """Render ``summary`` as a Markdown section starting with ``## Summary`` (in the notes' language)."""
+    lines = [f"## {t('Summary')}", "", summary.overview, ""]
     if summary.decisions:
-        lines += ["### Decisions", "", *(f"- {decision}" for decision in summary.decisions), ""]
+        lines += [f"### {t('Decisions')}", "", *(f"- {decision}" for decision in summary.decisions), ""]
     if summary.action_items:
-        lines += ["### Action items", ""]
+        lines += [f"### {t('Action items')}", ""]
         for item in summary.action_items:
             extra = ", ".join(
-                part for part in (item.owner, f"due {item.due}" if item.due else None) if part
+                part for part in (item.owner, t("due {date}", date=item.due) if item.due else None) if part
             )
             lines.append(f"- [ ] {item.task}" + (f" ({extra})" if extra else ""))
         lines.append("")

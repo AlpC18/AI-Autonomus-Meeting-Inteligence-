@@ -7,6 +7,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { SettingField, SettingsView } from "../settings/settings";
 import { PRIVACY_PANES, STEP_FIELDS, fieldShown, stepSave, type SetupStep } from "./setup";
+import { t } from "../i18n";
 
 interface SetupProps {
   steps: SetupStep[];
@@ -33,7 +34,7 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
   const set = (key: string, value: string) => setDrafts((current) => ({ ...current, [key]: value }));
   const save = () => {
     setBusy(true);
-    setMessage("Saving…");
+    setMessage(t("Saving…"));
     invoke<string[]>("save_settings", stepSave(settings, drafts))
       .then((problems) => {
         setMessage(problems.length > 0 ? problems.join(" ") : null);
@@ -50,12 +51,12 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
         const value = drafts[field.key] ?? (field.kind === "secret" ? "" : (settings.values[field.key] ?? ""));
         return (
           <label key={field.key} className="flex items-center gap-2 text-sm">
-            <span className="w-32 text-zinc-700">{field.label}</span>
+            <span className="w-32 text-zinc-700">{t(field.label)}</span>
             {field.kind === "choice" ? (
               <select value={value} onChange={(event) => set(field.key, event.target.value)} className={INPUT}>
                 {field.options.map((option) => (
                   <option key={option} value={option}>
-                    {option || "(choose)"}
+                    {option || t("(choose)")}
                   </option>
                 ))}
               </select>
@@ -64,7 +65,7 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
                 type={field.kind === "secret" ? "password" : "text"}
                 autoComplete="off"
                 value={value}
-                placeholder={field.kind === "secret" && settings.secretsSet.includes(field.key) ? "saved" : undefined}
+                placeholder={field.kind === "secret" && settings.secretsSet.includes(field.key) ? t("saved") : undefined}
                 onChange={(event) => set(field.key, event.target.value)}
                 className={`${INPUT} flex-1`}
               />
@@ -74,12 +75,12 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
                 type="button"
                 className={BUTTON}
                 onClick={() =>
-                  void open({ directory: true, title: "Choose the notes folder" })
+                  void open({ directory: true, title: t("Choose the notes folder") })
                     .then((folder) => typeof folder === "string" && set(field.key, folder))
                     .catch(() => undefined)
                 }
               >
-                Choose…
+                {t("Choose…")}
               </button>
             )}
           </label>
@@ -87,7 +88,7 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
       })}
       <div className="flex items-center gap-2">
         <button type="button" disabled={busy || Object.keys(drafts).length === 0} onClick={save} className={BUTTON}>
-          Save
+          {t("Save")}
         </button>
         {message && (
           <span role="status" className="text-xs text-zinc-700">
@@ -102,20 +103,20 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
 /** First-run checklist: each step can be finished right here, or in Settings. */
 export function SetupChecklist({ steps, settings, saved, openSettings, dismiss }: SetupProps) {
   return (
-    <section aria-label="Get started" className="mt-4 max-w-2xl">
-      <h2 className="text-lg font-semibold">Get started</h2>
+    <section aria-label={t("Get started")} className="mt-4 max-w-2xl">
+      <h2 className="text-lg font-semibold">{t("Get started")}</h2>
       <ol className="mt-2 flex flex-col gap-3">
         {steps.map((step) => (
           <li key={step.id} className="rounded-md border border-zinc-200 p-3">
             <p className="font-medium">
-              <span aria-label={step.done ? "Done" : "To do"}>{step.done ? "✓" : "○"}</span> {step.title}
+              <span aria-label={step.done ? t("Done") : t("To do")}>{step.done ? "✓" : "○"}</span> {t(step.title)}
             </p>
-            <p className="mt-1 text-sm text-zinc-700">{step.help}</p>
+            <p className="mt-1 text-sm text-zinc-700">{t(step.help)}</p>
             {step.id === "permissions" ? (
               <div className="mt-2 flex gap-2">
                 {Object.entries(PRIVACY_PANES).map(([name, url]) => (
                   <button key={name} type="button" onClick={() => void openUrl(url).catch(() => undefined)} className={BUTTON}>
-                    Open {name} settings
+                    {t("Open {name} settings", { name: t(name) })}
                   </button>
                 ))}
               </div>
@@ -127,10 +128,10 @@ export function SetupChecklist({ steps, settings, saved, openSettings, dismiss }
       </ol>
       <div className="mt-3 flex gap-4 text-sm text-zinc-600">
         <button type="button" onClick={openSettings} className="cursor-pointer underline">
-          All settings
+          {t("All settings")}
         </button>
         <button type="button" onClick={dismiss} className="cursor-pointer underline">
-          Hide this checklist
+          {t("Hide this checklist")}
         </button>
       </div>
     </section>

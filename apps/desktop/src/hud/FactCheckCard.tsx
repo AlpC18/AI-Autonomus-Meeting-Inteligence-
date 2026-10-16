@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import type { FactCheckAlert } from "./factCheck";
+import { t } from "../i18n";
 
 /** Props of {@link FactCheckCard}. */
 export interface FactCheckCardProps {
@@ -17,7 +18,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
 });
 
 function formatDate(date: Date): string {
-  return Number.isNaN(date.getTime()) ? "earlier" : DATE_FORMAT.format(date);
+  return Number.isNaN(date.getTime()) ? t("earlier") : DATE_FORMAT.format(date);
 }
 
 /**
@@ -37,12 +38,12 @@ export function FactCheckCard({ alert, onDismiss }: FactCheckCardProps) {
           <path d="M10 1.5 19 17.5H1L10 1.5Zm-1 6v5h2v-5H9Zm0 6.5v2h2v-2H9Z" />
         </svg>
         <h2 className="grow text-xs font-semibold uppercase tracking-wide text-amber-300">
-          Fact check
+          {t("Fact check")}
         </h2>
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss fact check"
+          aria-label={t("Dismiss fact check")}
           className="-m-1 grid size-8 cursor-pointer place-items-center rounded-md text-zinc-400 hover:bg-white/10 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-amber-300"
         >
           <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 stroke-current" strokeWidth="2">
@@ -53,9 +54,9 @@ export function FactCheckCard({ alert, onDismiss }: FactCheckCardProps) {
 
       {alert.claimed.length > 0 ? (
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-          <dt className="text-zinc-400">Said now</dt>
+          <dt className="text-zinc-400">{t("Said now")}</dt>
           <dd className="font-semibold">{alert.claimed.join(", ")}</dd>
-          <dt className="text-zinc-400">On record</dt>
+          <dt className="text-zinc-400">{t("On record")}</dt>
           <dd className="font-semibold text-amber-300">{alert.recorded.join(", ")}</dd>
         </dl>
       ) : (

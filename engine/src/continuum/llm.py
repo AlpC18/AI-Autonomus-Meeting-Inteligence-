@@ -247,11 +247,11 @@ class Claude:
 
 
 def connect(settings: LlmSettings) -> Llm:
-    """Return a client for the configured provider.
+    """Return a client for the configured provider, writing in ``CONTINUUM_LANGUAGE``.
 
     Raises:
         RuntimeError: if Claude is chosen but the SDK is not installed.
     """
-    if settings.provider == CLAUDE:
-        return Claude(settings)
-    return OpenAiCompatible(settings)
+    from continuum.language import InLanguage  # imports this module
+
+    return InLanguage(Claude(settings) if settings.provider == CLAUDE else OpenAiCompatible(settings))

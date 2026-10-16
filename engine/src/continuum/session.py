@@ -28,6 +28,7 @@ from continuum.actions.calendar import CalendarEvent
 from continuum.ask import answer, brief
 from continuum.audio.recorder import MixRecorder
 from continuum.config import Settings
+from continuum.language import t
 from continuum.live_controls import (
     NOTE_SOURCE,
     Ask,
@@ -242,7 +243,7 @@ class MeetingSession:
             if self._scope is not None:
                 directory = directory / self._scope.tenant_id / self._scope.project_id
             notes = MeetingNotes(
-                directory, started_at, title or "Meeting", attendees=event.attendees if event else ()
+                directory, started_at, title or t("Meeting"), attendees=event.attendees if event else ()
             )
             if self._settings.record_audio:
                 try:
@@ -253,7 +254,7 @@ class MeetingSession:
             logger.info("Writing meeting notes to %s", notes.path)
         now = self._clock()
         self._current = _Current(Meeting(str(uuid.uuid4()), started_at), event, notes, recorder, now, now)
-        started: dict[str, Any] = {"type": "meeting_started", "title": title or "Meeting"}
+        started: dict[str, Any] = {"type": "meeting_started", "title": title or t("Meeting")}
         if self._scope is not None:
             started["project"] = self._scope.project_id
         self._publish_event(started)

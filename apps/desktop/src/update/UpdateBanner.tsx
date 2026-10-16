@@ -4,6 +4,7 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
+import { t } from "../i18n";
 
 /**
  * Offers a newer release once, at startup. The update is only installed when
@@ -38,16 +39,16 @@ export function UpdateBanner() {
 
   return (
     <div role="status" className="mt-2 flex items-center gap-3 rounded-md bg-sky-50 p-2 text-sm">
-      <span>Continuum {update.version} is available.</span>
+      <span>{t("Continuum {version} is available.", { version: update.version })}</span>
       <button
         type="button"
         disabled={installing}
         onClick={() => void install()}
         className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {installing ? "Installing…" : "Install and restart"}
+        {installing ? t("Installing…") : t("Install and restart")}
       </button>
-      {error && <span className="text-red-700">The update failed: {error}</span>}
+      {error && <span className="text-red-700">{t("The update failed: {error}", { error })}</span>}
     </div>
   );
 }

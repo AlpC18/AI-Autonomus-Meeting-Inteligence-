@@ -189,7 +189,7 @@ def test_claude_refusal_is_an_error() -> None:
 
 
 def test_connect_picks_the_client_for_the_provider() -> None:
-    assert isinstance(connect(LlmSettings("ollama", "llama3.2", "http://localhost:11434/v1")), OpenAiCompatible)
+    assert isinstance(connect(LlmSettings("ollama", "llama3.2", "http://localhost:11434/v1")).inner, OpenAiCompatible)
 
 
 def test_summary_is_parsed_and_bad_fields_are_dropped() -> None:

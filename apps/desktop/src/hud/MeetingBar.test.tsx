@@ -4,6 +4,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { setLanguage } from "../i18n";
 import { MeetingBar } from "./MeetingBar";
 import type { EngineCommand } from "./transcriptStream";
 
@@ -110,5 +111,17 @@ describe("MeetingBar", () => {
     const status = screen.getByRole("status", { name: "Document import" }).textContent;
     expect(status).toContain("Added pricing.pdf (12 passages)");
     expect(status).toContain("Not added: /x.doc");
+  });
+
+  it("is shown in Turkish when the language is Turkish", () => {
+    setLanguage("tr");
+    try {
+      render(bar([]));
+      expect(screen.getByRole("button", { name: "Toplantıyı bitir" })).toBeTruthy();
+      expect(screen.getByText("Proje: web")).toBeTruthy();
+      expect(screen.getByRole("table", { name: "Son toplantıdaki konuşma süreleri" })).toBeTruthy();
+    } finally {
+      setLanguage("en");
+    }
   });
 });

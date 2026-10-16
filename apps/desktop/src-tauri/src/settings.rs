@@ -68,6 +68,13 @@ const fn field(
 /// Every setting, in the order shown.
 pub const FIELDS: &[Field] = &[
     field(
+        "CONTINUUM_LANGUAGE",
+        "Language",
+        "Meetings",
+        Kind::Choice(&["en", "tr"]),
+        "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.",
+    ),
+    field(
         "CONTINUUM_NOTES_DIR",
         "Notes folder",
         "Meetings",

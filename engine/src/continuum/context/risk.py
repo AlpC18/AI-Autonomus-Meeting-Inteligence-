@@ -8,7 +8,7 @@ Friday") is a commitment. When a workload lookup is configured, the
 speaker's open issues are counted and an overlay hint warns when the date
 looks unrealistic. Phrases of doubt ("I'm not sure", "maybe") are marked.
 Both are listed in the notes when the meeting ends. Matching is by phrase
-lists (English only), so nothing leaves the machine unless the workload
+lists (English and Turkish), so nothing leaves the machine unless the workload
 lookup is on, or an AI model is given: it then reads the transcript when
 the meeting ends and adds the doubts the phrases missed.
 """
@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
+from continuum.language import current, t
 from continuum.llm import Llm
 from continuum.notes import clock
 from continuum.transcript import Segment
@@ -38,16 +39,23 @@ WARN_SPRINT = 8
 """Unfinished issues in the person's current sprint that make a promise risky."""
 
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+# Turkish weekdays as word starts, so "cumaya" and "pazartesiye" match; the
+# lookaheads keep "cuma" from matching "cumartesi" and "pazar" "pazartesi".
+_TR_WEEKDAYS = ("pazartesi", "salı", "çarşamba", "perşembe", "cuma(?!rtesi)", "cumartesi", "pazar(?!tesi)")
+# English and Turkish, both always on: meetings mix languages.
 _PROMISE = re.compile(
     r"\b(?:i'?ll|i will|we'?ll|we will|i can|we can|i'?m going to|we'?re going to|gonna|"
-    r"will (?:be|have)|should be|can have|i promise|we promise|commit to)\b",
+    r"will (?:be|have)|should be|can have|i promise|we promise|commit to|"
+    r"\w+(?:acağım|eceğim|acağız|eceğiz|ırım|irim|urum|ürüm|arım|erim|rız|riz|ruz|rüz)|"
+    r"söz veriyorum|söz veriyoruz|hazır olur|hazır olacak|biter|teslim ederim)\b",
     re.IGNORECASE,
 )
-# ponytail: English phrases only; add other languages' phrases when meetings need them.
 _DOUBT = re.compile(
     r"\b(?:not sure|i'?m unsure|i don'?t know|maybe|i guess|hopefully|i'?ll try|we'?ll try|"
     r"we'?ll see|hard to say|not convinced|not confident|i doubt|worried|concerned|"
-    r"no idea|probably not|might not|i'?m afraid)\b",
+    r"no idea|probably not|might not|i'?m afraid|"
+    r"emin değilim|bilmiyorum|belki|galiba|sanırım|umarım|deneyeceğim|deneriz|bakarız|"
+    r"zor gibi|pek sanmıyorum|sanmıyorum|endişeliyim|korkarım|olmayabilir|bilemiyorum)\b",
     re.IGNORECASE,
 )
 _ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
@@ -80,19 +88,20 @@ def due_date(text: str, today: date) -> date | None:
             return date(*(int(part) for part in match.groups()))
         except ValueError:
             return None
-    if re.search(r"\b(?:today|tonight|eod|end of (?:the )?day)\b", lowered):
+    if re.search(r"\b(?:today|tonight|eod|end of (?:the )?day|bugün|bu akşam|akşama|gün sonu)", lowered):
         return today
-    if re.search(r"\btomorrow\b", lowered):
+    if re.search(r"\b(?:tomorrow|yarın)", lowered):
         return today + timedelta(days=1)
-    if re.search(r"\b(?:eow|this week|end of (?:the )?week)\b", lowered):
-        return _friday(today)
-    if re.search(r"\bnext week\b", lowered):
+    if re.search(r"\b(?:next week|gelecek hafta|önümüzdeki hafta|haftaya)", lowered):
         return _friday(today + timedelta(days=7 - today.weekday()))
-    if re.search(r"\bend of (?:the )?month\b", lowered):
+    if re.search(r"\b(?:eow|this week|end of (?:the )?week|bu hafta|hafta sonuna)", lowered):
+        return _friday(today)
+    if re.search(r"\b(?:end of (?:the )?month|ay sonu|ayın sonu)", lowered):
         return today.replace(day=calendar.monthrange(today.year, today.month)[1])
-    for index, name in enumerate(_WEEKDAYS):
-        if re.search(rf"\b{name}\b", lowered):
-            return today + timedelta(days=(index - today.weekday()) % 7 or 7)
+    for names in (_WEEKDAYS, _TR_WEEKDAYS):
+        for index, name in enumerate(names):
+            if re.search(rf"\b{name}", lowered):
+                return today + timedelta(days=(index - today.weekday()) % 7 or 7)
     return None
 
 
@@ -174,18 +183,19 @@ class RiskTracker:
         due = due_date(text, self._today())
         if due is None:
             return []
-        self._commitments.append(_Mark(segment.start, speaker, text, f"due {due.isoformat()}"))
+        self._commitments.append(_Mark(segment.start, speaker, text, t("due {date}", date=due.isoformat())))
         load = self._workload(speaker, due) if self._workload is not None else None
         if load is None or (load.due_by < WARN_DUE and load.open < WARN_OPEN and load.sprint < WARN_SPRINT):
             return []
-        sprint = f", {load.sprint} in the current sprint" if load.sprint else ""
+        sprint = t(", {count} in the current sprint", count=load.sprint) if load.sprint else ""
+        day = f"{due:%a %d %b}" if current() == "en" else f"{due:%d.%m.%Y}"
         return [
             {
                 "kind": "commitment",
-                "title": f"{speaker} promised a date: {due:%a %d %b}",
-                "body": (
-                    f"{speaker} has {load.open} open {load.source} issues, "
-                    f"{load.due_by} due by then{sprint}."
+                "title": t("{speaker} promised a date: {day}", speaker=speaker, day=day),
+                "body": t(
+                    "{speaker} has {open} open {source} issues, {due} due by then{sprint}.",
+                    speaker=speaker, open=load.open, source=load.source, due=load.due_by, sprint=sprint,
                 ),
                 "details": [" ".join(text.split())],
             }
@@ -199,9 +209,9 @@ class RiskTracker:
         self._add_ai_doubts()
         sections = []
         if self._commitments:
-            sections.append("## Commitments\n\n" + "\n".join(mark.line() for mark in self._commitments))
+            sections.append(f"## {t('Commitments')}\n\n" + "\n".join(mark.line() for mark in self._commitments))
         if self._doubts:
-            sections.append("## Hesitations\n\n" + "\n".join(mark.line() for mark in self._doubts))
+            sections.append(f"## {t('Hesitations')}\n\n" + "\n".join(mark.line() for mark in self._doubts))
         self._commitments, self._doubts, self._said = [], [], []
         return "\n\n".join(sections) or None
 

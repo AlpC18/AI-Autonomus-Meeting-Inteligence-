@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../i18n";
 
 /** An action the assistant proposed, laid out for the user's decision. */
 interface PendingAction {
@@ -37,11 +38,11 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       ? payload.labels.filter((label): label is string => typeof label === "string")
       : [];
     return {
-      heading: `GitHub issue in ${payload.repo}`,
+      heading: t("GitHub issue in {repo}", { repo: payload.repo }),
       title: text(payload.title),
-      detail: labels.length > 0 ? `Labels: ${labels.join(", ")}` : "",
+      detail: labels.length > 0 ? t("Labels: {labels}", { labels: labels.join(", ") }) : "",
       body: text(payload.body),
-      approveLabel: "Approve and create",
+      approveLabel: t("Approve and create"),
     };
   }
   if (kind === "gitlab_issue" && text(payload.project) && text(payload.title)) {
@@ -49,11 +50,11 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       ? payload.labels.filter((label): label is string => typeof label === "string")
       : [];
     return {
-      heading: `GitLab issue in ${text(payload.project)}`,
+      heading: t("GitLab issue in {project}", { project: text(payload.project) }),
       title: text(payload.title),
-      detail: labels.length > 0 ? `Labels: ${labels.join(", ")}` : "",
+      detail: labels.length > 0 ? t("Labels: {labels}", { labels: labels.join(", ") }) : "",
       body: text(payload.body),
-      approveLabel: "Approve and create",
+      approveLabel: t("Approve and create"),
     };
   }
   if (kind === "jira_issue" && text(payload.project) && text(payload.summary)) {
@@ -61,49 +62,49 @@ function layOut(kind: unknown, payload: Record<string, unknown>): Layout | null 
       ? payload.labels.filter((label): label is string => typeof label === "string")
       : [];
     return {
-      heading: `Jira task in project ${text(payload.project)}`,
+      heading: t("Jira task in project {project}", { project: text(payload.project) }),
       title: text(payload.summary),
-      detail: labels.length > 0 ? `Labels: ${labels.join(", ")}` : "",
+      detail: labels.length > 0 ? t("Labels: {labels}", { labels: labels.join(", ") }) : "",
       body: text(payload.body),
-      approveLabel: "Approve and create",
+      approveLabel: t("Approve and create"),
     };
   }
   if (kind === "slack_message" && text(payload.text)) {
     return {
-      heading: "Slack message to your configured channel",
+      heading: t("Slack message to your configured channel"),
       title: "",
       detail: "",
       body: text(payload.text),
-      approveLabel: "Approve and send",
+      approveLabel: t("Approve and send"),
     };
   }
   if (kind === "calendar_deadline" && text(payload.due) && text(payload.title)) {
     return {
-      heading: "Google Calendar deadline",
+      heading: t("Google Calendar deadline"),
       title: text(payload.title),
-      detail: `Due: ${text(payload.due)} (all day)`,
+      detail: t("Due: {date} (all day)", { date: text(payload.due) }),
       body: text(payload.description),
-      approveLabel: "Approve and schedule",
+      approveLabel: t("Approve and schedule"),
     };
   }
   if (kind === "email_recap" && text(payload.subject) && Array.isArray(payload.to)) {
     const to = payload.to.filter((address): address is string => typeof address === "string");
     if (to.length === 0) return null;
     return {
-      heading: "E-mail from your Gmail",
+      heading: t("E-mail from your Gmail"),
       title: text(payload.subject),
-      detail: `To: ${to.join(", ")}`,
+      detail: t("To: {to}", { to: to.join(", ") }),
       body: text(payload.body),
-      approveLabel: "Approve and send",
+      approveLabel: t("Approve and send"),
     };
   }
   if (kind === "notion_page" && text(payload.title) && text(payload.body)) {
     return {
-      heading: "Notion page under your configured parent page",
+      heading: t("Notion page under your configured parent page"),
       title: text(payload.title),
       detail: "",
       body: text(payload.body),
-      approveLabel: "Approve and create",
+      approveLabel: t("Approve and create"),
     };
   }
   return null;
@@ -125,11 +126,11 @@ function parsePending(reply: unknown): PendingAction[] {
 /** Reads the outcome of a decision from the backend's reply. */
 function describeOutcome(reply: unknown): string {
   const action = Array.isArray(reply) ? reply[0] : undefined;
-  if (!isRecord(action) || typeof action.status !== "string") return "Decision recorded.";
+  if (!isRecord(action) || typeof action.status !== "string") return t("Decision recorded.");
   const result = typeof action.result === "string" ? action.result : "";
-  if (action.status === "done") return `Done: ${result}`;
-  if (action.status === "rejected") return "Rejected. Nothing was sent.";
-  return `Failed: ${result || "no details given"}`;
+  if (action.status === "done") return t("Done: {result}", { result });
+  if (action.status === "rejected") return t("Rejected. Nothing was sent.");
+  return t("Failed: {result}", { result: result || t("no details given") });
 }
 
 /**
@@ -147,7 +148,7 @@ export function PendingActions() {
   const refresh = useCallback(() => {
     invoke<unknown>("pending_actions")
       .then((reply) => setActions(parsePending(reply)))
-      .catch((cause: unknown) => setNotice(`Could not load proposed actions: ${String(cause)}`));
+      .catch((cause: unknown) => setNotice(t("Could not load proposed actions: {error}", { error: String(cause) })));
   }, []);
 
   useEffect(() => {
@@ -160,7 +161,7 @@ export function PendingActions() {
     setBusy(id);
     invoke<unknown>("decide_action", { id, approve })
       .then((reply) => setNotice(describeOutcome(reply)))
-      .catch((cause: unknown) => setNotice(`Could not complete that: ${String(cause)}`))
+      .catch((cause: unknown) => setNotice(t("Could not complete that: {error}", { error: String(cause) })))
       .finally(() => {
         setBusy(null);
         refresh();
@@ -168,14 +169,14 @@ export function PendingActions() {
   };
 
   return (
-    <section aria-label="Proposed actions" className="mt-6">
-      <h2 className="text-lg font-semibold">Proposed actions</h2>
+    <section aria-label={t("Proposed actions")} className="mt-6">
+      <h2 className="text-lg font-semibold">{t("Proposed actions")}</h2>
       {notice && (
         <p role="status" className="mt-2 text-sm break-words text-zinc-700">
           {notice}
         </p>
       )}
-      {actions.length === 0 && <p className="mt-2 text-sm text-zinc-600">Nothing is waiting for you.</p>}
+      {actions.length === 0 && <p className="mt-2 text-sm text-zinc-600">{t("Nothing is waiting for you.")}</p>}
       <ul className="mt-2 flex flex-col gap-3">
         {actions.map((action) => (
           <li key={action.id} className="rounded-lg border border-zinc-300 p-3">
@@ -192,7 +193,7 @@ export function PendingActions() {
                 onClick={() => decide(action.id, true)}
                 className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy === action.id ? "Working…" : action.approveLabel}
+                {busy === action.id ? t("Working…") : action.approveLabel}
               </button>
               <button
                 type="button"
@@ -200,7 +201,7 @@ export function PendingActions() {
                 onClick={() => decide(action.id, false)}
                 className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Reject
+                {t("Reject")}
               </button>
             </div>
           </li>

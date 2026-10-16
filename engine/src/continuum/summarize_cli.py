@@ -20,16 +20,17 @@ from pathlib import Path
 from continuum.actions import proposals
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import ActionStore
+from continuum.language import heading_pattern
 from continuum.llm import LlmSettings, connect
 from continuum.summary import MeetingSummary, summarize, to_markdown
 
-SUMMARY_HEADING = "\n## Summary\n"
+_SUMMARY = heading_pattern("Summary")
 _SLACK_LIMIT = 3000
 
 
 def split_summary(notes: str) -> str:
     """Return ``notes`` without a summary section written earlier by this tool."""
-    return notes.split(SUMMARY_HEADING, 1)[0].rstrip() + "\n"
+    return _SUMMARY.split(notes, 1)[0].rstrip() + "\n"
 
 
 def _slack_text(summary: MeetingSummary, title: str) -> str:

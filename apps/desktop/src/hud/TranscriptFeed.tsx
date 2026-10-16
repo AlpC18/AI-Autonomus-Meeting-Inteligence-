@@ -3,6 +3,7 @@
 
 import { speakerTurns } from "./speakerTurns";
 import type { StreamStatus, TranscriptSegment } from "./transcriptStream";
+import { t } from "../i18n";
 
 const STATUS_TEXT: Record<StreamStatus, string> = {
   connecting: "Connecting to the engine…",
@@ -23,8 +24,8 @@ interface TranscriptFeedProps {
  */
 export function TranscriptFeed({ status, segments }: TranscriptFeedProps) {
   return (
-    <section aria-label="Live transcript">
-      <p role="status">{STATUS_TEXT[status]}</p>
+    <section aria-label={t("Live transcript")}>
+      <p role="status">{t(STATUS_TEXT[status])}</p>
       <ol aria-live="polite">
         {segments.flatMap((segment) =>
           speakerTurns(segment).map((turn, index) => (

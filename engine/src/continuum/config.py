@@ -123,7 +123,8 @@ class Settings:
         ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
         ``CONTINUUM_MEETING_APPS_ONLY``, ``CONTINUUM_BROWSER_TAB_AUDIO`` (adds the
         ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``, ``CONTINUUM_MEETING_APPS`` (comma-separated
-        bundle IDs; ``*`` at the end matches a prefix). Unset variables
+        bundle IDs; ``*`` at the end matches a prefix), ``CONTINUUM_LANGUAGE`` (``en`` or
+        ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`). Unset variables
         use defaults.
 
         Raises:
@@ -203,6 +204,10 @@ class Settings:
                 "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions, "
                 f"got {extension_id!r}"
             )
+
+        language = env.get("CONTINUUM_LANGUAGE", "").strip().lower() or "en"
+        if language not in ("en", "tr"):
+            raise ValueError(f"CONTINUUM_LANGUAGE must be en or tr, got {language!r}")
 
         extra_apps = frozenset(
             part.strip() for part in env.get("CONTINUUM_MEETING_APPS", "").split(",") if part.strip()

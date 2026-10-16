@@ -19,6 +19,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from continuum.config import Settings
+from continuum.language import heading_pattern
 from continuum.llm import LlmSettings, connect
 from continuum.summarize_cli import split_summary
 from continuum.summary import summarize, to_markdown
@@ -26,7 +27,7 @@ from continuum.summary import summarize, to_markdown
 _LINE = re.compile(r"^- `(\d{2}):(\d{2}):(\d{2})` \*\*(.+?):\*\* (.*)$")
 _AUDIO = re.compile(r"^<!-- continuum:audio (.+) -->$")
 _PLAYABLE = frozenset({".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".aiff", ".aif", ".webm", ".mp4", ".mov"})
-SUMMARY_HEADING = "## Summary"
+_SUMMARY = heading_pattern("Summary")
 MAX_MEETINGS = 500
 MAX_RESULTS = 200
 
@@ -59,7 +60,7 @@ def title_of(text: str, path: Path) -> str:
 def parse_lines(text: str) -> list[Line]:
     """Transcript lines of a notes file, ignoring everything else (summary, comments)."""
     lines = []
-    for raw in text.split(f"\n{SUMMARY_HEADING}\n", 1)[0].splitlines():
+    for raw in _SUMMARY.split(text, 1)[0].splitlines():
         match = _LINE.match(raw)
         if match:
             hours, minutes, seconds, speaker, said = match.groups()
@@ -69,8 +70,8 @@ def parse_lines(text: str) -> list[Line]:
 
 def summary_of(text: str) -> str | None:
     """The summary section written by the summarizer, if any."""
-    parts = text.split(f"\n{SUMMARY_HEADING}\n", 1)
-    return f"{SUMMARY_HEADING}\n{parts[1]}".strip() if len(parts) == 2 else None
+    match = _SUMMARY.search(text)
+    return text[match.start():].strip() if match else None
 
 
 def audio_of(text: str) -> str | None:
