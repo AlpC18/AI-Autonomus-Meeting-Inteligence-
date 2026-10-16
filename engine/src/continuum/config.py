@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from continuum.audio.transcriber import BACKENDS
 from continuum.memory.scope import TenantScope
 
 KNOWN_SOURCES = ("mic", "system")
@@ -22,7 +23,11 @@ class Settings:
     ``scope`` enables memory: without it nothing is stored, because data must
     never be saved without knowing which tenant and project own it.
     ``notes_dir`` enables Markdown notes: each meeting's transcript is also
-    written there as a plain file.
+    written there as a plain file. ``asr_backend`` picks the speech model
+    runtime: ``auto`` uses the Apple Silicon GPU (mlx) when available.
+    ``redact`` hides personal data and secrets in what is stored (memory and
+    notes). ``retention_days`` deletes memories older than that many days
+    each time the engine starts.
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -34,6 +39,9 @@ class Settings:
     memory_dir: Path = Path.home() / ".continuum" / "memory"
     embedding_model: str | None = None
     notes_dir: Path | None = None
+    asr_backend: str = "auto"
+    redact: bool = True
+    retention_days: int | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -43,13 +51,17 @@ class Settings:
         ``system``), ``CONTINUUM_WS_PORT``, ``CONTINUUM_WHISPER_MODEL``,
         ``CONTINUUM_MODEL_DIR``, ``HF_TOKEN``, ``CONTINUUM_TENANT_ID`` and
         ``CONTINUUM_PROJECT_ID`` (set both or neither), ``CONTINUUM_MEMORY_DIR``,
-        ``CONTINUUM_EMBEDDING_MODEL``, ``CONTINUUM_NOTES_DIR``. Unset variables
+        ``CONTINUUM_EMBEDDING_MODEL``, ``CONTINUUM_NOTES_DIR``,
+        ``CONTINUUM_ASR_BACKEND`` (``auto``, ``faster-whisper`` or ``mlx``),
+        ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``. Unset variables
         use defaults.
 
         Raises:
             ValueError: naming the offending variable, if a source is unknown,
                 no source is given, the port is not a number in 1-65535, only
-                one of tenant and project is set, or either ID is malformed.
+                one of tenant and project is set, either ID is malformed, or the
+                speech backend is unknown, or the retention is not a positive
+                number of days.
         """
         defaults = cls()
         raw_sources = env.get("CONTINUUM_SOURCES")
@@ -80,6 +92,17 @@ class Settings:
             except ValueError as error:
                 raise ValueError(f"CONTINUUM_TENANT_ID / CONTINUUM_PROJECT_ID: {error}") from error
 
+        asr_backend = env.get("CONTINUUM_ASR_BACKEND", "").strip().lower() or defaults.asr_backend
+        if asr_backend not in BACKENDS:
+            raise ValueError(f"CONTINUUM_ASR_BACKEND must be one of {BACKENDS}, got {asr_backend!r}")
+
+        raw_retention = env.get("CONTINUUM_RETENTION_DAYS", "").strip()
+        if raw_retention and (not raw_retention.isdecimal() or int(raw_retention) < 1):
+            raise ValueError(
+                f"CONTINUUM_RETENTION_DAYS must be a whole number of days, got {raw_retention!r}"
+            )
+        redact = env.get("CONTINUUM_REDACT", "1").strip().lower() not in {"0", "false", "off", "no"}
+
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
         notes_dir = env.get("CONTINUUM_NOTES_DIR")
@@ -93,4 +116,7 @@ class Settings:
             memory_dir=Path(memory_dir) if memory_dir else defaults.memory_dir,
             embedding_model=env.get("CONTINUUM_EMBEDDING_MODEL") or None,
             notes_dir=Path(notes_dir).expanduser() if notes_dir else None,
+            asr_backend=asr_backend,
+            redact=redact,
+            retention_days=int(raw_retention) if raw_retention else None,
         )

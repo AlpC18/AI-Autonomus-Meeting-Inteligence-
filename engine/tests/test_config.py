@@ -62,3 +62,13 @@ def test_tenant_and_project_together_enable_memory() -> None:
 
     assert settings.scope == TenantScope("acme", "website")
     assert settings.memory_dir == Path("/data/memory")
+
+
+def test_privacy_settings() -> None:
+    defaults = Settings.from_env({})
+    assert defaults.redact is True and defaults.retention_days is None
+    configured = Settings.from_env({"CONTINUUM_REDACT": "off", "CONTINUUM_RETENTION_DAYS": "90"})
+    assert configured.redact is False and configured.retention_days == 90
+    for bad in ("0", "-5", "ninety"):
+        with pytest.raises(ValueError, match="CONTINUUM_RETENTION_DAYS"):
+            Settings.from_env({"CONTINUUM_RETENTION_DAYS": bad})

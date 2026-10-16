@@ -27,10 +27,18 @@ continuum-engine = "continuum.pipeline:main"
 continuum-memory-search = "continuum.memory.cli:main"
 continuum-actions-review = "continuum.actions.review_cli:main"
 continuum-transcribe = "continuum.transcribe_cli:main"
+continuum-summarize = "continuum.summarize_cli:main"
+continuum-library = "continuum.library:main"
 
 [project.optional-dependencies]
 diarization = [
     "pyannote-audio>=4.0.7",
+]
+claude = [
+    "anthropic>=1",
+]
+apple = [
+    "mlx-whisper>=0.4 ; platform_machine == 'arm64' and sys_platform == 'darwin'",
 ]
 
 [build-system]

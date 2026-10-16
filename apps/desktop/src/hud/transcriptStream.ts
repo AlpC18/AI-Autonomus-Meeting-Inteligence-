@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { parseAlertMessage, type FactCheckAlert } from "./factCheck";
 
 /** One transcribed word, timed in seconds since the engine started capturing. */
@@ -42,6 +42,22 @@ export interface TranscriptStream {
   alerts: readonly ShownAlert[];
   /** Removes one alert by its id. Unknown ids are ignored. */
   dismissAlert: (id: number) => void;
+  /**
+   * Sends a message to the engine (a typed note or a speaker rename).
+   * Returns `false` when the engine is not connected, so nothing was sent.
+   */
+  send: (message: EngineCommand) => boolean;
+}
+
+/** What the desktop app can ask the engine to do during a meeting. */
+export type EngineCommand =
+  | { type: "note"; text: string }
+  | { type: "rename_speaker"; from: string; to: string };
+
+/** The engine's confirmation that a speaker is now shown under another name. */
+export interface Renamed {
+  from: string;
+  to: string;
 }
 
 /** Default address of the engine's transcript WebSocket. */
@@ -110,6 +126,38 @@ export function parseSegmentMessage(raw: unknown): TranscriptSegment | null {
   };
 }
 
+/** Extracts a speaker rename from one raw WebSocket message, or `null`. */
+export function parseRenamedMessage(raw: unknown): Renamed | null {
+  if (typeof raw !== "string") return null;
+  let message: unknown;
+  try {
+    message = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (
+    !isRecord(message) ||
+    message.type !== "renamed" ||
+    typeof message.from !== "string" ||
+    typeof message.to !== "string"
+  ) {
+    return null;
+  }
+  return { from: message.from, to: message.to };
+}
+
+/** Returns `segment` with speaker `from` shown as `to`, in the segment and its words. */
+export function renameInSegment(segment: TranscriptSegment, { from, to }: Renamed): TranscriptSegment {
+  const swap = (speaker: string) => (speaker === from ? to : speaker);
+  return {
+    ...segment,
+    speaker: swap(segment.speaker),
+    words: segment.words.map((word) =>
+      word.speaker === null ? word : { ...word, speaker: swap(word.speaker) },
+    ),
+  };
+}
+
 /**
  * Subscribes to the engine's live transcript and fact-check alerts.
  *
@@ -121,6 +169,13 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [status, setStatus] = useState<StreamStatus>("connecting");
   const [segments, setSegments] = useState<readonly TranscriptSegment[]>([]);
   const [alerts, setAlerts] = useState<readonly ShownAlert[]>([]);
+  const socketRef = useRef<WebSocket | null>(null);
+  const send = useCallback((message: EngineCommand) => {
+    const socket = socketRef.current;
+    if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify(message));
+    return true;
+  }, []);
   const dismissAlert = useCallback((id: number) => {
     setAlerts((current) => current.filter((shown) => shown.id !== id));
   }, []);
@@ -133,6 +188,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     const open = () => {
       setStatus("connecting");
       socket = new WebSocket(url);
+      socketRef.current = socket;
       socket.onopen = () => setStatus("open");
       socket.onmessage = (event: MessageEvent<unknown>) => {
         const segment = parseSegmentMessage(event.data);
@@ -144,6 +200,11 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
         if (alert) {
           const shown = { id: nextAlertId++, alert };
           setAlerts((current) => [...current, shown].slice(-MAX_ALERTS));
+          return;
+        }
+        const renamed = parseRenamedMessage(event.data);
+        if (renamed) {
+          setSegments((current) => current.map((segment) => renameInSegment(segment, renamed)));
         }
       };
       socket.onclose = () => {
@@ -157,9 +218,10 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     return () => {
       stopped = true;
       window.clearTimeout(retry);
+      socketRef.current = null;
       socket?.close();
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert };
+  return { status, segments, alerts, dismissAlert, send };
 }

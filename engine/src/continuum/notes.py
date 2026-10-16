@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-"""Plain-text renderings of a transcript: Markdown notes and SRT subtitles.
+"""Plain-text renderings of a transcript: Markdown notes, SRT and WebVTT subtitles.
 
 Markdown notes are ordinary files, so they open in any editor and sync with
 Obsidian or Git without this app.
@@ -53,22 +53,41 @@ def markdown_lines(segment: Segment) -> list[str]:
     ]
 
 
-def srt(segments: list[Segment]) -> str:
-    """Render ``segments`` as SubRip subtitles, one cue per speaker run."""
-    cues = [
-        (start, segment.end, speaker, text)
+def _cues(segments: list[Segment]) -> list[tuple[float, float, str, str]]:
+    """``(start, end, speaker, text)`` per speaker run; a run ends where the next one starts."""
+    runs = [
+        (start, segment.end, speaker, " ".join(text.split()))
         for segment in segments
         for speaker, start, text in speaker_runs(segment)
     ]
-    blocks = []
-    for index, (start, _segment_end, speaker, text) in enumerate(cues):
-        same_segment_next = index + 1 < len(cues) and cues[index + 1][1] == cues[index][1]
-        end = cues[index + 1][0] if same_segment_next else cues[index][1]
-        blocks.append(
-            f"{index + 1}\n{clock(start, ',')} --> {clock(max(end, start), ',')}\n"
-            f"{speaker}: {' '.join(text.split())}\n"
-        )
-    return "\n".join(blocks)
+    cues = []
+    for index, (start, segment_end, speaker, text) in enumerate(runs):
+        same_segment_next = index + 1 < len(runs) and runs[index + 1][1] == segment_end
+        end = runs[index + 1][0] if same_segment_next else segment_end
+        cues.append((start, max(end, start), speaker, text))
+    return cues
+
+
+def srt(segments: list[Segment]) -> str:
+    """Render ``segments`` as SubRip subtitles, one cue per speaker run."""
+    return "\n".join(
+        f"{index}\n{clock(start, ',')} --> {clock(end, ',')}\n{speaker}: {text}\n"
+        for index, (start, end, speaker, text) in enumerate(_cues(segments), start=1)
+    )
+
+
+def vtt(segments: list[Segment]) -> str:
+    """Render ``segments`` as WebVTT subtitles with voice tags, one cue per speaker run."""
+    cues = "\n".join(
+        f"{clock(start, '.')} --> {clock(end, '.')}\n<v {_vtt_safe(speaker)}>{_vtt_safe(text)}\n"
+        for start, end, speaker, text in _cues(segments)
+    )
+    return "WEBVTT\n\n" + cues
+
+
+def _vtt_safe(text: str) -> str:
+    """Escape the characters that WebVTT cue text treats as markup."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 class MeetingNotes:

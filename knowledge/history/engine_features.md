@@ -4,6 +4,13 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 
 | Date | Module | Feature | Notes |
 | :--- | :--- | :--- | :--- |
+| 2026-10-14 | desktop | Past meetings viewer | `continuum-library` + Rust commands; search, filter, click-to-play recordings, summarize button. |
+| 2026-10-14 | transcribe | VTT, watch folder, import into memory | `--format vtt`, `--watch FOLDER`, `--remember` with content-hash meeting ids. |
+| 2026-10-14 | privacy | Redaction and retention | Personal data and secrets hidden before memory/notes; `CONTINUUM_RETENTION_DAYS`; FileVault warning. |
+| 2026-10-14 | hud | Live notepad and speaker renaming | Notes and renames sent over the transcript socket; notes become "Note" lines. |
+| 2026-10-14 | audio | mlx-whisper backend | `CONTINUUM_ASR_BACKEND=auto` uses the Apple Silicon GPU; ~3.4x faster on M1. |
+| 2026-10-14 | summary | AI summaries with any provider | `continuum-summarize`; prompt in `summary.SYSTEM_PROMPT`; free providers and Claude. |
+| 2026-10-14 | actions | Jira issue action | `continuum_propose_jira_issue`; a Task in an allowed project on the configured Atlassian Cloud site after approval. |
 | 2026-10-12 | desktop | Proposed-actions panel | Lists pending proposals in full with Approve and Reject; backed by Rust commands that run the review CLI. |
 | 2026-10-12 | actions | `continuum-actions-review` CLI | list / approve / reject; approval asks for confirmation and refuses without a terminal unless `--yes`. |
 | 2026-10-12 | actions | GitHub issue action with approval gate | Propose-only MCP tools, repo allowlist, tamper check, single-use approval, SQLite audit trail. |

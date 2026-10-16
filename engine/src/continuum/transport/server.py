@@ -6,11 +6,12 @@
 import asyncio
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from types import TracebackType
 from typing import Self
 
 from websockets.asyncio.server import Server, ServerConnection, broadcast, serve
+from websockets.exceptions import ConnectionClosed
 from websockets.typing import Origin
 
 from continuum.factcheck.checker import FactCheckAlert
@@ -25,6 +26,11 @@ DESKTOP_ORIGINS: tuple[str, ...] = (
 )
 """Origins of the Tauri webview: macOS/Linux, Windows, and the Vite dev server."""
 
+MAX_CLIENT_MESSAGE = 16 * 1024
+"""Largest message a client may send (a typed note); bigger ones close the connection."""
+
+ClientMessageHandler = Callable[[str], Awaitable[None]]
+
 
 class TranscriptServer:
     """Broadcasts transcript segments to every connected desktop client.
@@ -34,9 +40,12 @@ class TranscriptServer:
     ``allowed_origins``: transcripts are private, and without that check any
     web page open in a browser could connect and read them.
 
-    Messages are JSON, either ``{"type": "segment", "segment": {...}}`` or
-    ``{"type": "fact_check", "alert": {...}}``. Clients that connect late
-    receive only what is published after they joined.
+    Messages are JSON, either ``{"type": "segment", "segment": {...}}``,
+    ``{"type": "fact_check", "alert": {...}}`` or ``{"type": "renamed",
+    "from": ..., "to": ...}``. Clients that connect late receive only what is
+    published after they joined. Text messages from clients (notes, speaker
+    renames) are passed to ``on_message``, one at a time; the handler must
+    validate them, since they are user input.
     """
 
     def __init__(
@@ -45,6 +54,7 @@ class TranscriptServer:
         port: int,
         host: str = "127.0.0.1",
         allowed_origins: Sequence[str] = DESKTOP_ORIGINS,
+        on_message: ClientMessageHandler | None = None,
     ) -> None:
         self._host = host
         self._requested_port = port
@@ -52,6 +62,7 @@ class TranscriptServer:
         self._clients: set[ServerConnection] = set()
         self._client_joined = asyncio.Condition()
         self._server: Server | None = None
+        self._on_message = on_message
 
     @property
     def port(self) -> int:
@@ -66,7 +77,11 @@ class TranscriptServer:
 
     async def __aenter__(self) -> Self:
         self._server = await serve(
-            self._handle, self._host, self._requested_port, origins=self._origins
+            self._handle,
+            self._host,
+            self._requested_port,
+            origins=self._origins,
+            max_size=MAX_CLIENT_MESSAGE,
         )
         logger.info("Transcript stream listening on ws://%s:%d", self._host, self.port)
         return self
@@ -99,6 +114,10 @@ class TranscriptServer:
         message = json.dumps({"type": "fact_check", "alert": alert.to_dict()})
         broadcast(self._clients, message)
 
+    def publish_rename(self, old: str, new: str) -> None:
+        """Tell clients that speaker ``old`` is now shown as ``new``."""
+        broadcast(self._clients, json.dumps({"type": "renamed", "from": old, "to": new}))
+
     async def wait_for_clients(self, count: int) -> None:
         """Block until at least ``count`` clients are connected."""
         async with self._client_joined:
@@ -109,6 +128,13 @@ class TranscriptServer:
         async with self._client_joined:
             self._client_joined.notify_all()
         try:
-            await connection.wait_closed()
+            async for message in connection:
+                if isinstance(message, str) and self._on_message is not None:
+                    try:
+                        await self._on_message(message)
+                    except Exception:
+                        logger.exception("Could not handle a message from the desktop app")
+        except ConnectionClosed:
+            pass
         finally:
             self._clients.discard(connection)

@@ -14,22 +14,25 @@ import os
 import signal
 import sys
 import threading
+import time
 import uuid
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 
 from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
-from continuum.audio.transcriber import Transcriber
+from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.factcheck.checker import FactCheckAlert, FactChecker
+from continuum.live_controls import Note, Rename, SpeakerNames, note_segment, parse
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import Meeting, MemoryStore
 from continuum.notes import MeetingNotes
+from continuum.privacy import redact_segment, warn_if_disk_unencrypted
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -64,12 +67,13 @@ class Engine:
 
     def __init__(
         self,
-        transcriber: Transcriber,
+        transcriber: SpeechToText,
         publish: Callable[[Segment], None],
         diarizer: PyannoteDiarizer | None = None,
         remember: Callable[[Segment, bool], None] | None = None,
         check: Callable[[Segment], FactCheckAlert | None] | None = None,
         publish_alert: Callable[[FactCheckAlert], None] | None = None,
+        relabel: Callable[[Segment], Segment] | None = None,
     ) -> None:
         self._transcriber = transcriber
         self._publish = publish
@@ -77,13 +81,15 @@ class Engine:
         self._remember = remember
         self._check = check
         self._publish_alert = publish_alert
+        self._relabel = relabel
         self._model_lock = asyncio.Lock()
 
     async def process(self, utterance: Utterance, source: str) -> None:
         """Transcribe one utterance and publish its segments.
 
         System audio is additionally split by speaker when a diarizer is set;
-        the microphone is always the local user. Segments are published
+        the microphone is always the local user. ``relabel`` then applies the
+        names the user gave to speakers. Segments are published
         first. Each is then fact-checked against memory (when ``check`` is
         set) and only afterwards written to memory (when ``remember`` is
         set), so a statement is never compared with itself. ``remember``
@@ -96,6 +102,8 @@ class Engine:
             if segments and self._diarizer is not None and source == "system":
                 turns = await asyncio.to_thread(self._diarizer.diarize, utterance)
                 segments = [label_segment(segment, turns) for segment in segments]
+        if self._relabel is not None:
+            segments = [self._relabel(segment) for segment in segments]
         for segment in segments:
             self._publish(segment)
         for segment in segments:
@@ -141,9 +149,9 @@ async def run(settings: Settings) -> int:
 
     Returns a process exit code: 1 when all sources failed, otherwise 0.
     """
-    logger.info("Loading Whisper model %r", settings.whisper_model)
+    logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     transcriber = await asyncio.to_thread(
-        Transcriber, settings.whisper_model, settings.model_dir
+        load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
     )
     diarizer = None
     if settings.hf_token:
@@ -157,6 +165,8 @@ async def run(settings: Settings) -> int:
     else:
         logger.info("HF_TOKEN is not set: speakers are labelled by audio source only")
 
+    if settings.scope is not None or settings.notes_dir is not None:
+        warn_if_disk_unencrypted()
     with contextlib.ExitStack() as stack:
         remember = None
         check = None
@@ -171,9 +181,14 @@ async def run(settings: Settings) -> int:
             )
             memory = store.scoped(settings.scope)
             meeting = Meeting(str(uuid.uuid4()), datetime.now(UTC))
+            if settings.retention_days is not None:
+                cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
+                forgotten = await asyncio.to_thread(memory.forget_before, cutoff)
+                logger.info("Forgot %d segments older than %d days", forgotten, settings.retention_days)
+            store_as = redact_segment if settings.redact else (lambda segment: segment)
 
             def remember(segment: Segment, disputed: bool) -> None:
-                memory.add_segment(segment, meeting, disputed=disputed)
+                memory.add_segment(store_as(segment), meeting, disputed=disputed)
 
             check = FactChecker(memory.search).check
 
@@ -188,15 +203,65 @@ async def run(settings: Settings) -> int:
                 "Memory is off: set CONTINUUM_TENANT_ID and CONTINUUM_PROJECT_ID to store transcripts"
             )
 
-        async with TranscriptServer(port=settings.ws_port) as server:
+        names = SpeakerNames()
+        controls = LiveControls(names, remember)
+        async with TranscriptServer(port=settings.ws_port, on_message=controls.handle) as server:
             publish = server.publish
             if settings.notes_dir is not None:
                 publish = _also_noting(server.publish, settings)
-            engine = Engine(transcriber, publish, diarizer, remember, check, server.publish_alert)
+            controls.connect(publish, server.publish_rename)
+            engine = Engine(
+                transcriber, publish, diarizer, remember, check, server.publish_alert, names.apply
+            )
             results = await asyncio.gather(
                 *(_run_source_logged(engine, source) for source in settings.sources)
             )
     return 0 if any(results) else 1
+
+
+class LiveControls:
+    """Applies what the user does during the meeting: typed notes and speaker names.
+
+    A note becomes a transcript line (speaker "Note") at the current stream
+    time: it is published, written to the Markdown notes and stored in
+    memory, but never fact-checked. A rename changes how a speaker is shown
+    from now on, tells the desktop app, and is recorded as a note.
+    """
+
+    def __init__(
+        self, names: SpeakerNames, remember: Callable[[Segment, bool], None] | None
+    ) -> None:
+        self._names = names
+        self._remember = remember
+        self._publish: Callable[[Segment], None] | None = None
+        self._announce: Callable[[str, str], None] | None = None
+        self._started = time.monotonic()
+
+    def connect(
+        self, publish: Callable[[Segment], None], announce_rename: Callable[[str, str], None]
+    ) -> None:
+        """Set where notes are published and renames announced; call before audio starts."""
+        self._publish = publish
+        self._announce = announce_rename
+        self._started = time.monotonic()
+
+    async def handle(self, raw: str) -> None:
+        """Handle one message from the desktop app; malformed ones are ignored."""
+        command = parse(raw)
+        if command is None or self._publish is None or self._announce is None:
+            logger.warning("Ignored a malformed message from the desktop app")
+            return
+        if isinstance(command, Rename):
+            self._names.rename(command.old, command.new)
+            self._announce(command.old, command.new)
+            command = Note(f"{command.old} is now called {command.new}.")
+        segment = note_segment(command, time.monotonic() - self._started)
+        self._publish(segment)
+        if self._remember is not None:
+            try:
+                await asyncio.to_thread(self._remember, segment, False)
+            except Exception:
+                logger.exception("Could not store a note in memory")
 
 
 def _also_noting(
@@ -205,7 +270,8 @@ def _also_noting(
     """Return a ``publish`` that also appends each segment to Markdown notes.
 
     Notes of a tenant and project go to their own subfolder of
-    ``settings.notes_dir``. A write failure is logged and never interrupts
+    ``settings.notes_dir``. With ``settings.redact`` the file gets the
+    redacted text; the live transcript is unchanged. A write failure is logged and never interrupts
     the live transcript.
     """
     assert settings.notes_dir is not None
@@ -218,7 +284,7 @@ def _also_noting(
     def publish_and_note(segment: Segment) -> None:
         publish(segment)
         try:
-            notes.add(segment)
+            notes.add(redact_segment(segment) if settings.redact else segment)
         except OSError:
             logger.exception("Could not write meeting notes")
 
