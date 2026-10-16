@@ -29,6 +29,7 @@ from continuum.diarization.turns import label_segment
 from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
 from continuum.memory.store import Meeting, MemoryStore
+from continuum.notes import MeetingNotes
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -188,13 +189,40 @@ async def run(settings: Settings) -> int:
             )
 
         async with TranscriptServer(port=settings.ws_port) as server:
-            engine = Engine(
-                transcriber, server.publish, diarizer, remember, check, server.publish_alert
-            )
+            publish = server.publish
+            if settings.notes_dir is not None:
+                publish = _also_noting(server.publish, settings)
+            engine = Engine(transcriber, publish, diarizer, remember, check, server.publish_alert)
             results = await asyncio.gather(
                 *(_run_source_logged(engine, source) for source in settings.sources)
             )
     return 0 if any(results) else 1
+
+
+def _also_noting(
+    publish: Callable[[Segment], None], settings: Settings
+) -> Callable[[Segment], None]:
+    """Return a ``publish`` that also appends each segment to Markdown notes.
+
+    Notes of a tenant and project go to their own subfolder of
+    ``settings.notes_dir``. A write failure is logged and never interrupts
+    the live transcript.
+    """
+    assert settings.notes_dir is not None
+    directory = settings.notes_dir
+    if settings.scope is not None:
+        directory = directory / settings.scope.tenant_id / settings.scope.project_id
+    notes = MeetingNotes(directory, datetime.now(UTC))
+    logger.info("Writing meeting notes to %s", notes.path)
+
+    def publish_and_note(segment: Segment) -> None:
+        publish(segment)
+        try:
+            notes.add(segment)
+        except OSError:
+            logger.exception("Could not write meeting notes")
+
+    return publish_and_note
 
 
 async def _serve(settings: Settings) -> int:

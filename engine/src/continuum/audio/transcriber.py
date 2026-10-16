@@ -21,7 +21,11 @@ class Transcriber:
     it from a worker thread, one call at a time.
     """
 
-    def __init__(self, model_size: str = "base", model_dir: Path | None = None) -> None:
+    def __init__(
+        self, model_size: str = "base", model_dir: Path | None = None, *, translate: bool = False
+    ) -> None:
+        """With ``translate`` the output is English whatever language is spoken."""
+        self._task = "translate" if translate else "transcribe"
         self._model = WhisperModel(
             model_size,
             device="auto",
@@ -38,7 +42,7 @@ class Transcriber:
         empty list when no speech is recognised.
         """
         raw_segments, _info = self._model.transcribe(
-            utterance.samples, word_timestamps=True, vad_filter=True
+            utterance.samples, word_timestamps=True, vad_filter=True, task=self._task
         )
         speaker = default_speaker(source)
         offset = utterance.start_s

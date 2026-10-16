@@ -15,7 +15,7 @@ class TenantScope:
     """Identifies whose data is being stored or searched.
 
     Every memory operation requires one. IDs are 1-64 characters from
-    ``A-Z a-z 0-9 _ . -``, so they are safe in file names and can never contain
+    ``A-Z a-z 0-9 _ . -`` (but not ``.`` or ``..``), so they are safe in file names and can never contain
     the separator used to derive :attr:`collection_name`.
 
     Raises:
@@ -27,7 +27,12 @@ class TenantScope:
 
     def __post_init__(self) -> None:
         for field, value in (("tenant_id", self.tenant_id), ("project_id", self.project_id)):
-            if not isinstance(value, str) or not _ID_PATTERN.fullmatch(value):
+            # "." and ".." are directory names, not safe file names.
+            if (
+                not isinstance(value, str)
+                or not _ID_PATTERN.fullmatch(value)
+                or value in {".", ".."}
+            ):
                 raise ValueError(
                     f"{field} must be 1-64 characters of letters, digits, '_', '.' or '-', "
                     f"got {value!r}"

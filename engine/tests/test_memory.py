@@ -101,7 +101,7 @@ def test_data_survives_reopening_the_store(tmp_path: Path) -> None:
         assert len(second.scoped(ACME).search("budget")) == 1
 
 
-@pytest.mark.parametrize("bad", ["", " ", "a/b", "../x", "a" * 65, "with space"])
+@pytest.mark.parametrize("bad", ["", " ", "a/b", "../x", "..", ".", "a" * 65, "with space"])
 def test_malformed_ids_are_rejected(bad: str) -> None:
     with pytest.raises(ValueError):
         TenantScope(bad, "website")

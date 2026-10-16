@@ -27,15 +27,11 @@ def _as_dict(action: Action) -> dict[str, object]:
 
 
 def _describe(action: Action) -> str:
-    payload = action.payload
-    labels = ", ".join(payload.get("labels", [])) or "none"
-    return (
-        f"Action {action.id} ({action.kind}, {action.status})\n"
-        f"  Repository: {payload.get('repo')}\n"
-        f"  Title:      {payload.get('title')}\n"
-        f"  Labels:     {labels}\n"
-        f"  Body:\n{payload.get('body', '')}\n"
-    )
+    lines = [f"Action {action.id} ({action.kind}, {action.status})"]
+    for field, value in action.payload.items():
+        shown = ", ".join(value) or "none" if isinstance(value, list) else value
+        lines.append(f"  {field}: {shown}")
+    return "\n".join(lines) + "\n"
 
 
 def main() -> None:
@@ -58,7 +54,10 @@ def main() -> None:
     reject_parser.add_argument("id")
     args = parser.parse_args()
 
-    settings = ActionSettings.from_env(os.environ)
+    try:
+        settings = ActionSettings.from_env(os.environ)
+    except ValueError as error:
+        sys.exit(str(error))
     store = ActionStore(settings.database)
 
     def emit(actions: list[Action]) -> None:

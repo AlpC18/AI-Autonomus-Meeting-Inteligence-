@@ -12,7 +12,7 @@ import logging
 
 import httpx
 
-from continuum.actions import github
+from continuum.actions import calendar, github, jira, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -26,8 +26,9 @@ def approve(
 
     The action is claimed first, so a second approval of the same id fails
     instead of repeating the side effect. The stored content is re-validated
-    and the repository allowlist re-checked at execution time, in case either
-    changed since the proposal. Any failure is recorded on the action
+    and the connector's permission (repository or project allowlist,
+    configured webhook or calendar) re-checked at execution time, in case either changed since
+    the proposal. Any failure is recorded on the action
     (status ``failed``) rather than raised.
 
     Raises:
@@ -37,14 +38,30 @@ def approve(
     """
     action = store.claim(action_id)
     try:
-        if action.kind != github.KIND:
-            raise ValueError(f"unknown action kind {action.kind!r}")
+        result = _execute(action, settings, client)
+    except Exception as error:  # noqa: BLE001 - every failure is recorded on the action
+        logger.error("Approved action %s failed: %s", action_id, error)
+        return store.finish(action_id, succeeded=False, result=str(error))
+    return store.finish(action_id, succeeded=True, result=result)
+
+
+def _execute(action: Action, settings: ActionSettings, client: httpx.Client) -> str:
+    """Run one claimed action and return what to record as its result."""
+    if action.kind == github.KIND:
         issue = github.GitHubIssue.from_payload(action.payload)
         github.require_allowed_repo(issue, settings.github_repos)
         if not settings.github_token:
             raise RuntimeError("GITHUB_TOKEN is not set, so the issue cannot be created")
-        url = github.create_issue(issue, settings.github_token, client)
-    except Exception as error:
-        logger.exception("Approved action %s failed", action_id)
-        return store.finish(action_id, succeeded=False, result=str(error))
-    return store.finish(action_id, succeeded=True, result=url)
+        return github.create_issue(issue, settings.github_token, client)
+    if action.kind == slack.KIND:
+        message = slack.SlackMessage.from_payload(action.payload)
+        return slack.send_message(message, slack.require_webhook(settings.slack_webhook_url), client)
+    if action.kind == calendar.KIND:
+        deadline = calendar.CalendarDeadline.from_payload(action.payload)
+        access = calendar.require_access(settings.google)
+        return calendar.create_deadline(deadline, access, settings.google_calendar_id, client)
+    if action.kind == jira.KIND:
+        jira_issue = jira.JiraIssue.from_payload(action.payload)
+        jira.require_allowed_project(jira_issue, settings.jira_projects)
+        return jira.create_issue(jira_issue, jira.require_access(settings.jira), client)
+    raise ValueError(f"unknown action kind {action.kind!r}")

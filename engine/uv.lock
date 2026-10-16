@@ -617,6 +617,7 @@ name = "continuum"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "av" },
     { name = "fastembed" },
     { name = "faster-whisper" },
     { name = "fastmcp" },
@@ -642,6 +643,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av", specifier = ">=14" },
     { name = "fastembed", specifier = ">=0.9.0" },
     { name = "faster-whisper", specifier = ">=1.2.1" },
     { name = "fastmcp", specifier = ">=4.1.0" },

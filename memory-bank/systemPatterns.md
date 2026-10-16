@@ -53,6 +53,7 @@ human notes, docs, codebase ----------------> memory (SQLite + vector, tenant-sc
 - **2026-10-12 — Action queue is SQLite** (`~/.continuum/actions.db`), because the MCP server, the CLI and the desktop app are separate processes.
 - **2026-10-12 — The desktop app reviews actions by running the review CLI** (`uv run continuum-actions-review --json ...`) from Rust commands, so there is one implementation of the gate.
 - **2026-10-12 — Speaker names come from a per-session voice registry, not from re-diarizing a window.** Each utterance is diarized alone, each speaker's audio is embedded, and the embedding is matched to known voices (cosine 0.5; same person measured 0.58-0.96, different people 0.44 or less). A 60 s sliding window was more accurate inside short utterances but about 10 times too slow for live use.
+- **2026-10-12 — A proposal never chooses its destination outside what the user configured.** GitHub issues go only to allowlisted repositories, Slack messages only to the one configured webhook (which must be on hooks.slack.com), calendar deadlines only to the configured calendar. A connector with no configuration refuses proposals. Webhook URLs and Google secrets are kept out of stored results and logs.
 - **2026-10-12 — A failed pyannote load no longer stops the engine**; it logs the reason and continues with source-based speaker labels.
 
 ## Rules every module follows
