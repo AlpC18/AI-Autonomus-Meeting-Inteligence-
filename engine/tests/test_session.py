@@ -374,7 +374,7 @@ async def test_switching_project_ends_the_meeting_and_files_the_next_under_the_n
         event for event in events if event["type"] == "meeting_ended"
     ).items()
     assert events[-1] == {"type": "meeting_started", "title": "Meeting", "project": "mobile"}
-    assert "acme/web" in str(first_notes) and "acme/mobile" in str(session.notes_path)
+    assert "acme/web" in first_notes.as_posix() and "acme/mobile" in session.notes_path.as_posix()
     session.remember(said("budget"), False)
     assert len(new.stored) == 1 and old.stored == []
     assert session.search("budget", 5)  # the fact checker follows the switch

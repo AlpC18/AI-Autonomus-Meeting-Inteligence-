@@ -4,6 +4,7 @@
 """AI summaries: any provider, untrusted replies, action items only proposed."""
 
 import json
+import os
 import subprocess
 import sys
 from datetime import date
@@ -241,7 +242,7 @@ def test_wrong_types_in_reply_are_ignored() -> None:
     assert summary.action_items == (ActionItem("Do it"),)
 
 
-@pytest.mark.parametrize("transcript", ["   ", "x" * 400_001])
+@pytest.mark.parametrize("transcript", ["   ", "x" * 400_001], ids=["empty", "oversized"])
 def test_empty_or_oversized_transcripts_are_refused(transcript: str) -> None:
     llm = FakeLlm()
     with pytest.raises(ValueError):
@@ -284,7 +285,9 @@ def test_cli_explains_missing_model(tmp_path: Path) -> None:
         [sys.executable, "-m", "continuum.summarize_cli", str(notes)],
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin"},
+        # No provider settings, but a home folder: Windows finds it through USERPROFILE.
+        env={key: os.environ[key] for key in ("PATH", "HOME", "USERPROFILE", "SYSTEMROOT") if key in os.environ},
+        cwd=tmp_path,
         check=False,
     )
     assert result.returncode != 0 and "CONTINUUM_LLM_PROVIDER" in result.stderr

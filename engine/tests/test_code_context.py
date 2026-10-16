@@ -26,7 +26,7 @@ def checkout(root: Path) -> Path:
     for name, text in files.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        path.write_text(text, encoding="latin-1")  # "\x89PNG" is the first byte of a real PNG
     return root
 
 
