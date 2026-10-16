@@ -58,12 +58,13 @@ export default function App() {
   const steps = settings ? setupSteps(settings, heardSpeech) : null;
   const showSetup = !hidden && steps !== null && !setupComplete(steps);
 
-  // Settings are re-read on every view change, so the checklist follows saves.
+  // Settings are re-read on every view change and after a checklist step is saved.
+  const [settingsVersion, setSettingsVersion] = useState(0);
   useEffect(() => {
     invoke<unknown>("get_settings")
       .then((reply) => setSettings(parseSettings(reply)))
       .catch(() => setSettings(null));
-  }, [view]);
+  }, [view, settingsVersion]);
 
   // The checklist opens by itself on first run, until it is complete or hidden.
   const [opened, setOpened] = useState(false);
@@ -119,7 +120,15 @@ export default function App() {
         <Notepad connected={connected} send={stream.send} />
         <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
       </div>
-      {view === "setup" && steps && <SetupChecklist steps={steps} openSettings={() => setView("settings")} dismiss={hideSetup} />}
+      {view === "setup" && steps && settings && (
+        <SetupChecklist
+          steps={steps}
+          settings={settings}
+          saved={() => setSettingsVersion((version) => version + 1)}
+          openSettings={() => setView("settings")}
+          dismiss={hideSetup}
+        />
+      )}
       {view === "meetings" && <MeetingLibrary />}
       {view === "settings" && <SettingsPanel />}
       <PendingActions />
