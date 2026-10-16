@@ -70,7 +70,7 @@ jobs:
       - run: pnpm exec vite build
       - name: Browser extension
         working-directory: apps/browser-extension
-        run: node --test worklet.test.mjs
+        run: node --test worklet.test.mjs firefox/tap.test.mjs
 
   shell:
     name: Desktop shell (Rust)

@@ -218,11 +218,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Bundle IDs of other meeting apps to hear, comma-separated (find one with: osascript -e 'id of app \"AppName\"').":
     "Dinlenecek diğer toplantı uygulamalarının paket kimlikleri, virgülle ayrılmış (bulmak için: osascript -e 'id of app \"UygulamaAdı\"').",
   "Calls in the browser from the extension": "Tarayıcıdaki görüşmeler eklentiden",
-  "Install the Continuum browser extension (apps/browser-extension) in Chrome, Edge, Brave or Arc and click it on the meeting tab: only that tab is heard, never your other tabs. Browsers are then left out of system audio (macOS).":
-    "Continuum tarayıcı eklentisini (apps/browser-extension) Chrome, Edge, Brave veya Arc'a kurun ve toplantı sekmesinde tıklayın: yalnızca o sekme duyulur, diğer sekmeleriniz asla. Tarayıcılar böylece sistem sesinin dışında kalır (macOS).",
+  "Install the Continuum browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.":
+    "Continuum tarayıcı eklentisini (apps/browser-extension; Firefox için apps/browser-extension/firefox) kurun ve toplantı sekmesinde tıklayın: yalnızca o görüşme duyulur, diğer sekmeleriniz asla. Tarayıcılar böylece sistem sesinin dışında kalır.",
   "Extension ID": "Eklenti kimliği",
-  "Optional: the ID chrome://extensions shows for the Continuum extension, so no other extension can send audio.":
-    "İsteğe bağlı: chrome://extensions sayfasında Continuum eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
+  "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Continuum extension, so no other extension can send audio.":
+    "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Continuum eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
   "Speech model": "Konuşma modeli",
   "Larger is more accurate and slower.": "Büyük model daha doğru ama daha yavaştır.",
   "Speech engine": "Konuşma motoru",

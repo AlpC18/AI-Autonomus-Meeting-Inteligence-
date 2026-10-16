@@ -142,14 +142,14 @@ pub const FIELDS: &[Field] = &[
         "Calls in the browser from the extension",
         "Meetings",
         Kind::Toggle(false),
-        "Install the Continuum browser extension (apps/browser-extension) in Chrome, Edge, Brave or Arc and click it on the meeting tab: only that tab is heard, never your other tabs. Browsers are then left out of system audio (macOS).",
+        "Install the Continuum browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.",
     ),
     field(
         "CONTINUUM_BROWSER_EXTENSION_ID",
         "Extension ID",
         "Meetings",
         Kind::Text,
-        "Optional: the ID chrome://extensions shows for the Continuum extension, so no other extension can send audio.",
+        "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Continuum extension, so no other extension can send audio.",
     ),
     field(
         "CONTINUUM_WHISPER_MODEL",

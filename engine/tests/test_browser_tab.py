@@ -89,3 +89,11 @@ def test_with_tab_audio_browsers_are_left_out_of_system_audio() -> None:
     assert _block_source("system", Settings(browser_tab_audio=True)).args == (True, NATIVE_MEETING_APPS)
     assert _block_source("system", Settings(meeting_apps_only=True)).args == (True, MEETING_APPS)
     assert not NATIVE_MEETING_APPS & BROWSERS
+
+
+async def test_the_firefox_extension_can_send_audio_too() -> None:
+    firefox = "moz-extension://1b2c3d4e-0000-4a5b-8c9d-0123456789ab"
+    async with receiving() as (port, first, _blocks), connect(f"ws://127.0.0.1:{port}", origin=firefox) as tab:
+        await tab.send(np.zeros(1600, dtype="<f4").tobytes())
+        assert (await asyncio.wait_for(first, 2)).size == 1600
+    assert Settings.from_env({"CONTINUUM_BROWSER_EXTENSION_ID": firefox.removeprefix("moz-extension://")}).browser_extension_id

@@ -207,10 +207,12 @@ class Settings:
         if browser_tab_audio and "tab" not in sources:
             sources = (*sources, "tab")
         extension_id = env.get("CONTINUUM_BROWSER_EXTENSION_ID", "").strip() or None
-        if extension_id is not None and not re.fullmatch(r"[a-p]{32}", extension_id):
+        if extension_id is not None and not re.fullmatch(
+            r"[a-p]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", extension_id
+        ):
             raise ValueError(
-                "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions, "
-                f"got {extension_id!r}"
+                "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions "
+                f"or the Firefox UUID shown in about:debugging, got {extension_id!r}"
             )
 
         language = env.get("CONTINUUM_LANGUAGE", "").strip().lower() or "en"
