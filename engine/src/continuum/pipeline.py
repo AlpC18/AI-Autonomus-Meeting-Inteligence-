@@ -84,8 +84,10 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
     from continuum.audio.system_audio import system_audio_blocks
 
     if settings.browser_tab_audio:
-        return functools.partial(system_audio_blocks, True, NATIVE_MEETING_APPS)
-    return functools.partial(system_audio_blocks, settings.meeting_apps_only, MEETING_APPS)
+        return functools.partial(system_audio_blocks, True, NATIVE_MEETING_APPS | settings.extra_meeting_apps)
+    return functools.partial(
+        system_audio_blocks, settings.meeting_apps_only, MEETING_APPS | settings.extra_meeting_apps
+    )
 
 
 class Engine:

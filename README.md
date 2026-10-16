@@ -22,6 +22,8 @@ cd engine && cp .env.example .env   # settings; the desktop app starts the engin
 
 Release app: `cd apps/desktop && pnpm bundle` builds `Continuum.app` with the engine inside; on first launch it installs its Python environment (needs internet once). Settings (and API keys, kept in the macOS Keychain) are set in the app.
 
+Meeting platforms: Continuum listens to the call's audio, so it works with any platform without a bot joining the meeting. With **Hear only meeting apps** on (macOS), it hears Microsoft Teams, Slack huddles, Zoom, Google Meet, Webex, FaceTime, Discord, WhatsApp, Skype, Telegram, Signal, Viber, WeChat, LINE, Amazon Chime, GoTo Meeting, RingCentral, Jitsi, Element and Tuple, plus any site in a browser or added to the Dock from Safari; add others under **More meeting apps**. On Windows and Linux all system audio is heard, so every platform works. Auto-start notices any app that starts using the microphone.
+
 Calls in a browser tab: macOS hands over audio per app, so every tab of the browser would be heard. Instead, load `apps/browser-extension` in `chrome://extensions` (Developer mode → Load unpacked), turn on **Calls in the browser from the extension** in Settings, and click the extension's button on the meeting tab (it shows ON). Only that tab is heard, and browsers are left out of system audio.
 
 Engine commands (run with `uv run` in `engine/`):

@@ -68,6 +68,7 @@ class Settings:
     ``browser_tab_audio`` takes calls in a browser from the browser extension,
     which sends only the meeting tab, and leaves browsers out of system audio;
     ``browser_extension_id`` limits that to one installed extension.
+    ``extra_meeting_apps`` are bundle IDs of further meeting apps to hear.
     """
 
     sources: tuple[str, ...] = DEFAULT_SOURCES
@@ -97,6 +98,7 @@ class Settings:
     meeting_apps_only: bool = False
     browser_tab_audio: bool = False
     browser_extension_id: str | None = None
+    extra_meeting_apps: frozenset[str] = frozenset()
 
     @property
     def voices_file(self) -> Path:
@@ -120,7 +122,8 @@ class Settings:
         it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
         ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
         ``CONTINUUM_MEETING_APPS_ONLY``, ``CONTINUUM_BROWSER_TAB_AUDIO`` (adds the
-        ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``. Unset variables
+        ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``, ``CONTINUUM_MEETING_APPS`` (comma-separated
+        bundle IDs; ``*`` at the end matches a prefix). Unset variables
         use defaults.
 
         Raises:
@@ -201,6 +204,15 @@ class Settings:
                 f"got {extension_id!r}"
             )
 
+        extra_apps = frozenset(
+            part.strip() for part in env.get("CONTINUUM_MEETING_APPS", "").split(",") if part.strip()
+        )
+        bad_apps = sorted(app for app in extra_apps if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{0,254}\*?", app))
+        if bad_apps:
+            raise ValueError(
+                f"CONTINUUM_MEETING_APPS takes bundle IDs like com.example.Meet, got {bad_apps[0]!r}"
+            )
+
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
         notes_dir = env.get("CONTINUUM_NOTES_DIR")
@@ -232,4 +244,5 @@ class Settings:
             meeting_apps_only=_flag(env, "CONTINUUM_MEETING_APPS_ONLY"),
             browser_tab_audio=browser_tab_audio,
             browser_extension_id=extension_id,
+            extra_meeting_apps=extra_apps,
         )
