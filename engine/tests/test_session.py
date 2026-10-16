@@ -429,19 +429,20 @@ async def test_documents_are_imported_into_the_open_memory_during_a_meeting(tmp_
     memory = DocumentMemory()
     session, _published, events = await make(tmp_path, memory=memory)
 
-    await session.handle(json.dumps({"type": "import_documents", "paths": [str(tmp_path / "docs"), "/missing.md"]}))
+    missing = str(tmp_path / "missing.md")
+    await session.handle(json.dumps({"type": "import_documents", "paths": [str(tmp_path / "docs"), missing]}))
 
     assert events[-1] == {
         "type": "documents_imported",
         "imported": [{"name": "pricing.md", "passages": 2}],
-        "errors": ["/missing.md: not found"],
+        "errors": [f"{missing}: not found"],
     }
     assert [entry[0].speaker for entry in memory.stored] == ["pricing.md", "pricing.md"]
 
 
 async def test_importing_documents_needs_memory(tmp_path: Path) -> None:
     session, _published, events = await make(tmp_path)
-    await session.handle('{"type": "import_documents", "paths": ["/a.md"]}')
+    await session.handle(json.dumps({"type": "import_documents", "paths": [str(tmp_path / "a.md")]}))
     assert events[-1] == {
         "type": "documents_imported",
         "imported": [],

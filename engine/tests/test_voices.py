@@ -3,6 +3,7 @@
 
 """Voices named in one meeting are recognised in the next."""
 
+import os
 import stat
 from pathlib import Path
 
@@ -23,7 +24,8 @@ def test_named_voices_survive_a_restart_and_are_recognised(tmp_path: Path) -> No
     assert book.names == ["Ayşe"]
     assert book.identify(np.array([0.9, 0.2, 0.0])) == "Ayşe"
     assert book.identify(MARK) is None
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    if os.name == "posix":  # Windows has no permission bits
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
 def test_learning_again_blends_and_forget_removes(tmp_path: Path) -> None:

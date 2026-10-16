@@ -17,8 +17,14 @@ concurrency:
 
 jobs:
   engine:
-    name: Engine (Python)
-    runs-on: ubuntu-latest
+    name: Engine (Python, ${{ matrix.os }})
+    # Every platform the engine captures audio on: ScreenCaptureKit on macOS,
+    # WASAPI loopback on Windows, PulseAudio/PipeWire monitors on Linux.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: engine
@@ -28,13 +34,18 @@ jobs:
         with:
           enable-cache: true
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         run: uvx ruff@0.17.0 check .
       - name: Install (lock file must be up to date)
         run: uv sync --locked --extra claude
       - name: Test with coverage
+        if: matrix.os == 'ubuntu-latest'
         # Tests that need macOS `say` or Apple Silicon skip themselves here,
         # so the floor sits below the 78% measured on a Mac. Raise, never lower.
         run: uv run --with pytest-cov pytest -q --cov=continuum --cov-report=term --cov-fail-under=70
+      - name: Test
+        if: matrix.os != 'ubuntu-latest'
+        run: uv run pytest -q
 
   desktop:
     name: Desktop (TypeScript)

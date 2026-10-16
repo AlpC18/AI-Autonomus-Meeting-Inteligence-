@@ -5,6 +5,7 @@
 
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from websockets.asyncio.client import connect
@@ -136,10 +137,9 @@ def test_switch_project_is_parsed_and_checked() -> None:
 def test_import_documents_is_parsed_and_checked() -> None:
     from continuum.live_controls import ImportDocuments, parse
 
-    assert parse('{"type": "import_documents", "paths": ["/a/b.pdf", " /c.md "]}') == ImportDocuments(
-        ("/a/b.pdf", "/c.md")
-    )
+    pdf, md = str(Path("/a/b.pdf").resolve()), str(Path("/c.md").resolve())  # absolute on every OS
+    assert parse(json.dumps({"type": "import_documents", "paths": [pdf, f" {md} "]})) == ImportDocuments((pdf, md))
     assert parse('{"type": "import_documents", "paths": ["relative.md"]}') is None
     assert parse('{"type": "import_documents", "paths": []}') is None
-    assert parse('{"type": "import_documents", "paths": "/a.md"}') is None
-    assert parse(json.dumps({"type": "import_documents", "paths": ["/x.md"] * 51})) is None
+    assert parse(json.dumps({"type": "import_documents", "paths": pdf})) is None
+    assert parse(json.dumps({"type": "import_documents", "paths": [pdf] * 51})) is None

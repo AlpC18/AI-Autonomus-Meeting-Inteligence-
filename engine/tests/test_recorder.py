@@ -3,6 +3,7 @@
 
 """Meeting recording: sources mixed on one timeline, a stalled one cannot block it."""
 
+import os
 import wave
 
 import numpy as np
@@ -29,7 +30,8 @@ def test_sources_are_mixed_sample_by_sample(tmp_path) -> None:
     assert audio.size == 3200
     assert np.allclose(audio[:1600], 0.75, atol=1e-3)
     assert np.allclose(audio[1600:], 0.5, atol=1e-3)
-    assert (tmp_path / "m.wav").stat().st_mode & 0o077 == 0
+    if os.name == "posix":  # Windows has no permission bits
+        assert (tmp_path / "m.wav").stat().st_mode & 0o077 == 0
 
 
 def test_a_stalled_source_is_treated_as_silence(tmp_path) -> None:
