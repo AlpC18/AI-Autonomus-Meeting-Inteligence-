@@ -74,9 +74,20 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
     if sys.platform != "darwin":
         from continuum.audio.loopback import loopback_blocks
 
+        if sys.platform == "win32" and (settings.meeting_apps_only or settings.browser_tab_audio):
+            from continuum.audio.process_loopback import process_loopback_blocks
+            from continuum.audio.windows_apps import BROWSER_EXES, NATIVE_MEETING_EXES
+
+            extra = frozenset(app.lower() for app in settings.extra_meeting_apps if app.lower().endswith(".exe"))
+            browsers = frozenset() if settings.browser_tab_audio else BROWSER_EXES
+            return functools.partial(
+                _with_fallback,
+                functools.partial(process_loopback_blocks, NATIVE_MEETING_EXES | extra, browsers),
+                loopback_blocks,
+            )
         if settings.meeting_apps_only or settings.browser_tab_audio:
             logger.warning(
-                "Leaving apps or browsers out of system audio needs macOS; capturing all of it. "
+                "Leaving apps or browsers out of system audio needs macOS or Windows; capturing all of it. "
                 "With browser tab audio, set CONTINUUM_SOURCES=mic,tab to avoid hearing the call twice."
             )
         return loopback_blocks
@@ -88,6 +99,23 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
     return functools.partial(
         system_audio_blocks, settings.meeting_apps_only, MEETING_APPS | settings.extra_meeting_apps
     )
+
+
+async def _with_fallback(primary: BlockSource, fallback: BlockSource) -> AsyncIterator[np.ndarray]:
+    """``primary``'s blocks; ``fallback``'s if ``primary`` fails before its first block."""
+    blocks = primary()
+    try:
+        first = await anext(blocks)
+    except StopAsyncIteration:
+        return
+    except Exception as error:  # noqa: BLE001 - any start-up failure means: use the fallback
+        logger.warning("Capturing all system audio instead of only the meeting app: %s", error)
+        async for block in fallback():
+            yield block
+        return
+    yield first
+    async for block in blocks:
+        yield block
 
 
 class Engine:

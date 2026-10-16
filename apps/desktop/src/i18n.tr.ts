@@ -212,8 +212,8 @@ export const TR: Readonly<Record<string, string>> = {
   "Your microphone, the other participants (system audio), or both.":
     "Mikrofonunuz, diğer katılımcılar (sistem sesi) ya da ikisi birden.",
   "Hear only meeting apps": "Yalnızca toplantı uygulamalarını dinle",
-  "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS only.":
-    "Diğer katılımcılar yalnızca Zoom, Teams, Slack, Webex, FaceTime, tarayıcıda Meet ve benzeri uygulamalardan duyulur; müzik ve videolar dışarıda kalır. Yalnızca macOS.",
+  "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS and Windows 10 (2004) or later.":
+    "Diğer katılımcılar yalnızca Zoom, Teams, Slack, Webex, FaceTime, tarayıcıda Meet ve benzeri uygulamalardan duyulur; müzik ve videolar dışarıda kalır. macOS ve Windows 10 (2004) veya üstü.",
   "More meeting apps": "Diğer toplantı uygulamaları",
   "Bundle IDs of other meeting apps to hear, comma-separated (find one with: osascript -e 'id of app \"AppName\"').":
     "Dinlenecek diğer toplantı uygulamalarının paket kimlikleri, virgülle ayrılmış (bulmak için: osascript -e 'id of app \"UygulamaAdı\"').",
