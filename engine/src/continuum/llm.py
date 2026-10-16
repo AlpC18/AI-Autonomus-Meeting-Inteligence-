@@ -16,6 +16,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from continuum import net
+
 CLAUDE = "anthropic"
 """Provider name for Claude."""
 
@@ -135,7 +137,7 @@ class OpenAiCompatible:
 
     def __init__(self, settings: LlmSettings, client: httpx.Client | None = None) -> None:
         self._settings = settings
-        self._client = client or httpx.Client(timeout=_TIMEOUT_S)
+        self._client = client or net.client(_TIMEOUT_S)
 
     def complete(self, system: str, user: str) -> str:
         """Return the first choice's text. See :meth:`Llm.complete`."""

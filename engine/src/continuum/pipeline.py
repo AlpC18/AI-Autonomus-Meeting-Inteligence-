@@ -18,9 +18,9 @@ import threading
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, timedelta
 
-import httpx
 import numpy as np
 
+from continuum import net
 from continuum.actions.calendar import CalendarEvent, current_event
 from continuum.actions.settings import ActionSettings
 from continuum.audio.blocks import SAMPLE_RATE
@@ -198,7 +198,7 @@ def _calendar_title() -> Callable[[datetime], CalendarEvent | None] | None:
         return None
 
     def title_for(now: datetime) -> CalendarEvent | None:
-        with httpx.Client(timeout=10) as client:
+        with net.client(10) as client:
             return current_event(access, action_settings.google_calendar_id, client, now)
 
     return title_for
@@ -322,7 +322,7 @@ def _workload(settings: Settings, stack: contextlib.ExitStack) -> WorkloadLookup
         logger.error("Workload check is off: %s", error)
         return None
     lookups: list[WorkloadLookup] = []
-    client = stack.enter_context(httpx.Client(timeout=10))
+    client = stack.enter_context(net.client(10))
     if actions.jira is not None:
         lookups.append(JiraWorkload(actions.jira, client))
     if actions.github_token and actions.github_repos:
