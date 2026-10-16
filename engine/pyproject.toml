@@ -17,6 +17,7 @@ dependencies = [
     "pyobjc-framework-coreaudio>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-libdispatch>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-screencapturekit>=12.2.2 ; sys_platform == 'darwin'",
+    "pyobjc-framework-vision>=12.2.2 ; sys_platform == 'darwin'",
     "qdrant-client>=1.19.1",
     "comtypes>=1.4 ; sys_platform == 'win32'",
     "soundcard>=0.4.3 ; sys_platform != 'darwin'",

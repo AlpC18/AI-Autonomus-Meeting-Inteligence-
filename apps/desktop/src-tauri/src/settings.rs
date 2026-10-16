@@ -75,6 +75,13 @@ pub const FIELDS: &[Field] = &[
         "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.",
     ),
     field(
+        "CONTINUUM_SCREEN_FACT_CHECK",
+        "Fact-check shared slides",
+        "Meetings",
+        Kind::Toggle(false),
+        "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.",
+    ),
+    field(
         "CONTINUUM_TRANSLATE_TO",
         "Live translation",
         "AI",

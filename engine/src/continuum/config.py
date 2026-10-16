@@ -71,7 +71,8 @@ class Settings:
     ``browser_extension_id`` limits that to one installed extension.
     ``extra_meeting_apps`` are bundle IDs of further meeting apps to hear.
     ``translate_to`` shows a live translation of every line in that language
-    (sent to the AI provider).
+    (sent to the AI provider). ``screen_fact_check`` also checks the figures on
+    shared slides, read on this computer from the meeting window (macOS).
     """
 
     sources: tuple[str, ...] = DEFAULT_SOURCES
@@ -103,6 +104,7 @@ class Settings:
     browser_extension_id: str | None = None
     extra_meeting_apps: frozenset[str] = frozenset()
     translate_to: str | None = None
+    screen_fact_check: bool = False
 
     @property
     def voices_file(self) -> Path:
@@ -129,7 +131,8 @@ class Settings:
         ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``, ``CONTINUUM_MEETING_APPS`` (comma-separated
         bundle IDs; ``*`` at the end matches a prefix), ``CONTINUUM_LANGUAGE`` (``en`` or
         ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`),
-        ``CONTINUUM_TRANSLATE_TO`` (a code from :data:`continuum.translate.TARGETS`). Unset variables
+        ``CONTINUUM_TRANSLATE_TO`` (a code from :data:`continuum.translate.TARGETS`),
+        ``CONTINUUM_SCREEN_FACT_CHECK``. Unset variables
         use defaults.
 
         Raises:
@@ -262,4 +265,5 @@ class Settings:
             browser_extension_id=extension_id,
             extra_meeting_apps=extra_apps,
             translate_to=translate_to,
+            screen_fact_check=_flag(env, "CONTINUUM_SCREEN_FACT_CHECK"),
         )

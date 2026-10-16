@@ -167,24 +167,29 @@ class Engine:
         for segment in segments:
             self._publish(segment)
         for segment in segments:
-            flagged = False
-            if self._check is not None and self._publish_alert is not None:
-                try:
-                    alert = await asyncio.to_thread(self._check, segment)
-                except Exception:
-                    logger.exception("Could not fact-check a transcript segment")
-                else:
-                    if alert is not None:
-                        flagged = True
-                        logger.info(
-                            "Fact check: said %s, on record %s", alert.claimed, alert.recorded
-                        )
-                        self._publish_alert(alert)
-            if self._remember is not None:
-                try:
-                    await asyncio.to_thread(self._remember, segment, flagged)
-                except Exception:
-                    logger.exception("Could not store a transcript segment in memory")
+            await self.check_and_remember(segment)
+
+    async def check_and_remember(self, segment: Segment) -> None:
+        """Fact-check ``segment`` against memory, then store it (as disputed when flagged).
+
+        Also used for text read from shared slides, which is not part of the transcript.
+        """
+        flagged = False
+        if self._check is not None and self._publish_alert is not None:
+            try:
+                alert = await asyncio.to_thread(self._check, segment)
+            except Exception:
+                logger.exception("Could not fact-check a transcript segment")
+            else:
+                if alert is not None:
+                    flagged = True
+                    logger.info("Fact check: said %s, on record %s", alert.claimed, alert.recorded)
+                    self._publish_alert(alert)
+        if self._remember is not None:
+            try:
+                await asyncio.to_thread(self._remember, segment, flagged)
+            except Exception:
+                logger.exception("Could not store a transcript segment in memory")
 
     async def run_source(self, source: str, blocks: AsyncIterator[np.ndarray]) -> None:
         """Consume ``blocks`` from ``source`` until the stream ends or fails."""
@@ -329,6 +334,7 @@ async def run(settings: Settings) -> int:
                 session.relabel,
             )
             idle = asyncio.create_task(session.watch_idle())
+            slides = _watch_slides(settings, engine) if check is not None else None
             try:
                 results = await asyncio.gather(
                     *(
@@ -338,8 +344,23 @@ async def run(settings: Settings) -> int:
                 )
             finally:
                 idle.cancel()
+                if slides is not None:
+                    slides.cancel()
                 await session.close()
     return 0 if any(results) else 1
+
+
+def _watch_slides(settings: Settings, engine: Engine) -> asyncio.Task[None] | None:
+    """Start fact-checking shared slides, when turned on (macOS only)."""
+    if not settings.screen_fact_check:
+        return None
+    if sys.platform != "darwin":
+        logger.warning("Fact-checking shared slides needs macOS")
+        return None
+    from continuum.screen import watch_slides
+
+    logger.info("Fact-checking figures on shared slides (read on this computer)")
+    return asyncio.create_task(watch_slides(engine.check_and_remember))
 
 
 async def _watchers(settings: Settings, stack: contextlib.ExitStack, llm: Llm | None) -> list[Watcher]:

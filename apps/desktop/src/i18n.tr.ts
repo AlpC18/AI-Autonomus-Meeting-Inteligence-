@@ -310,6 +310,9 @@ export const TR: Readonly<Record<string, string>> = {
   "Google calendar": "Google takvimi",
   "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
   Translation: "Çeviri",
+  "Fact-check shared slides": "Paylaşılan slaytları doğrula",
+  "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.":
+    "10 saniyede bir toplantı penceresini (asla başka pencereleri değil) cihaz üzerindeki metin tanıma ile okur ve paylaşılan slaytlardaki rakamları bellekle karşılaştırır. macOS; Ekran Kaydı izni gerekir.",
   "Live translation": "Canlı çeviri",
   "Shows each line translated into this language under the transcript. Sends every line to your AI provider.":
     "Her satırın bu dile çevirisini dökümün altında gösterir. Her satırı yapay zekâ sağlayıcınıza gönderir.",
