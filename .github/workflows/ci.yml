@@ -60,6 +60,34 @@ jobs:
           path: engine/pytest-report.xml
           if-no-files-found: ignore
 
+  audio:
+    name: Meeting-app audio (${{ matrix.os }})
+    # Real audio stacks, not mocks: two apps play different tones and only the
+    # meeting app's must be recorded. Linux runs PulseAudio in a container;
+    # Windows gets a virtual sound card for WASAPI process loopback.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - name: PulseAudio
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$PWD":/engine:ro debian:bookworm sh /engine/scripts/linux_app_audio_check.sh
+      - name: Virtual sound card
+        if: runner.os == 'Windows'
+        uses: LABSN/sound-ci-helpers@d08c889a7bba7d9b1b059f8f76dac4672ea3a9cf # v1
+      - uses: astral-sh/setup-uv@v6
+        if: runner.os == 'Windows'
+      - name: WASAPI process loopback
+        if: runner.os == 'Windows'
+        run: uv run python scripts/windows_app_audio_check.py
+
   desktop:
     name: Desktop (TypeScript)
     runs-on: ubuntu-latest
