@@ -45,7 +45,12 @@ jobs:
         run: uv run --with pytest-cov pytest -q --cov=continuum --cov-report=term --cov-fail-under=70
       - name: Test
         if: matrix.os != 'ubuntu-latest'
-        run: uv run pytest -q
+        timeout-minutes: 15
+        # Unbuffered so a hang can't swallow the failure report; a test stuck for
+        # two minutes dumps every thread's stack.
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: uv run pytest -q -rfE --tb=short -o faulthandler_timeout=120
 
   desktop:
     name: Desktop (TypeScript)
