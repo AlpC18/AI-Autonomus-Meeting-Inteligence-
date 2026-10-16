@@ -10,6 +10,7 @@ are user input, so each is parsed and checked here before use.
 import json
 import re
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from continuum.transcript import Segment
 
@@ -69,7 +70,17 @@ class SwitchProject:
     project: str
 
 
-Command = Note | Rename | Ask | EndMeeting | Brief | SwitchProject
+@dataclass(frozen=True, slots=True)
+class ImportDocuments:
+    """Add these files or folders (absolute paths) to the current project's memory."""
+
+    paths: tuple[str, ...]
+
+
+Command = Note | Rename | Ask | EndMeeting | Brief | SwitchProject | ImportDocuments
+
+MAX_PATHS = 50
+MAX_PATH = 4096
 
 MAX_QUESTION = 500
 _REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -98,7 +109,8 @@ def parse(raw: str) -> Command | None:
     Accepted: ``{"type": "note", "text": ...}``,
     ``{"type": "rename_speaker", "from": ..., "to": ...}``,
     ``{"type": "ask", "id": ..., "question": ...}``, ``{"type": "end_meeting"}``,
-    ``{"type": "brief"}`` and ``{"type": "switch_project", "project": ...}``.
+    ``{"type": "brief"}``, ``{"type": "switch_project", "project": ...}`` and
+    ``{"type": "import_documents", "paths": [...]}``.
     """
     try:
         message = json.loads(raw)
@@ -135,6 +147,14 @@ def parse(raw: str) -> Command | None:
         if not isinstance(project, str) or not 0 < len(project.strip()) <= 64:
             return None
         return SwitchProject(project.strip())
+    if message.get("type") == "import_documents":
+        paths = message.get("paths")
+        if not isinstance(paths, list) or not 0 < len(paths) <= MAX_PATHS:
+            return None
+        cleaned = tuple(path.strip() for path in paths if isinstance(path, str))
+        if len(cleaned) != len(paths) or not all(0 < len(path) <= MAX_PATH and Path(path).is_absolute() for path in cleaned):
+            return None
+        return ImportDocuments(cleaned)
     return None
 
 

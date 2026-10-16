@@ -131,3 +131,15 @@ def test_switch_project_is_parsed_and_checked() -> None:
     assert parse('{"type": "switch_project", "project": " mobile "}') == SwitchProject("mobile")
     assert parse('{"type": "switch_project", "project": 3}') is None
     assert parse('{"type": "switch_project", "project": ""}') is None
+
+
+def test_import_documents_is_parsed_and_checked() -> None:
+    from continuum.live_controls import ImportDocuments, parse
+
+    assert parse('{"type": "import_documents", "paths": ["/a/b.pdf", " /c.md "]}') == ImportDocuments(
+        ("/a/b.pdf", "/c.md")
+    )
+    assert parse('{"type": "import_documents", "paths": ["relative.md"]}') is None
+    assert parse('{"type": "import_documents", "paths": []}') is None
+    assert parse('{"type": "import_documents", "paths": "/a.md"}') is None
+    assert parse(json.dumps({"type": "import_documents", "paths": ["/x.md"] * 51})) is None

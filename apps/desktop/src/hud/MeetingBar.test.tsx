@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { MeetingBar } from "./MeetingBar";
 import type { EngineCommand } from "./transcriptStream";
@@ -68,5 +68,47 @@ describe("MeetingBar", () => {
     render(bar([], true, null, "Memory is off"));
     expect(screen.queryByLabelText("Switch project")).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("Memory is off");
+  });
+
+  it("imports chosen documents and shows what was added", async () => {
+    const sent: EngineCommand[] = [];
+    const { rerender } = render(
+      <MeetingBar
+        title="Budget review"
+        connected
+        send={(message) => {
+          sent.push(message);
+          return true;
+        }}
+        lastSummary={null}
+        brief={null}
+        liveItems={[]}
+        lastTalkTime={[]}
+        project="web"
+        projectError={null}
+        pick={() => Promise.resolve(["/docs/pricing.pdf"])}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add documents…" }));
+    await waitFor(() => expect(sent).toEqual([{ type: "import_documents", paths: ["/docs/pricing.pdf"] }]));
+
+    rerender(
+      <MeetingBar
+        title="Budget review"
+        connected
+        send={() => true}
+        lastSummary={null}
+        brief={null}
+        liveItems={[]}
+        lastTalkTime={[]}
+        project="web"
+        projectError={null}
+        lastImport={{ imported: [{ name: "pricing.pdf", passages: 12 }], errors: ["/x.doc: no Markdown, text or PDF files"] }}
+      />,
+    );
+    const status = screen.getByRole("status", { name: "Document import" }).textContent;
+    expect(status).toContain("Added pricing.pdf (12 passages)");
+    expect(status).toContain("Not added: /x.doc");
   });
 });

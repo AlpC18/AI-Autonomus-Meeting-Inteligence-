@@ -75,6 +75,8 @@ export interface TranscriptStream {
   project: string | null;
   /** Why the last project switch failed, if it did. */
   projectError: string | null;
+  /** The result of the last document import, if any. */
+  lastImport: DocumentImport | null;
 }
 
 /** What the desktop app can ask the engine to do during a meeting. */
@@ -84,7 +86,14 @@ export type EngineCommand =
   | { type: "ask"; id: string; question: string }
   | { type: "end_meeting" }
   | { type: "brief" }
-  | { type: "switch_project"; project: string };
+  | { type: "switch_project"; project: string }
+  | { type: "import_documents"; paths: string[] };
+
+/** What the engine reports after importing documents into memory. */
+export interface DocumentImport {
+  imported: { name: string; passages: number }[];
+  errors: string[];
+}
 
 /** A statement from memory that an answer cites. */
 export interface AnswerSource {
@@ -135,6 +144,7 @@ export type EngineEvent =
   | { type: "action_items"; items: LiveActionItem[] }
   | { type: "meeting_started"; title: string; project: string | null }
   | { type: "project_error"; error: string }
+  | { type: "documents_imported"; result: DocumentImport }
   | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
@@ -295,6 +305,16 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
   if (message.type === "project_error" && typeof message.error === "string") {
     return { type: "project_error", error: message.error };
   }
+  if (message.type === "documents_imported") {
+    const imported = Array.isArray(message.imported)
+      ? message.imported.flatMap((item): DocumentImport["imported"] =>
+          isRecord(item) && typeof item.name === "string" && typeof item.passages === "number"
+            ? [{ name: item.name, passages: item.passages }]
+            : [],
+        )
+      : [];
+    return { type: "documents_imported", result: { imported, errors: strings(message.errors) } };
+  }
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
     const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
     const talkTime = rows.flatMap((row): TalkTime[] =>
@@ -349,6 +369,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     setHints((current) => current.filter((shown) => shown.id !== id));
   }, []);
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [lastImport, setLastImport] = useState<DocumentImport | null>(null);
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
     if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
@@ -405,6 +426,8 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLiveItems(engineEvent.items);
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
+        } else if (engineEvent?.type === "documents_imported") {
+          setLastImport(engineEvent.result);
         } else if (engineEvent?.type === "project_error") {
           setProjectError(engineEvent.error);
         } else if (engineEvent?.type === "meeting_started") {
@@ -433,5 +456,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastImport };
 }
