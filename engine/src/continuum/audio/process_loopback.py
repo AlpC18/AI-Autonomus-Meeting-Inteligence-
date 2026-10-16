@@ -18,7 +18,6 @@ import ctypes
 import functools
 import logging
 import threading
-import time
 from collections.abc import AsyncIterator, Callable
 from ctypes import POINTER, byref, c_int, c_uint32, c_uint64, c_void_p, wintypes
 from typing import Any
@@ -26,13 +25,11 @@ from typing import Any
 import numpy as np
 
 from continuum.audio.blocks import SAMPLE_RATE, BlockQueue
+from continuum.audio.follow import follow_app
 from continuum.audio.windows_apps import Process, meeting_process, running_processes
 
 logger = logging.getLogger(__name__)
 
-APP_REFRESH_S = 10.0
-_BLOCK = SAMPLE_RATE // 10
-_POLL_S = 0.01
 _BUFFER_HNS = 2_000_000  # 200 ms, in 100-ns units
 _ACTIVATE_TIMEOUT_S = 5.0
 
@@ -203,51 +200,6 @@ def _com_apartment() -> Callable[[], None]:
     return comtypes.CoUninitialize
 
 
-def _run(
-    queue: BlockQueue,
-    stopped: threading.Event,
-    choose: Callable[[], Process | None],
-    open_capture: Callable[[int], Any] = _Capture,
-    enter: Callable[[], Callable[[], None]] = _com_apartment,
-    clock: Callable[[], float] = time.monotonic,
-    sleep: Callable[[float], None] = time.sleep,
-) -> None:
-    """Capture loop for the worker thread: follow the meeting app, emit 100 ms blocks."""
-    leave = enter()
-    capture, heard, pending = None, None, np.zeros(0, dtype=np.float32)
-    next_check = 0.0
-    last = clock()
-    try:
-        while not stopped.is_set():
-            now = clock()
-            if now >= next_check:
-                next_check = now + APP_REFRESH_S
-                chosen = choose()
-                if (chosen.pid if chosen else None) != heard:
-                    if capture is not None:
-                        capture.close()
-                    capture = open_capture(chosen.pid) if chosen else None
-                    heard = chosen.pid if chosen else None
-                    logger.info("Hearing %s", chosen.name if chosen else "no meeting app (none running)")
-            samples = capture.read() if capture is not None else np.zeros(0, np.float32)
-            if samples.size == 0:
-                # Nothing is played (or no meeting app runs): silence keeps the
-                # chunker's clock moving, so the last utterance still ends.
-                samples = np.zeros(int((now - last) * SAMPLE_RATE), np.float32)
-            last = now
-            pending = np.concatenate([pending, samples])
-            while pending.size >= _BLOCK:
-                queue.put_threadsafe(pending[:_BLOCK].copy())
-                pending = pending[_BLOCK:]
-            sleep(_POLL_S)
-    except Exception as error:  # noqa: BLE001 - any capture failure ends this source
-        queue.fail_threadsafe(error)
-    finally:
-        if capture is not None:
-            capture.close()
-        leave()
-
-
 async def process_loopback_blocks(native: frozenset[str], browsers: frozenset[str]) -> AsyncIterator[np.ndarray]:
     """Yield 100 ms mono float32 blocks of the meeting app's audio.
 
@@ -267,7 +219,9 @@ async def process_loopback_blocks(native: frozenset[str], browsers: frozenset[st
     def choose() -> Process | None:
         return meeting_process(running_processes(), native, browsers)
 
-    thread = threading.Thread(target=_run, args=(queue, stopped, choose), name="process-loopback", daemon=True)
+    thread = threading.Thread(
+        target=follow_app, args=(queue, stopped, choose, _Capture, _com_apartment), name="process-loopback", daemon=True
+    )
     thread.start()
     try:
         async for block in queue:

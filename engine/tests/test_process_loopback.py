@@ -8,7 +8,8 @@ import threading
 
 import numpy as np
 
-from continuum.audio import process_loopback
+from continuum.audio import follow
+from continuum.audio.blocks import BlockQueue
 from continuum.audio.windows_apps import (
     BROWSER_EXES,
     NATIVE_MEETING_EXES,
@@ -46,12 +47,12 @@ class FakeCapture:
 
 
 async def test_the_capture_follows_the_meeting_app_and_pads_silence(monkeypatch) -> None:
-    monkeypatch.setattr(process_loopback, "APP_REFRESH_S", 0.0)
+    monkeypatch.setattr(follow, "APP_REFRESH_S", 0.0)
     choices = iter([None, Process(200, 4, "ms-teams.exe")] + [Process(200, 4, "ms-teams.exe")] * 50)
     opened: list[FakeCapture] = []
     stopped = threading.Event()
     times = iter(i * 0.05 for i in range(10_000))
-    queue = process_loopback.BlockQueue("test")
+    queue = BlockQueue("test")
     blocks: list[np.ndarray] = []
 
     def open_capture(pid: int) -> FakeCapture:
@@ -63,7 +64,7 @@ async def test_the_capture_follows_the_meeting_app_and_pads_silence(monkeypatch)
             stopped.set()
 
     thread = threading.Thread(
-        target=process_loopback._run,
+        target=follow.follow_app,
         args=(queue, stopped, lambda: next(choices), open_capture, lambda: lambda: None, lambda: next(times), sleep),
     )
     thread.start()

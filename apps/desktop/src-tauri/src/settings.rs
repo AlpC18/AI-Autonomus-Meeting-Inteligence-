@@ -128,7 +128,7 @@ pub const FIELDS: &[Field] = &[
         "Hear only meeting apps",
         "Meetings",
         Kind::Toggle(false),
-        "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS and Windows 10 (2004) or later.",
+        "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS, Windows 10 (2004) or later, and Linux with PulseAudio or PipeWire.",
     ),
     field(
         "CONTINUUM_MEETING_APPS",

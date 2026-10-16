@@ -12,7 +12,8 @@ same program (Chrome and Teams run many processes under one root).
 import ctypes
 import sys
 from collections.abc import Iterable
-from dataclasses import dataclass
+
+from continuum.audio.follow import Process
 
 NATIVE_MEETING_EXES = frozenset(
     {
@@ -46,13 +47,6 @@ BROWSER_EXES = frozenset(
     {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe", "arc.exe"}
 )
 """Browsers, for calls in a tab; all their tabs are heard."""
-
-
-@dataclass(frozen=True, slots=True)
-class Process:
-    pid: int
-    parent: int
-    name: str
 
 
 def meeting_process(

@@ -86,10 +86,19 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
                 functools.partial(process_loopback_blocks, NATIVE_MEETING_EXES | extra, browsers),
                 loopback_blocks,
             )
-        if settings.meeting_apps_only or settings.browser_tab_audio:
-            logger.warning(
-                "Leaving apps or browsers out of system audio needs macOS or Windows; capturing all of it. "
-                "With browser tab audio, set CONTINUUM_SOURCES=mic,tab to avoid hearing the call twice."
+        if sys.platform.startswith("linux") and (settings.meeting_apps_only or settings.browser_tab_audio):
+            from continuum.audio.pulse_apps import (
+                BROWSER_BINARIES,
+                NATIVE_MEETING_BINARIES,
+                pulse_app_blocks,
+            )
+
+            extra = frozenset(app.lower() for app in settings.extra_meeting_apps if "." not in app)
+            browsers = frozenset() if settings.browser_tab_audio else BROWSER_BINARIES
+            return functools.partial(
+                _with_fallback,
+                functools.partial(pulse_app_blocks, NATIVE_MEETING_BINARIES | extra, browsers),
+                loopback_blocks,
             )
         return loopback_blocks
     from continuum.audio.apps import MEETING_APPS, NATIVE_MEETING_APPS
