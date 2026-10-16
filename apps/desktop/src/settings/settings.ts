@@ -61,6 +61,11 @@ export function groupFields(fields: readonly SettingField[]): [string, SettingFi
   return [...groups];
 }
 
+/** Whether Google can be connected: its client ID and secret are saved (the sign-in uses saved settings). */
+export function canConnectGoogle(view: SettingsView): boolean {
+  return Boolean(view.values.GOOGLE_CLIENT_ID?.trim()) && view.secretsSet.includes("GOOGLE_CLIENT_SECRET");
+}
+
 /**
  * The secrets to send on save: only those the user typed into or asked to
  * clear. Untouched secrets are left out, so they stay as they are.

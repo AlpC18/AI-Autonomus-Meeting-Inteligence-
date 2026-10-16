@@ -93,6 +93,27 @@ def continuum_propose_github_issue(
 
 
 @mcp.tool(annotations=_PROPOSAL)
+def continuum_propose_gitlab_issue(
+    project: Annotated[str, Field(description="Project path as 'group/name', e.g. 'acme/website'")],
+    title: Annotated[str, Field(description="Issue title, at most 255 characters")],
+    body: Annotated[str, Field(description="Description in Markdown, at most 10000 characters")] = "",
+    labels: Annotated[list[str] | None, Field(description="Up to 10 label names, without commas")] = None,
+) -> dict[str, Any]:
+    """Propose creating a GitLab issue. Does NOT create it.
+
+    The proposal is queued for a human, who sees the exact project, title,
+    description and labels and decides. Only projects the user allowed in
+    CONTINUUM_GITLAB_PROJECTS are accepted. Tell the user the issue is
+    waiting for their approval; do not claim it was created.
+
+    Returns:
+        ``{"action_id": ..., "status": "pending", "message": ...}``.
+    """
+
+    return _queue(lambda settings: proposals.gitlab_issue(settings, project, title, body, labels or ()))
+
+
+@mcp.tool(annotations=_PROPOSAL)
 def continuum_propose_jira_issue(
     project: Annotated[str, Field(description="Jira project key, e.g. 'WEB'")],
     summary: Annotated[str, Field(description="Issue summary, at most 255 characters")],

@@ -205,6 +205,7 @@ async def test_server_exposes_no_way_to_approve_or_execute() -> None:
     assert names == {
         "continuum_health",
         "continuum_propose_github_issue",
+        "continuum_propose_gitlab_issue",
         "continuum_propose_jira_issue",
         "continuum_propose_slack_message",
         "continuum_propose_calendar_deadline",

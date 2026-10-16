@@ -9,13 +9,14 @@ diarization, or transport logic of its own.
 
 import asyncio
 import contextlib
+import functools
 import logging
 import os
 import signal
 import sys
 import threading
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import numpy as np
@@ -26,6 +27,14 @@ from continuum.audio.blocks import SAMPLE_RATE
 from continuum.audio.chunker import Utterance, UtteranceChunker
 from continuum.audio.transcriber import SpeechToText, load_transcriber
 from continuum.config import Settings
+from continuum.context.code import CodeContext, CodeIndex
+from continuum.context.risk import RiskTracker, WorkloadLookup
+from continuum.context.workload import (
+    GitHubWorkload,
+    GitLabWorkload,
+    JiraWorkload,
+    combined,
+)
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -33,9 +42,10 @@ from continuum.factcheck.checker import FactCheckAlert, FactChecker
 from continuum.factcheck.semantic import SemanticChecker
 from continuum.llm import Llm, LlmSettings, connect
 from continuum.memory.embedder import DEFAULT_MODEL, load_embedder
-from continuum.memory.store import MemoryStore, ScopedMemory
+from continuum.memory.scope import TenantScope
+from continuum.memory.store import MemoryHit, MemoryStore, ScopedMemory
 from continuum.privacy import storage_settings, warn_if_disk_unencrypted
-from continuum.session import MeetingSession, queue_configured_proposals
+from continuum.session import MeetingSession, Watcher, queue_configured_proposals
 from continuum.transcript import Segment
 from continuum.transport.server import TranscriptServer
 
@@ -44,11 +54,12 @@ logger = logging.getLogger(__name__)
 BlockSource = Callable[[], AsyncIterator[np.ndarray]]
 
 
-def _block_source(source: str) -> BlockSource:
+def _block_source(source: str, only_meeting_apps: bool = False) -> BlockSource:
     """Return the capture function for ``source``, importing it on demand.
 
     System audio uses ScreenCaptureKit on macOS and speaker loopback
-    (``soundcard``) on Windows and Linux.
+    (``soundcard``) on Windows and Linux. ``only_meeting_apps`` limits
+    system audio to meeting apps; only macOS can do that.
     """
     if source == "mic":
         from continuum.audio.microphone import microphone_blocks
@@ -57,10 +68,12 @@ def _block_source(source: str) -> BlockSource:
     if sys.platform != "darwin":
         from continuum.audio.loopback import loopback_blocks
 
+        if only_meeting_apps:
+            logger.warning("Hearing only meeting apps needs macOS; capturing all system audio")
         return loopback_blocks
     from continuum.audio.system_audio import system_audio_blocks
 
-    return system_audio_blocks
+    return functools.partial(system_audio_blocks, only_meeting_apps)
 
 
 class Engine:
@@ -149,11 +162,15 @@ async def _tapped(
 
 
 async def _run_source_logged(
-    engine: Engine, source: str, record: Callable[[str, np.ndarray], None]
+    engine: Engine,
+    source: str,
+    record: Callable[[str, np.ndarray], None],
+    only_meeting_apps: bool = False,
 ) -> bool:
     """Run one source; log instead of raising so other sources keep going."""
     try:
-        await engine.run_source(source, _tapped(_block_source(source)(), source, record))
+        blocks = _block_source(source, only_meeting_apps)()
+        await engine.run_source(source, _tapped(blocks, source, record))
     except Exception:
         logger.exception("Audio source %r stopped", source)
         return False
@@ -222,7 +239,7 @@ async def run(settings: Settings) -> int:
         warn_if_disk_unencrypted()
     with contextlib.ExitStack() as stack:
         memory = None
-        check = None
+        open_scope = None
         if settings.scope is not None:
             model_name = settings.embedding_model or DEFAULT_MODEL
             embed, dimensions = await asyncio.to_thread(
@@ -231,12 +248,8 @@ async def run(settings: Settings) -> int:
             # Transcripts are private: only the current user may read the folder.
             settings.memory_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
             store = stack.enter_context(MemoryStore(settings.memory_dir, embed, dimensions, model_name))
-            memory = store.scoped(settings.scope)
-            if settings.retention_days is not None:
-                cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
-                forgotten = await asyncio.to_thread(memory.forget_before, cutoff)
-                logger.info("Forgot %d segments older than %d days", forgotten, settings.retention_days)
-            check = _checker(memory, llm if settings.llm_fact_check else None)
+            open_scope = _scope_opener(store, settings.retention_days)
+            memory = await asyncio.to_thread(open_scope, settings.scope)
             logger.info(
                 "Storing meetings for tenant %r, project %r",
                 settings.scope.tenant_id,
@@ -257,7 +270,10 @@ async def run(settings: Settings) -> int:
             title_for=_calendar_title(),
             propose=queue_configured_proposals(settings.auto_propose) if settings.auto_propose else None,
             stop=main_task.cancel,
+            open_scope=open_scope,
+            watchers=await _watchers(settings, stack, llm),
         )
+        check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
             session.connect(server.publish, server.publish_event)
             await session.start()
@@ -273,7 +289,10 @@ async def run(settings: Settings) -> int:
             idle = asyncio.create_task(session.watch_idle())
             try:
                 results = await asyncio.gather(
-                    *(_run_source_logged(engine, source, session.record) for source in settings.sources)
+                    *(
+                        _run_source_logged(engine, source, session.record, settings.meeting_apps_only)
+                        for source in settings.sources
+                    )
                 )
             finally:
                 idle.cancel()
@@ -281,14 +300,70 @@ async def run(settings: Settings) -> int:
     return 0 if any(results) else 1
 
 
+async def _watchers(settings: Settings, stack: contextlib.ExitStack, llm: Llm | None) -> list[Watcher]:
+    """The live hints the settings turn on (an HTTP client, if any, closes with ``stack``)."""
+    watchers: list[Watcher] = []
+    if settings.code_dirs:
+        index = await asyncio.to_thread(CodeIndex.build, settings.code_dirs)
+        watchers.append(CodeContext(index))
+    if settings.risk_tracking:
+        hesitation_llm = llm if settings.llm_hesitations else None
+        watchers.append(RiskTracker(date.today, _workload(settings, stack), hesitation_llm))
+    return watchers
+
+
+def _workload(settings: Settings, stack: contextlib.ExitStack) -> WorkloadLookup | None:
+    """Jira, GitHub and GitLab workload lookups, when turned on and those trackers are configured."""
+    if not settings.workload_check:
+        return None
+    try:
+        actions = ActionSettings.from_env(os.environ)
+    except ValueError as error:
+        logger.error("Workload check is off: %s", error)
+        return None
+    lookups: list[WorkloadLookup] = []
+    client = stack.enter_context(httpx.Client(timeout=10))
+    if actions.jira is not None:
+        lookups.append(JiraWorkload(actions.jira, client))
+    if actions.github_token and actions.github_repos:
+        lookups.append(GitHubWorkload(actions.github_token, sorted(actions.github_repos), client))
+    if actions.gitlab is not None and actions.gitlab_projects:
+        lookups.append(GitLabWorkload(actions.gitlab, sorted(actions.gitlab_projects), client))
+    if not lookups:
+        logger.warning(
+            "Workload check needs Jira (CONTINUUM_JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN), "
+            "GitHub (GITHUB_TOKEN and CONTINUUM_GITHUB_REPOS) or GitLab (GITLAB_TOKEN and "
+            "CONTINUUM_GITLAB_PROJECTS)"
+        )
+        return None
+    return lookups[0] if len(lookups) == 1 else combined(lookups)
+
+
+def _scope_opener(store: MemoryStore, retention_days: int | None) -> Callable[[TenantScope], ScopedMemory]:
+    """Opens a project's memory, first forgetting what is older than ``retention_days``. Blocks."""
+
+    def open_scope(scope: TenantScope) -> ScopedMemory:
+        memory = store.scoped(scope)
+        if retention_days is not None:
+            cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+            forgotten = memory.forget_before(cutoff)
+            logger.info("Forgot %d segments older than %d days", forgotten, retention_days)
+        return memory
+
+    return open_scope
+
+
 def _checker(
-    memory: ScopedMemory, llm: Llm | None
+    search: Callable[[str, int], list[MemoryHit]], llm: Llm | None
 ) -> Callable[[Segment], FactCheckAlert | None]:
-    """Figures first; then, when an AI model is given, contradictions without figures."""
-    figures = FactChecker(memory.search).check
+    """Figures first; then, when an AI model is given, contradictions without figures.
+
+    ``search`` is the session's, so checks follow a project switch.
+    """
+    figures = FactChecker(search).check
     if llm is None:
         return figures
-    semantic = SemanticChecker(memory.search, llm).check
+    semantic = SemanticChecker(search, llm).check
     return lambda segment: figures(segment) or semantic(segment)
 
 

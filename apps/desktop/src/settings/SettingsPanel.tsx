@@ -3,7 +3,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { changedSecrets, groupFields, parseSettings, type SettingField, type SettingsView } from "./settings";
+import { canConnectGoogle, changedSecrets, groupFields, parseSettings, type SettingField, type SettingsView } from "./settings";
 
 const INPUT = "mt-1 w-full rounded-md border border-zinc-300 p-1.5 text-sm text-zinc-900";
 
@@ -40,6 +40,18 @@ export function SettingsPanel() {
     invoke<string[]>("save_settings", { values, secrets: changedSecrets(secretDrafts, cleared) })
       .then((problems) => {
         setMessages(problems.length === 0 ? ["Saved. The engine restarted with the new settings."] : problems);
+        load();
+      })
+      .catch((cause: unknown) => setMessages([String(cause)]))
+      .finally(() => setBusy(false));
+  };
+
+  const connectGoogle = () => {
+    setBusy(true);
+    setMessages(["Finish signing in to Google in your browser…"]);
+    invoke<string>("google_connect")
+      .then((message) => {
+        setMessages([message]);
         load();
       })
       .catch((cause: unknown) => setMessages([String(cause)]))
@@ -124,6 +136,17 @@ export function SettingsPanel() {
                 </label>
                 {input(field)}
                 {field.help && <p className="mt-0.5 text-xs text-zinc-600">{field.help}</p>}
+                {field.key === "GOOGLE_REFRESH_TOKEN" && (
+                  <button
+                    type="button"
+                    disabled={busy || !canConnectGoogle(view)}
+                    onClick={connectGoogle}
+                    title={canConnectGoogle(view) ? undefined : "Save the Google client ID and secret first."}
+                    className="mt-1 cursor-pointer rounded-md border border-zinc-400 px-2 py-1 text-xs hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Connect Google…
+                  </button>
+                )}
               </div>
             ))}
           </div>

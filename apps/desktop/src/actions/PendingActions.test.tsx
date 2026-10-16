@@ -44,6 +44,27 @@ describe("PendingActions", () => {
     expect(await screen.findByText("Nothing is waiting for you.")).toBeTruthy();
   });
 
+  it("shows a GitLab issue with its project and labels", async () => {
+    mockIPC((cmd) => {
+      if (cmd === "pending_actions") {
+        return [
+          {
+            id: "g1",
+            kind: "gitlab_issue",
+            payload: { project: "acme/web", title: "Ship the API", body: "From the meeting.", labels: ["backend"] },
+          },
+        ];
+      }
+      throw new Error(`unexpected command ${cmd}`);
+    });
+
+    render(<PendingActions />);
+
+    expect(await screen.findByText("Ship the API")).toBeTruthy();
+    expect(screen.getByText("GitLab issue in acme/web")).toBeTruthy();
+    expect(screen.getByText("Labels: backend")).toBeTruthy();
+  });
+
   it("rejects without sending anything", async () => {
     const decisions: unknown[] = [];
     mockIPC((cmd, args) => {

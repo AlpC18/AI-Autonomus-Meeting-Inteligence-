@@ -16,7 +16,7 @@ import logging
 import os
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,11 +36,13 @@ from continuum.live_controls import (
     Note,
     Rename,
     SpeakerNames,
+    SwitchProject,
     note_segment,
     parse,
 )
 from continuum.llm import Llm
-from continuum.memory.store import Meeting, ScopedMemory
+from continuum.memory.scope import TenantScope
+from continuum.memory.store import Meeting, MemoryHit, ScopedMemory
 from continuum.notes import MeetingNotes, markdown_lines
 from continuum.privacy import redact_segment
 from continuum.stats import speaker_stats
@@ -66,6 +68,17 @@ class Speakers(Protocol):
     def reset(self) -> None: ...
     def recognise(self, label: str) -> str | None: ...
     def learn(self, label: str, name: str) -> None: ...
+
+
+class Watcher(Protocol):
+    """Looks at each spoken statement and may return hints for the overlay.
+
+    ``watch`` runs in a worker thread, one statement at a time; ``finish``
+    is called when the meeting ends and returns Markdown for the notes, if any.
+    """
+
+    def watch(self, segment: Segment) -> list[dict[str, Any]]: ...
+    def finish(self) -> str | None: ...
 
 
 Propose = Callable[[MeetingSummary, str, CalendarEvent | None], tuple[int, list[str]]]
@@ -147,6 +160,8 @@ class MeetingSession:
         title_for: Callable[[datetime], CalendarEvent | str | None] | None = None,
         propose: Propose | None = None,
         stop: Callable[[], None] | None = None,
+        open_scope: Callable[[TenantScope], ScopedMemory] | None = None,
+        watchers: Sequence[Watcher] = (),
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -157,6 +172,12 @@ class MeetingSession:
         self._title_for = title_for
         self._propose = propose
         self._stop = stop
+        self._open_scope = open_scope
+        self._watchers = tuple(watchers)
+        self._watching = asyncio.Lock()
+        self._watch_tasks: set[asyncio.Task[None]] = set()
+        self._scope = settings.scope
+        self._next_scope: tuple[TenantScope, ScopedMemory] | None = None
         self._clock = clock
         self._now = now
         self.names = SpeakerNames()
@@ -187,10 +208,22 @@ class MeetingSession:
         """The current meeting's notes file, if notes are kept."""
         return self._current.notes.path if self._current and self._current.notes else None
 
+    def search(self, query: str, limit: int = 5) -> list[MemoryHit]:
+        """Search the current project's memory (empty when memory is off). Blocks."""
+        memory = self._memory
+        return memory.search(query, limit) if memory is not None else []
+
     # --- starting and stopping -------------------------------------------------
 
     async def start(self) -> None:
-        """Begin a new meeting, titled after the calendar event happening now, if any."""
+        """Begin a new meeting, titled after the calendar event happening now, if any.
+
+        A project switch the user asked for takes effect here, so a meeting is
+        never split across two projects.
+        """
+        if self._next_scope is not None:
+            self._scope, self._memory = self._next_scope
+            self._next_scope = None
         started_at = self._now()
         event = None
         if self._title_for is not None:
@@ -204,8 +237,8 @@ class MeetingSession:
         notes = recorder = None
         if self._settings.notes_dir is not None:
             directory = self._settings.notes_dir
-            if self._settings.scope is not None:
-                directory = directory / self._settings.scope.tenant_id / self._settings.scope.project_id
+            if self._scope is not None:
+                directory = directory / self._scope.tenant_id / self._scope.project_id
             notes = MeetingNotes(
                 directory, started_at, title or "Meeting", attendees=event.attendees if event else ()
             )
@@ -218,7 +251,10 @@ class MeetingSession:
             logger.info("Writing meeting notes to %s", notes.path)
         now = self._clock()
         self._current = _Current(Meeting(str(uuid.uuid4()), started_at), event, notes, recorder, now, now)
-        self._publish_event({"type": "meeting_started", "title": title or "Meeting"})
+        started: dict[str, Any] = {"type": "meeting_started", "title": title or "Meeting"}
+        if self._scope is not None:
+            started["project"] = self._scope.project_id
+        self._publish_event(started)
         if title and self._memory is not None and self._llm is not None:
             # A calendar meeting gets its brief without blocking the transcript.
             self._briefing = asyncio.create_task(self._brief())
@@ -244,6 +280,9 @@ class MeetingSession:
                 current.recorder.close()
                 with contextlib.suppress(OSError):
                     current.recorder.path.unlink()
+            report = await self._finish_watchers(current)
+            if report:
+                ended["report"] = report
             self._learn_voices()
             self._publish_event(ended)
             if self._speakers is not None:
@@ -330,6 +369,45 @@ class MeetingSession:
             except OSError:
                 logger.exception("Could not write meeting notes")
         self._maybe_list_items(current)
+        if self._watchers and segment.source != NOTE_SOURCE:
+            task = asyncio.create_task(self._watch(segment))
+            self._watch_tasks.add(task)
+            task.add_done_callback(self._watch_tasks.discard)
+
+    async def _watch(self, segment: Segment) -> None:
+        """Run the watchers on ``segment`` (in order, off the event loop) and publish their hints."""
+        async with self._watching:
+            for watcher in self._watchers:
+                try:
+                    hints = await asyncio.to_thread(watcher.watch, segment)
+                except Exception:
+                    logger.exception("A live hint failed")
+                    continue
+                for hint in hints:
+                    self._publish_event({"type": "hint", "hint": hint})
+
+    async def _finish_watchers(self, current: _Current) -> str | None:
+        """Wait for pending hints, then add each watcher's report to the notes."""
+        if self._watch_tasks:
+            await asyncio.gather(*self._watch_tasks, return_exceptions=True)
+        reports = []
+        async with self._watching:
+            for watcher in self._watchers:
+                try:
+                    # A report may ask the AI model, so it runs off the event loop.
+                    report = await asyncio.to_thread(watcher.finish)
+                except Exception:
+                    logger.exception("A live hint could not report")
+                    continue
+                if report:
+                    reports.append(report)
+        markdown = "\n\n".join(reports)
+        if markdown and current.notes is not None:
+            try:
+                current.notes.append(markdown)
+            except OSError:
+                logger.exception("Could not add hints to the notes")
+        return markdown or None
 
     def _maybe_list_items(self, current: _Current) -> None:
         """Start a live action-item update when enough time and new speech have passed."""
@@ -389,8 +467,38 @@ class MeetingSession:
             await self.end("user")
         elif isinstance(command, Brief):
             await self._brief()
+        elif isinstance(command, SwitchProject):
+            await self._switch_project(command.project)
         else:
             await self._note(command)
+
+    async def _switch_project(self, project: str) -> None:
+        """End the meeting and file the next ones under ``project`` (same workspace)."""
+        error = None
+        if self._scope is None or self._open_scope is None:
+            error = "Memory is off: set a workspace and project in Settings first."
+        else:
+            try:
+                scope = TenantScope(self._scope.tenant_id, project)
+            except ValueError as invalid:
+                error = str(invalid)
+            else:
+                if scope == self._scope:
+                    return
+                try:
+                    memory = await asyncio.to_thread(self._open_scope, scope)
+                except Exception:
+                    logger.exception("Could not open the memory of project %r", project)
+                    error = f"Could not open the memory of project {project!r}."
+                else:
+                    logger.info("Switching to project %r", project)
+                    self._next_scope = (scope, memory)
+                    if self._current is None:
+                        await self.start()
+                    else:
+                        await self.end("project")
+                    return
+        self._publish_event({"type": "project_error", "error": error})
 
     async def _note(self, command: Note | Rename) -> None:
         if isinstance(command, Rename):

@@ -113,7 +113,7 @@ export default function App() {
       </nav>
       {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
       <div hidden={view !== "live"}>
-        <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} />
+        <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} />
         <TranscriptFeed status={stream.status} segments={stream.segments} />
         <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
         <Notepad connected={connected} send={stream.send} />

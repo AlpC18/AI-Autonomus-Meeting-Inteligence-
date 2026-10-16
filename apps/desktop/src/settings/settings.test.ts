@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import { describe, expect, it } from "vitest";
-import { changedSecrets, groupFields, parseSettings } from "./settings";
+import { canConnectGoogle, changedSecrets, groupFields, parseSettings } from "./settings";
 
 const field = (key: string, group: string, kind = "text") => ({ key, label: key, group, kind, options: [], help: "" });
 
@@ -28,5 +28,14 @@ describe("settings screen", () => {
 
   it("sends only secrets that were typed or cleared", () => {
     expect(changedSecrets({ A: " new ", B: "   " }, new Set(["C"]))).toEqual({ A: "new", C: "" });
+  });
+});
+
+describe("canConnectGoogle", () => {
+  it("needs the saved client ID and secret", () => {
+    const view = { fields: [], values: { GOOGLE_CLIENT_ID: "id" }, secretsSet: ["GOOGLE_CLIENT_SECRET"] };
+    expect(canConnectGoogle(view)).toBe(true);
+    expect(canConnectGoogle({ ...view, secretsSet: [] })).toBe(false);
+    expect(canConnectGoogle({ ...view, values: {} })).toBe(false);
   });
 });

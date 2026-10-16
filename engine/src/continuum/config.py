@@ -14,7 +14,7 @@ from continuum.memory.scope import TenantScope
 KNOWN_SOURCES = ("mic", "system")
 """Audio sources the engine can capture."""
 
-_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+")
+_PROPOSAL_TARGET = re.compile(r"calendar|slack|email|notion|jira:[A-Z][A-Z0-9_]{1,9}|github:[\w.-]+/[\w.-]+|gitlab:[\w.-]+(?:/[\w.-]+)+")
 
 
 def _flag(env: Mapping[str, str], name: str, default: bool = False) -> bool:
@@ -48,15 +48,21 @@ class Settings:
     notes). ``retention_days`` deletes memories older than that many days
     each time the engine starts. When a meeting ends, its summary's action
     items are proposed to ``auto_propose`` targets (``calendar``, ``slack``, ``email``, ``notion``,
-    ``jira:KEY``, ``github:owner/name``). ``idle_end_minutes`` ends a meeting
+    ``jira:KEY``, ``github:owner/name``, ``gitlab:group/name``). ``idle_end_minutes`` ends a meeting
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
-    audio next to its notes. ``llm_fact_check`` also asks the AI model about
+    audio next to its notes. ``llm_hesitations`` has the AI model read the transcript at
+    the end for doubts the phrase list missed. ``llm_fact_check`` also asks the AI model about
     contradictions that involve no numbers. ``live_action_items`` shows the
     action items said so far during the meeting (an AI call at most every
     three minutes). ``require_disk_encryption`` stores nothing unless
     FileVault is on. ``remember_voices`` keeps the
     voices of speakers the user named, so later meetings show their names.
+    ``code_dirs`` are local checkouts indexed for code context hints.
+    ``risk_tracking`` lists dated promises and moments of doubt in the notes;
+    ``workload_check`` also counts the speaker's open Jira and GitHub issues and warns
+    when a promised date looks unrealistic. ``meeting_apps_only`` captures
+    system audio only from meeting apps and browsers (macOS).
     """
 
     sources: tuple[str, ...] = KNOWN_SOURCES
@@ -76,9 +82,14 @@ class Settings:
     exit_when_idle: bool = False
     record_audio: bool = False
     llm_fact_check: bool = False
+    llm_hesitations: bool = False
     live_action_items: bool = False
     require_disk_encryption: bool = False
     remember_voices: bool = True
+    code_dirs: tuple[Path, ...] = ()
+    risk_tracking: bool = True
+    workload_check: bool = False
+    meeting_apps_only: bool = False
 
     @property
     def voices_file(self) -> Path:
@@ -98,8 +109,10 @@ class Settings:
         ``CONTINUUM_REDACT`` (``0`` turns redaction off), ``CONTINUUM_RETENTION_DAYS``,
         ``CONTINUUM_AUTO_PROPOSE`` (comma-separated), ``CONTINUUM_IDLE_END_MINUTES``,
         ``CONTINUUM_EXIT_WHEN_IDLE``, ``CONTINUUM_RECORD_AUDIO``,
-        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
-        it off). Unset variables
+        ``CONTINUUM_LLM_FACT_CHECK``, ``CONTINUUM_LLM_HESITATIONS``, ``CONTINUUM_LIVE_ACTION_ITEMS``, ``CONTINUUM_REQUIRE_DISK_ENCRYPTION``, ``CONTINUUM_REMEMBER_VOICES`` (``0`` turns
+        it off), ``CONTINUUM_CODE_DIRS`` (comma-separated folders),
+        ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
+        ``CONTINUUM_MEETING_APPS_ONLY``. Unset variables
         use defaults.
 
         Raises:
@@ -155,10 +168,20 @@ class Settings:
         bad_targets = [target for target in auto_propose if not _PROPOSAL_TARGET.fullmatch(target)]
         if bad_targets:
             raise ValueError(
-                "CONTINUUM_AUTO_PROPOSE takes calendar, slack, email, jira:PROJECT or github:owner/name, "
+                "CONTINUUM_AUTO_PROPOSE takes calendar, slack, email, notion, jira:PROJECT, github:owner/name "
+                "or gitlab:group/name, "
                 f"got {bad_targets[0]!r}"
             )
         idle_end_minutes = _minutes(env, "CONTINUUM_IDLE_END_MINUTES")
+
+        code_dirs = tuple(
+            Path(part.strip()).expanduser()
+            for part in env.get("CONTINUUM_CODE_DIRS", "").split(",")
+            if part.strip()
+        )
+        missing = [str(path) for path in code_dirs if not path.is_dir()]
+        if missing:
+            raise ValueError(f"CONTINUUM_CODE_DIRS: not a folder: {missing[0]!r}")
 
         model_dir = env.get("CONTINUUM_MODEL_DIR")
         memory_dir = env.get("CONTINUUM_MEMORY_DIR")
@@ -181,7 +204,12 @@ class Settings:
             exit_when_idle=_flag(env, "CONTINUUM_EXIT_WHEN_IDLE"),
             record_audio=_flag(env, "CONTINUUM_RECORD_AUDIO"),
             llm_fact_check=_flag(env, "CONTINUUM_LLM_FACT_CHECK"),
+            llm_hesitations=_flag(env, "CONTINUUM_LLM_HESITATIONS"),
             live_action_items=_flag(env, "CONTINUUM_LIVE_ACTION_ITEMS"),
             require_disk_encryption=_flag(env, "CONTINUUM_REQUIRE_DISK_ENCRYPTION"),
             remember_voices=_flag(env, "CONTINUUM_REMEMBER_VOICES", default=True),
+            code_dirs=code_dirs,
+            risk_tracking=_flag(env, "CONTINUUM_RISK_TRACKING", default=True),
+            workload_check=_flag(env, "CONTINUUM_WORKLOAD_CHECK"),
+            meeting_apps_only=_flag(env, "CONTINUUM_MEETING_APPS_ONLY"),
         )

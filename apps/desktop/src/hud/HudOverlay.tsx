@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { FactCheckCard } from "./FactCheckCard";
+import { HintCard } from "./HintCard";
 import { useTranscriptStream } from "./transcriptStream";
 
 const WIDTH = 380;
@@ -51,13 +52,13 @@ async function fitWindow(height: number): Promise<void> {
  * timed out.
  */
 export function HudOverlay() {
-  const { alerts, dismissAlert } = useTranscriptStream();
+  const { alerts, dismissAlert, hints, dismissHint } = useTranscriptStream();
   const container = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const height = alerts.length === 0 ? 0 : (container.current?.offsetHeight ?? 0);
+    const height = alerts.length + hints.length === 0 ? 0 : (container.current?.offsetHeight ?? 0);
     fitWindow(height).catch(reportError);
-  }, [alerts]);
+  }, [alerts, hints]);
 
   useEffect(() => {
     const newest = alerts[alerts.length - 1];
@@ -66,12 +67,22 @@ export function HudOverlay() {
     return () => window.clearTimeout(timer);
   }, [alerts, dismissAlert]);
 
+  useEffect(() => {
+    const newest = hints[hints.length - 1];
+    if (!newest) return;
+    const timer = window.setTimeout(() => dismissHint(newest.id), AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [hints, dismissHint]);
+
   return (
     // Fixed width: the cards are measured while the window is still one pixel
     // wide, and must not wrap to that width.
     <div ref={container} style={{ width: WIDTH }} className="flex flex-col gap-2 p-1">
       {alerts.map(({ id, alert }) => (
         <FactCheckCard key={id} alert={alert} onDismiss={() => dismissAlert(id)} />
+      ))}
+      {hints.map(({ id, hint }) => (
+        <HintCard key={id} hint={hint} onDismiss={() => dismissHint(id)} />
       ))}
     </div>
   );

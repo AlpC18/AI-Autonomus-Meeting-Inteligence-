@@ -13,7 +13,13 @@ from pathlib import Path
 import pytest
 
 from continuum.notes import vtt
-from continuum.transcribe_cli import AUDIO_MARKER, meeting_for, render, watch
+from continuum.transcribe_cli import (
+    AUDIO_MARKER,
+    meeting_for,
+    render,
+    watch,
+    with_summary,
+)
 from continuum.transcript import Segment, Word
 
 DUET = Segment(
@@ -45,6 +51,27 @@ def test_markdown_from_a_recording_names_it_for_playback(tmp_path: Path) -> None
     assert text.startswith(f"# Weekly sync\n\n{AUDIO_MARKER}{recording.resolve()} -->\n\n- `00:00:10`")
     tricky = tmp_path / "a-->b.wav"
     assert AUDIO_MARKER not in render([DUET], "md", tricky)
+
+
+class FakeLlm:
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+
+    def complete(self, system: str, user: str) -> str:
+        assert "Hello there." in user
+        return self.reply
+
+
+def test_an_imported_transcript_gets_its_summary_appended() -> None:
+    text = render([DUET], "md")
+    notes = with_summary(text, FakeLlm('{"overview": "They greeted.", "decisions": [], "action_items": []}'))
+    assert notes.startswith(text)
+    assert notes.endswith("## Summary\n\nThey greeted.\n")
+
+
+def test_a_failed_summary_keeps_the_transcript() -> None:
+    text = render([DUET], "md")
+    assert with_summary(text, FakeLlm("no json here")) == text
 
 
 def test_same_recording_maps_to_the_same_meeting(tmp_path: Path) -> None:

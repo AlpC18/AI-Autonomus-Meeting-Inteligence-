@@ -90,14 +90,22 @@
 - Component click tests (jsdom + mocked IPC); CI coverage floors 70% engine / 50% desktop lines (measured 78% / 54%).
 - Verified: 325 pytest, 24 vitest, 16 cargo, clippy, ruff; signed release build produced the updater archive + signature. Not verified: Notion/Gmail against real services, Windows/Linux call detection on real machines, an update served from a real GitHub release.
 
+## Phase 10 (spec complete, `feat/phase-10-spec-complete`)
+
+- Project picker in the meeting bar; code context hints (`CONTINUUM_CODE_DIRS`); commitments and hesitations in the notes, with an optional workload check against Jira (and its open sprint), GitHub and GitLab issues; optional AI hesitation pass (`CONTINUUM_LLM_HESITATIONS`).
+- Google connected from Settings (PKCE); system audio optionally limited to meeting apps (`CONTINUUM_MEETING_APPS_ONLY`, macOS).
+- `continuum-transcribe --summarize`; `continuum-import-docs` puts Markdown/text/PDF documents in project memory so fact checks cite them.
+- Fact checks read spelled-out numbers and dates with a month name; turns pyannote gives one speaker are re-split against known voices.
+- GitLab issues as approval-gated actions; long utterances cut at a quiet moment; Info.plist and audio-input entitlement for the notarised app.
+- Verified: 398 pytest, desktop action tests, 17 cargo, ruff; ad-hoc signed `.app` with hardened runtime. Not verified: the AI hesitation pass against a real model, GitLab/GitHub workload against real services, notarisation (needs Apple secrets).
+
 ## Pending
 
-- **Speaker names:** check in a real meeting; separate two voices inside short utterances.
-- **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates.
-- **Actions:** real-service check of Slack, Calendar and Jira; summaries against a real AI provider.
-- Code-sign and notarise the release app; test loopback on real Windows/Linux machines.
+- Merge the stacked PRs into main; add `TAURI_SIGNING_PRIVATE_KEY` and the Apple secrets, then tag a release.
+- **Real use:** speaker names and voice re-splitting in a real meeting; Slack, Calendar, Jira, GitHub, GitLab and AI summaries against real services.
+- Test loopback on real Windows/Linux machines.
 
 ## Known issues
 
-- While other audio is playing on the machine, system capture transcribes that too, and utterances can be cut at the 15 s limit mid-sentence.
+- With "Hear only meeting apps" off, system capture transcribes any other audio playing; with it on, a browser's other tabs are still heard.
 - Open questions are tracked in `activeContext.md`.

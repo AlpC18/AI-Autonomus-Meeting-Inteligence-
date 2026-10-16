@@ -89,11 +89,25 @@ pub const FIELDS: &[Field] = &[
         "Set both workspace and project to keep a searchable memory.",
     ),
     field(
+        "CONTINUUM_CODE_DIRS",
+        "Code folders",
+        "Meetings",
+        Kind::Text,
+        "Comma-separated local checkouts. When a meeting names something in the code, the overlay lists the files. Nothing leaves this machine.",
+    ),
+    field(
         "CONTINUUM_SOURCES",
         "Listen to",
         "Meetings",
         Kind::Choice(&["mic,system", "mic", "system"]),
         "Your microphone, the other participants (system audio), or both.",
+    ),
+    field(
+        "CONTINUUM_MEETING_APPS_ONLY",
+        "Hear only meeting apps",
+        "Meetings",
+        Kind::Toggle(false),
+        "Other participants are heard only from Zoom, Teams, Meet in a browser and similar apps, so music and videos stay out. macOS only.",
     ),
     field(
         "CONTINUUM_WHISPER_MODEL",
@@ -205,6 +219,13 @@ pub const FIELDS: &[Field] = &[
         "Not needed for ollama or lmstudio.",
     ),
     field(
+        "CONTINUUM_LLM_HESITATIONS",
+        "AI hesitation finder",
+        "AI",
+        Kind::Toggle(false),
+        "When a meeting ends, also list doubts the phrase list missed. Sends the transcript to your AI provider.",
+    ),
+    field(
         "CONTINUUM_LLM_FACT_CHECK",
         "AI fact check",
         "AI",
@@ -219,11 +240,25 @@ pub const FIELDS: &[Field] = &[
         "Show tasks as they are said. Sends the transcript to your AI provider at most every 3 minutes.",
     ),
     field(
+        "CONTINUUM_RISK_TRACKING",
+        "Commitments and hesitations",
+        "AI",
+        Kind::Toggle(true),
+        "Lists promised dates and moments of doubt in the notes. Runs on this computer.",
+    ),
+    field(
+        "CONTINUUM_WORKLOAD_CHECK",
+        "Check promised dates against Jira, GitHub and GitLab",
+        "AI",
+        Kind::Toggle(false),
+        "Warns when someone promises a date while holding many open Jira, GitHub or GitLab issues, or a full sprint. Sends their name to those services.",
+    ),
+    field(
         "CONTINUUM_AUTO_PROPOSE",
         "Propose after each meeting",
         "AI",
         Kind::Text,
-        "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name. Each still needs your approval.",
+        "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name, gitlab:group/name. Each still needs your approval.",
     ),
     field(
         "CONTINUUM_GITHUB_REPOS",
@@ -238,6 +273,27 @@ pub const FIELDS: &[Field] = &[
         "Actions",
         Kind::Secret,
         "Fine-grained token with Issues: read and write.",
+    ),
+    field(
+        "CONTINUUM_GITLAB_PROJECTS",
+        "GitLab projects",
+        "Actions",
+        Kind::Text,
+        "Comma-separated group/name; issues can only be proposed for these.",
+    ),
+    field(
+        "CONTINUUM_GITLAB_URL",
+        "GitLab address",
+        "Actions",
+        Kind::Text,
+        "Leave empty for gitlab.com; https://… for a self-managed GitLab.",
+    ),
+    field(
+        "GITLAB_TOKEN",
+        "GitLab token",
+        "Actions",
+        Kind::Secret,
+        "Personal or project access token with the api scope.",
     ),
     field(
         "CONTINUUM_SLACK_WEBHOOK_URL",
@@ -293,7 +349,7 @@ pub const FIELDS: &[Field] = &[
         "Google client ID",
         "Actions",
         Kind::Text,
-        "For calendar deadlines and meeting titles.",
+        "For calendar, meeting titles and recap e-mails: an OAuth client of type 'Desktop app' in Google Cloud.",
     ),
     field(
         "GOOGLE_CLIENT_SECRET",
@@ -307,7 +363,7 @@ pub const FIELDS: &[Field] = &[
         "Google refresh token",
         "Actions",
         Kind::Secret,
-        "Needs the calendar.events scope.",
+        "Save the client ID and secret, then use Connect Google to fill this in.",
     ),
     field(
         "CONTINUUM_GOOGLE_CALENDAR_ID",
@@ -523,6 +579,20 @@ impl Settings {
     }
 }
 
+impl Settings {
+    /// Sets one secret and keeps every other setting as it is.
+    ///
+    /// # Errors
+    /// Returns the problems [`Settings::update`] finds.
+    pub fn set_secret(&mut self, key: &str, value: &str) -> Result<(), Vec<String>> {
+        let values = self.values.clone();
+        self.update(
+            &values,
+            &BTreeMap::from([(key.to_owned(), value.to_owned())]),
+        )
+    }
+}
+
 /// Writes `bytes` to `path` so that only the current user can read it.
 fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     if let Some(parent) = path.parent() {
@@ -641,6 +711,32 @@ mod tests {
     }
 
     #[test]
+    fn setting_one_secret_keeps_the_other_settings() {
+        let dir =
+            std::env::temp_dir().join(format!("continuum-settings-one-{}", std::process::id()));
+        let store = MemoryStore::default();
+        let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
+        settings
+            .update(&map(&[("GOOGLE_CLIENT_ID", "id")]), &BTreeMap::new())
+            .unwrap();
+        settings
+            .set_secret("GOOGLE_REFRESH_TOKEN", "1//token")
+            .unwrap();
+
+        assert_eq!(
+            store.get("GOOGLE_REFRESH_TOKEN").as_deref(),
+            Some("1//token")
+        );
+        assert!(
+            settings
+                .env()
+                .contains(&("GOOGLE_CLIENT_ID".into(), "id".into()))
+        );
+        assert!(settings.set_secret("PATH", "/evil").is_err());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn empty_secret_deletes_it() {
         let dir =
             std::env::temp_dir().join(format!("continuum-settings-del-{}", std::process::id()));
@@ -730,5 +826,6 @@ mod tests {
         assert_eq!(default_of("CONTINUUM_REMEMBER_VOICES"), "1");
         assert_eq!(default_of("CONTINUUM_RECORD_AUDIO"), "0");
         assert_eq!(default_of("CONTINUUM_LLM_FACT_CHECK"), "0");
+        assert_eq!(default_of("CONTINUUM_LLM_HESITATIONS"), "0");
     }
 }

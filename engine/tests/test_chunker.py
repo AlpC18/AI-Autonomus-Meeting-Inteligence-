@@ -54,3 +54,14 @@ def test_continuous_speech_is_cut_at_the_maximum_length() -> None:
 def test_blip_shorter_than_minimum_is_dropped() -> None:
     chunker = UtteranceChunker(RATE, min_silence_s=0.5, min_speech_s=0.3)
     assert feed_all(chunker, speech(1) + silence(10)) == []
+
+
+def test_a_long_utterance_is_cut_at_its_last_quiet_moment_not_mid_word() -> None:
+    chunker = UtteranceChunker(RATE, max_utterance_s=15.0)
+    utterances = feed_all(chunker, speech(130) + silence(1) + speech(40) + silence(10))
+
+    assert len(utterances) == 2
+    assert len(utterances[0].samples) / RATE == 13.1
+    assert utterances[1].start_s == 13.1
+    # Nothing is lost at the cut: the rest of the speech starts the next utterance.
+    assert len(utterances[1].samples) / RATE >= 4.0

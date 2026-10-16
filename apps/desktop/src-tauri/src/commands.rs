@@ -57,8 +57,6 @@ pub fn save_settings(
     values: std::collections::BTreeMap<String, String>,
     secrets: std::collections::BTreeMap<String, String>,
 ) -> Result<Vec<String>, String> {
-    use tauri::Manager;
-
     crate::settings::with(|settings| settings.update(&values, &secrets))
         .ok_or_else(|| String::from("Settings are not available."))?
         .map_err(|problems| problems.join(" "))?;
@@ -74,13 +72,50 @@ pub fn save_settings(
         .and_then(|reply| reply.get("problems").cloned())
         .and_then(|problems| serde_json::from_value::<Vec<String>>(problems).ok())
         .unwrap_or_else(|| vec![String::from("The settings could not be checked.")]);
+    restart_engine(&app, &dir)?;
+    Ok(problems)
+}
+
+/// Restarts the engine with the saved settings (or stops it under auto-start).
+fn restart_engine(app: &tauri::AppHandle, dir: &std::path::Path) -> Result<(), String> {
+    use tauri::Manager;
+
     let slot = app.state::<crate::engine::EngineSlot>();
     if crate::autostart::enabled() {
         // Auto-start: the engine runs only during calls; the supervisor starts it.
         slot.stop();
-    } else {
-        slot.restart(&dir)
-            .map_err(|error| format!("Saved, but the engine could not be restarted: {error}"))?;
+        return Ok(());
     }
-    Ok(problems)
+    slot.restart(dir)
+        .map_err(|error| format!("Saved, but the engine could not be restarted: {error}"))
+}
+
+/// Connects Google: opens the consent page in the browser and, once the user
+/// agrees, stores the refresh token in the Keychain and restarts the engine.
+///
+/// Uses the saved Google client ID and secret. The token never reaches the webview.
+///
+/// # Errors
+/// Returns a user-facing message if consent fails or the token cannot be saved.
+#[tauri::command(async)]
+pub fn google_connect(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = crate::engine::engine_dir()
+        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    let output = crate::engine::uv_run(&dir, "continuum-google-login")
+        .output()
+        .map_err(|error| format!("Could not start the Google sign-in: {error}"))?;
+    let reply: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|_| String::from("The Google sign-in ended without an answer."))?;
+    if let Some(error) = reply.get("error").and_then(serde_json::Value::as_str) {
+        return Err(error.to_owned());
+    }
+    let token = reply
+        .get("refresh_token")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| String::from("Google returned no refresh token."))?;
+    crate::settings::with(|settings| settings.set_secret("GOOGLE_REFRESH_TOKEN", token))
+        .ok_or_else(|| String::from("Settings are not available."))?
+        .map_err(|problems| problems.join(" "))?;
+    restart_engine(&app, &dir)?;
+    Ok(String::from("Google is connected."))
 }

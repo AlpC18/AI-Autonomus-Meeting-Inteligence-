@@ -346,3 +346,72 @@ async def test_talk_time_goes_into_the_notes_and_the_ended_event(tmp_path: Path)
         "speaker": "Ana", "seconds": 1.0, "share": 0.5, "longest_seconds": 1.0, "interruptions": 0
     }
     assert "## Talk time" in notes.read_text()
+
+
+async def test_switching_project_ends_the_meeting_and_files_the_next_under_the_new_project(tmp_path: Path) -> None:
+    from continuum.memory.scope import TenantScope
+
+    old, new = FakeMemory(), FakeMemory()
+    opened: list[TenantScope] = []
+
+    def open_scope(scope: TenantScope) -> FakeMemory:
+        opened.append(scope)
+        return new
+
+    session, _published, events = await make(
+        tmp_path,
+        memory=old,
+        open_scope=open_scope,
+        settings={"scope": TenantScope("acme", "web")},
+    )
+    first_notes = session.notes_path
+    session.publish(said("hello"))
+
+    await session.handle('{"type": "switch_project", "project": "mobile"}')
+
+    assert opened == [TenantScope("acme", "mobile")]
+    assert {"type": "meeting_ended", "reason": "project"}.items() <= next(
+        event for event in events if event["type"] == "meeting_ended"
+    ).items()
+    assert events[-1] == {"type": "meeting_started", "title": "Meeting", "project": "mobile"}
+    assert "acme/web" in str(first_notes) and "acme/mobile" in str(session.notes_path)
+    session.remember(said("budget"), False)
+    assert len(new.stored) == 1 and old.stored == []
+    assert session.search("budget", 5)  # the fact checker follows the switch
+
+
+async def test_switching_project_needs_memory_and_a_valid_name(tmp_path: Path) -> None:
+    session, _published, events = await make(tmp_path)
+    await session.handle('{"type": "switch_project", "project": "mobile"}')
+    assert events[-1]["type"] == "project_error" and "workspace" in events[-1]["error"]
+    await session.handle('{"type": "switch_project", "project": "../etc"}')
+    assert events[-1]["type"] == "project_error"
+
+
+class FakeWatcher:
+    def __init__(self) -> None:
+        self.seen: list[str] = []
+
+    def watch(self, segment: Segment) -> list[dict]:
+        self.seen.append(segment.text)
+        return [{"kind": "code", "title": "t", "body": segment.text, "details": []}] if "paddle" in segment.text else []
+
+    def finish(self) -> str | None:
+        return "## Hesitations\n\n- maybe" if self.seen else None
+
+
+async def test_watchers_send_hints_and_add_their_report_when_the_meeting_ends(tmp_path: Path) -> None:
+    watcher = FakeWatcher()
+    session, _published, events = await make(tmp_path, watchers=[watcher])
+    notes = session.notes_path
+
+    session.publish(said("we use paddle"))
+    session.publish(said("hello"))
+    await session.handle('{"type": "note", "text": "not watched"}')
+    await session.end("user")
+
+    assert watcher.seen == ["we use paddle", "hello"]
+    assert [event["hint"]["body"] for event in events if event["type"] == "hint"] == ["we use paddle"]
+    ended = next(event for event in events if event["type"] == "meeting_ended")
+    assert ended["report"] == "## Hesitations\n\n- maybe"
+    assert "## Hesitations" in notes.read_text()

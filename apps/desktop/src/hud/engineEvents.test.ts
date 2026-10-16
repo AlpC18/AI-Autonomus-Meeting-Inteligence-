@@ -28,7 +28,9 @@ describe("engine events", () => {
       summary: { markdown: "## Summary", queued: 2, errors: ["x"], error: null },
     });
     expect(parseEngineEvent('{"type":"answer","id":"q2","error":"Memory is off"}')).toMatchObject({ answer: { error: "Memory is off" } });
-    expect(parseEngineEvent('{"type":"meeting_started","title":"Weekly sync"}')).toEqual({ type: "meeting_started", title: "Weekly sync" });
+    expect(parseEngineEvent('{"type":"meeting_started","title":"Weekly sync"}')).toEqual({ type: "meeting_started", title: "Weekly sync", project: null });
+    expect(parseEngineEvent('{"type":"meeting_started","title":"Sync","project":"web"}')).toMatchObject({ project: "web" });
+    expect(parseEngineEvent('{"type":"project_error","error":"Memory is off"}')).toEqual({ type: "project_error", error: "Memory is off" });
     expect(parseEngineEvent('{"type":"meeting_ended"}')).toBeNull();
     expect(parseEngineEvent("nope")).toBeNull();
   });
@@ -62,7 +64,13 @@ describe("engine events", () => {
       type: "meeting_ended",
       reason: "user",
       talkTime: [{ speaker: "Ana", seconds: 90, share: 0.75, longestSeconds: 60, interruptions: 2 }],
+      report: null,
     });
-    expect(parseEngineEvent('{"type":"meeting_ended","reason":"idle"}')).toEqual({ type: "meeting_ended", reason: "idle", talkTime: [] });
+    expect(parseEngineEvent('{"type":"meeting_ended","reason":"idle","report":"## Hesitations"}')).toEqual({
+      type: "meeting_ended",
+      reason: "idle",
+      talkTime: [],
+      report: "## Hesitations",
+    });
   });
 });

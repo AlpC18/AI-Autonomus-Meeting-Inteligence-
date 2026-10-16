@@ -12,7 +12,7 @@ anything; a person approves each action later.
 from collections.abc import Sequence
 from typing import Any
 
-from continuum.actions import calendar, github, gmail, jira, notion, slack
+from continuum.actions import calendar, github, gitlab, gmail, jira, notion, slack
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import Action, ActionStore
 
@@ -32,6 +32,21 @@ def github_issue(
     issue = github.GitHubIssue(repo, title, body, tuple(labels))
     github.require_allowed_repo(issue, settings.github_repos)
     return github.KIND, issue.to_payload()
+
+
+def gitlab_issue(
+    settings: ActionSettings, project: str, title: str, body: str = "", labels: Sequence[str] = ()
+) -> Proposal:
+    """Validate a GitLab issue for an allowed project on the configured instance.
+
+    Raises:
+        ValueError: if a field is invalid.
+        PermissionError: if GitLab is not configured or the project is not allowed.
+    """
+    gitlab.require_access(settings.gitlab)
+    issue = gitlab.GitLabIssue(project, title, body, tuple(labels))
+    gitlab.require_allowed_project(issue, settings.gitlab_projects)
+    return gitlab.KIND, issue.to_payload()
 
 
 def jira_issue(

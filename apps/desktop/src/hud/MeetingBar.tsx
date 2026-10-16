@@ -13,6 +13,11 @@ interface MeetingBarProps {
   brief: Answer | null;
   liveItems: readonly LiveActionItem[];
   lastTalkTime: readonly TalkTime[];
+  /** Project the meeting is filed under; `null` when memory is off. */
+  project: string | null;
+  projectError: string | null;
+  /** What the live hints found in the meeting that ended last (Markdown). */
+  lastReport?: string | null;
 }
 
 function minutes(seconds: number): string {
@@ -26,9 +31,11 @@ function minutes(seconds: number): string {
  * the AI summary into the notes, queue proposed actions for approval and
  * start the next meeting. A meeting titled from the calendar gets a brief of
  * what earlier meetings said about it; "Brief me" asks for it again.
+ * Switching the project ends this meeting and files the next under it.
  */
-export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
+  const [nextProject, setNextProject] = useState("");
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
   // A summary arriving after "End meeting" finishes the ending state.
   if (lastSummary !== shownSummary) {
@@ -61,6 +68,38 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
           Brief me
         </button>
       </div>
+      {project !== null && (
+        <form
+          className="mt-2 flex items-center gap-2 text-sm"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = nextProject.trim();
+            if (wanted && wanted !== project && send({ type: "switch_project", project: wanted })) setNextProject("");
+          }}
+        >
+          <span className="text-zinc-600">Project: {project}</span>
+          <input
+            aria-label="Switch project"
+            value={nextProject}
+            maxLength={64}
+            placeholder="another project"
+            onChange={(event) => setNextProject(event.target.value)}
+            className="rounded-md border border-zinc-300 px-2 py-1"
+          />
+          <button
+            type="submit"
+            disabled={!connected || !nextProject.trim()}
+            className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Switch
+          </button>
+        </form>
+      )}
+      {projectError && (
+        <p role="alert" className="mt-1 text-sm text-red-700">
+          Could not switch project: {projectError}
+        </p>
+      )}
       {brief && (
         <div aria-label="Brief from earlier meetings" className="mt-2 rounded-md border border-zinc-200 p-3">
           <h3 className="text-sm font-semibold">From earlier meetings</h3>
@@ -103,6 +142,11 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
             </p>
           ))}
         </div>
+      )}
+      {lastReport && (
+        <pre aria-label="Hints from the last meeting" className="mt-2 whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-sm">
+          {lastReport}
+        </pre>
       )}
       {lastTalkTime.length > 0 && (
         <table aria-label="Talk time in the last meeting" className="mt-2 text-sm">
