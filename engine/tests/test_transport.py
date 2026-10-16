@@ -25,11 +25,13 @@ SEGMENT = Segment(
 
 
 async def test_connected_client_receives_published_segment() -> None:
-    async with TranscriptServer(port=0, allowed_origins=[ORIGIN]) as server:
-        async with connect(f"ws://127.0.0.1:{server.port}", origin=ORIGIN) as client:
-            await server.wait_for_clients(1)
-            server.publish(SEGMENT)
-            message = json.loads(await client.recv())
+    async with (
+        TranscriptServer(port=0, allowed_origins=[ORIGIN]) as server,
+        connect(f"ws://127.0.0.1:{server.port}", origin=ORIGIN) as client,
+    ):
+        await server.wait_for_clients(1)
+        server.publish(SEGMENT)
+        message = json.loads(await client.recv())
 
     assert message["type"] == "segment"
     assert message["segment"]["text"] == "hello"
@@ -69,11 +71,13 @@ async def test_connected_client_receives_fact_check_alert() -> None:
         record_spoken_at=datetime(2026, 8, 14, 10, 0, tzinfo=UTC),
         record_meeting_id="meeting-1",
     )
-    async with TranscriptServer(port=0, allowed_origins=[ORIGIN]) as server:
-        async with connect(f"ws://127.0.0.1:{server.port}", origin=ORIGIN) as client:
-            await server.wait_for_clients(1)
-            server.publish_alert(alert)
-            message = json.loads(await client.recv())
+    async with (
+        TranscriptServer(port=0, allowed_origins=[ORIGIN]) as server,
+        connect(f"ws://127.0.0.1:{server.port}", origin=ORIGIN) as client,
+    ):
+        await server.wait_for_clients(1)
+        server.publish_alert(alert)
+        message = json.loads(await client.recv())
 
     assert message["type"] == "fact_check"
     assert message["alert"]["claimed"] == ["$50k"]

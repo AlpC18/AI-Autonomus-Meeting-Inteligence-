@@ -30,8 +30,8 @@ pub fn is_action_id(id: &str) -> bool {
 /// cannot be started, the command reports a failure, or its output is not
 /// valid JSON.
 fn review(args: &[&str]) -> Result<Value, String> {
-    let dir = engine::engine_dir()
-        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    let dir =
+        engine::engine_dir().ok_or_else(|| String::from("The engine folder is not configured."))?;
     let output = engine::uv_run(&dir, "continuum-actions-review")
         .arg("--json")
         .args(args)

@@ -4,7 +4,7 @@
 """The calendar deadline action: an all-day Google Calendar event on a due date."""
 
 from dataclasses import asdict, dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
@@ -108,6 +108,68 @@ def _google_error(response: httpx.Response) -> str:
     return str(body.get("error_description") or error or "no details given")
 
 
+def _access_token(access: GoogleAccess, client: httpx.Client) -> str:
+    """Exchange the refresh token for a short-lived access token.
+
+    Raises:
+        RuntimeError: if Google rejects the credentials.
+        httpx.HTTPError: if Google cannot be reached.
+    """
+    granted = client.post(
+        _TOKEN_URL,
+        data={
+            "grant_type": "refresh_token",
+            "client_id": access.client_id,
+            "client_secret": access.client_secret,
+            "refresh_token": access.refresh_token,
+        },
+    )
+    if granted.status_code != 200:
+        raise RuntimeError(
+            "Google rejected the calendar credentials "
+            f"(HTTP {granted.status_code}): {_google_error(granted)}"
+        )
+    return str(granted.json()["access_token"])
+
+
+def current_event_title(
+    access: GoogleAccess, calendar_id: str, client: httpx.Client, now: datetime
+) -> str | None:
+    """Title of the timed event happening at ``now`` (``now`` timezone-aware), if any.
+
+    Read-only. All-day events are ignored. Returns ``None`` when nothing is on
+    or Google cannot answer, so a meeting can always start without a title.
+    """
+    window_end = now + timedelta(minutes=1)
+    try:
+        token = _access_token(access, client)
+        response = client.get(
+            _EVENTS_URL.format(calendar=quote(calendar_id, safe="")),
+            headers={"Authorization": f"Bearer {token}"},
+            params={
+                "timeMin": now.isoformat(),
+                "timeMax": window_end.isoformat(),
+                "singleEvents": "true",
+                "orderBy": "startTime",
+                "maxResults": "5",
+            },
+        )
+    except (httpx.HTTPError, RuntimeError):
+        return None
+    if response.status_code != 200:
+        return None
+    try:
+        items = response.json().get("items", [])
+    except ValueError:
+        return None
+    for item in items:
+        if isinstance(item, dict) and "dateTime" in item.get("start", {}):
+            title = " ".join(str(item.get("summary", "")).split())
+            if title:
+                return title[:120]
+    return None
+
+
 # ponytail: the refresh token must be obtained once outside this app (for
 # example with Google's OAuth playground). Add an in-app consent flow when
 # more than one person uses this.
@@ -125,24 +187,11 @@ def create_deadline(
             or refuses the event, with Google's own status and message.
     """
     try:
-        granted = client.post(
-            _TOKEN_URL,
-            data={
-                "grant_type": "refresh_token",
-                "client_id": access.client_id,
-                "client_secret": access.client_secret,
-                "refresh_token": access.refresh_token,
-            },
-        )
-        if granted.status_code != 200:
-            raise RuntimeError(
-                "Google rejected the calendar credentials "
-                f"(HTTP {granted.status_code}): {_google_error(granted)}"
-            )
+        token = _access_token(access, client)
         day = date.fromisoformat(deadline.due)
         created = client.post(
             _EVENTS_URL.format(calendar=quote(calendar_id, safe="")),
-            headers={"Authorization": f"Bearer {granted.json()['access_token']}"},
+            headers={"Authorization": f"Bearer {token}"},
             json={
                 "summary": deadline.title,
                 "description": deadline.description,

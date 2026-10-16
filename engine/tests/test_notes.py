@@ -103,3 +103,13 @@ def test_a_file_that_is_not_audio_is_refused(tmp_path: Path) -> None:
     import av
 
     assert isinstance(caught.value, (av.FFmpegError, IndexError, ValueError))
+
+
+def test_notes_never_reuse_an_existing_file(tmp_path) -> None:
+    from datetime import UTC, datetime
+
+    started = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)
+    first = MeetingNotes(tmp_path, started)
+    first.add(SOLO)
+    second = MeetingNotes(tmp_path, started)
+    assert second.path != first.path and second.path.name.endswith("Meeting (2).md")

@@ -72,3 +72,21 @@ def test_privacy_settings() -> None:
     for bad in ("0", "-5", "ninety"):
         with pytest.raises(ValueError, match="CONTINUUM_RETENTION_DAYS"):
             Settings.from_env({"CONTINUUM_RETENTION_DAYS": bad})
+
+
+def test_meeting_lifecycle_settings() -> None:
+    settings = Settings.from_env(
+        {
+            "CONTINUUM_AUTO_PROPOSE": "calendar, jira:WEB ,github:acme/web",
+            "CONTINUUM_IDLE_END_MINUTES": "5",
+            "CONTINUUM_EXIT_WHEN_IDLE": "1",
+            "CONTINUUM_RECORD_AUDIO": "on",
+        }
+    )
+    assert settings.auto_propose == ("calendar", "jira:WEB", "github:acme/web")
+    assert settings.idle_end_minutes == 5
+    assert settings.exit_when_idle and settings.record_audio and not settings.llm_fact_check
+    with pytest.raises(ValueError, match="CONTINUUM_AUTO_PROPOSE"):
+        Settings.from_env({"CONTINUUM_AUTO_PROPOSE": "email"})
+    with pytest.raises(ValueError, match="CONTINUUM_IDLE_END_MINUTES"):
+        Settings.from_env({"CONTINUUM_IDLE_END_MINUTES": "0"})

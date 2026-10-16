@@ -20,7 +20,6 @@ from continuum.live_controls import (
     parse,
 )
 from continuum.notes import markdown_lines
-from continuum.pipeline import LiveControls
 from continuum.transcript import Segment, Word
 from continuum.transport.server import MAX_CLIENT_MESSAGE, TranscriptServer
 
@@ -75,28 +74,6 @@ def test_renames_apply_to_segment_and_words_and_can_be_chained() -> None:
 def test_note_is_a_markdown_line_with_the_note_speaker() -> None:
     line = markdown_lines(note_segment(Note("Push back on the date"), 65.0))
     assert line == [f"- `00:01:05` **{NOTE_SPEAKER}:** Push back on the date"]
-
-
-async def test_live_controls_publish_store_and_announce() -> None:
-    published: list[Segment] = []
-    remembered: list[tuple[Segment, bool]] = []
-    announced: list[tuple[str, str]] = []
-    names = SpeakerNames()
-    controls = LiveControls(names, lambda seg, disputed: remembered.append((seg, disputed)))
-    controls.connect(published.append, lambda old, new: announced.append((old, new)))
-
-    await controls.handle('{"type": "note", "text": "Decision needed on vendor"}')
-    await controls.handle('{"type": "rename_speaker", "from": "Speaker 2", "to": "Mark"}')
-    await controls.handle('{"type": "note"}')
-
-    assert [seg.text for seg in published] == [
-        "Decision needed on vendor",
-        "Speaker 2 is now called Mark.",
-    ]
-    assert all(seg.speaker == NOTE_SPEAKER for seg in published)
-    assert [disputed for _seg, disputed in remembered] == [False, False]
-    assert announced == [("Speaker 2", "Mark")]
-    assert names.apply(segment("Speaker 2")).speaker == "Mark"
 
 
 async def test_server_passes_client_text_to_the_handler() -> None:

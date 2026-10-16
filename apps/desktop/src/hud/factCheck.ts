@@ -16,6 +16,8 @@ export interface FactCheckAlert {
   recordSpeaker: string;
   /** When the earlier statement was made. Invalid if the engine sent a bad date. */
   recordSpokenAt: Date;
+  /** Why the AI judged it a contradiction; empty for figure mismatches. */
+  explanation: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -63,5 +65,6 @@ export function parseAlertMessage(raw: unknown): FactCheckAlert | null {
     recordText: alert.record_text,
     recordSpeaker: alert.record_speaker,
     recordSpokenAt: new Date(alert.record_spoken_at),
+    explanation: typeof alert.explanation === "string" ? alert.explanation : "",
   };
 }

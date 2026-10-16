@@ -51,12 +51,19 @@ export function FactCheckCard({ alert, onDismiss }: FactCheckCardProps) {
         </button>
       </header>
 
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-zinc-400">Said now</dt>
-        <dd className="font-semibold">{alert.claimed.join(", ")}</dd>
-        <dt className="text-zinc-400">On record</dt>
-        <dd className="font-semibold text-amber-300">{alert.recorded.join(", ")}</dd>
-      </dl>
+      {alert.claimed.length > 0 ? (
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <dt className="text-zinc-400">Said now</dt>
+          <dd className="font-semibold">{alert.claimed.join(", ")}</dd>
+          <dt className="text-zinc-400">On record</dt>
+          <dd className="font-semibold text-amber-300">{alert.recorded.join(", ")}</dd>
+        </dl>
+      ) : (
+        <div className="mt-2 text-sm">
+          <p className="font-semibold">“{alert.statement}”</p>
+          {alert.explanation && <p className="mt-1 text-amber-300">{alert.explanation}</p>}
+        </div>
+      )}
 
       <blockquote className="mt-2 border-l-2 border-white/20 pl-2 text-xs leading-relaxed text-zinc-300">
         “{alert.recordText}”

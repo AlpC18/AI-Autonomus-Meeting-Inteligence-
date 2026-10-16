@@ -33,7 +33,7 @@ class _StreamReceiver(NSObject):
     """Objective-C delegate that forwards audio buffers and stream failures."""
 
     def initWithQueue_(self, queue: BlockQueue) -> "_StreamReceiver":
-        self = objc.super(_StreamReceiver, self).init()
+        self = objc.super(_StreamReceiver, self).init()  # noqa: PLW0642 - PyObjC init rebinds self
         if self is not None:
             self._queue = queue
         return self

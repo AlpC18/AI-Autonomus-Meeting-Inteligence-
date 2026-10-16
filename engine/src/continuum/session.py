@@ -1,0 +1,383 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
+
+"""The meeting lifecycle of one engine run.
+
+A session holds the current meeting: its notes file, recording, transcript
+and memory id. It applies what the user does in the desktop app (notes,
+speaker names, questions, ending the meeting). Ending a meeting, by the user
+or after a silence, merges duplicate speakers, writes the AI summary into the
+notes, queues proposed actions for approval, and starts the next meeting.
+"""
+
+import asyncio
+import contextlib
+import logging
+import os
+import time
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Protocol
+
+import numpy as np
+
+from continuum.ask import answer
+from continuum.audio.recorder import MixRecorder
+from continuum.config import Settings
+from continuum.live_controls import (
+    NOTE_SOURCE,
+    Ask,
+    EndMeeting,
+    Note,
+    Rename,
+    SpeakerNames,
+    note_segment,
+    parse,
+)
+from continuum.llm import Llm
+from continuum.memory.store import Meeting, ScopedMemory
+from continuum.notes import MeetingNotes, markdown_lines
+from continuum.privacy import redact_segment
+from continuum.summary import MeetingSummary, summarize, to_markdown
+from continuum.transcript import Segment
+
+logger = logging.getLogger(__name__)
+
+MAX_SEGMENTS = 20_000
+"""Transcript kept per meeting for its summary (many hours of speech)."""
+
+IDLE_CHECK_S = 15.0
+
+
+class Speakers(Protocol):
+    """What the session needs from the diarizer."""
+
+    def speaker_merges(self) -> dict[str, str]: ...
+    def reset(self) -> None: ...
+
+
+Propose = Callable[[MeetingSummary, str], tuple[int, list[str]]]
+"""Queues a summary's action items; returns how many were queued and any errors."""
+
+
+def queue_configured_proposals(targets: tuple[str, ...]) -> Propose:
+    """Return a :data:`Propose` that queues action items to ``targets`` for approval."""
+
+    def propose(summary: MeetingSummary, source: str) -> tuple[int, list[str]]:
+        from continuum.actions import proposals
+        from continuum.actions.settings import ActionSettings
+        from continuum.actions.store import ActionStore
+        from continuum.summarize_cli import build_proposals
+
+        try:
+            action_settings = ActionSettings.from_env(os.environ)
+        except ValueError as error:
+            return 0, [str(error)]
+        built, errors = build_proposals(summary, list(targets), action_settings, source)
+        store = ActionStore(action_settings.database)
+        queued = 0
+        for proposal in built:
+            try:
+                proposals.queue(store, proposal)
+                queued += 1
+            except RuntimeError as error:
+                errors.append(str(error))
+        return queued, errors
+
+    return propose
+
+
+@dataclass
+class _Current:
+    meeting: Meeting
+    notes: MeetingNotes | None
+    recorder: MixRecorder | None
+    started: float
+    last_speech: float
+    segments: list[Segment] = field(default_factory=list)
+
+    @property
+    def spoken(self) -> bool:
+        return any(segment.source != NOTE_SOURCE for segment in self.segments)
+
+
+class MeetingSession:
+    """The current meeting and everything the user does to it.
+
+    Use from the event loop. :meth:`publish` and :meth:`relabel` are passed
+    to the :class:`~continuum.pipeline.Engine`; :meth:`remember` too, and it
+    may run in a worker thread.
+    """
+
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        memory: ScopedMemory | None = None,
+        llm: Llm | None = None,
+        speakers: Speakers | None = None,
+        title_for: Callable[[datetime], str | None] | None = None,
+        propose: Propose | None = None,
+        stop: Callable[[], None] | None = None,
+        clock: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        self._settings = settings
+        self._memory = memory
+        self._llm = llm
+        self._speakers = speakers
+        self._title_for = title_for
+        self._propose = propose
+        self._stop = stop
+        self._clock = clock
+        self._now = now
+        self.names = SpeakerNames()
+        self._publish_segment: Callable[[Segment], None] = lambda segment: None
+        self._publish_event: Callable[[dict[str, Any]], None] = lambda event: None
+        self._current: _Current | None = None
+        self._ending = asyncio.Lock()
+        self._asking = asyncio.Lock()
+
+    def connect(
+        self,
+        publish_segment: Callable[[Segment], None],
+        publish_event: Callable[[dict[str, Any]], None],
+    ) -> None:
+        """Set where segments and events go (the transcript server)."""
+        self._publish_segment = publish_segment
+        self._publish_event = publish_event
+
+    @property
+    def meeting(self) -> Meeting | None:
+        """The meeting being recorded now."""
+        return self._current.meeting if self._current else None
+
+    @property
+    def notes_path(self) -> Path | None:
+        """The current meeting's notes file, if notes are kept."""
+        return self._current.notes.path if self._current and self._current.notes else None
+
+    # --- starting and stopping -------------------------------------------------
+
+    async def start(self) -> None:
+        """Begin a new meeting, titled after the calendar event happening now, if any."""
+        started_at = self._now()
+        title = None
+        if self._title_for is not None:
+            try:
+                title = await asyncio.to_thread(self._title_for, started_at)
+            except Exception:
+                logger.exception("Could not read the calendar for a meeting title")
+        notes = recorder = None
+        if self._settings.notes_dir is not None:
+            directory = self._settings.notes_dir
+            if self._settings.scope is not None:
+                directory = directory / self._settings.scope.tenant_id / self._settings.scope.project_id
+            notes = MeetingNotes(directory, started_at, title or "Meeting")
+            if self._settings.record_audio:
+                try:
+                    recorder = MixRecorder(notes.path.with_suffix(".wav"), self._settings.sources)
+                    notes.set_audio(recorder.path)
+                except OSError:
+                    logger.exception("Could not start recording")
+            logger.info("Writing meeting notes to %s", notes.path)
+        now = self._clock()
+        self._current = _Current(Meeting(str(uuid.uuid4()), started_at), notes, recorder, now, now)
+        self._publish_event({"type": "meeting_started", "title": title or "Meeting"})
+
+    async def end(self, reason: str = "user") -> None:
+        """Finish the current meeting and, unless the engine should stop, start the next.
+
+        A meeting in which nobody spoke is not summarised. Failures in any
+        step are logged and reported to the app; the next meeting still starts.
+        """
+        async with self._ending:
+            current = self._current
+            if current is None:
+                return
+            if current.spoken:
+                await self._merge_duplicate_speakers(current)
+                if current.recorder is not None:
+                    current.recorder.close()
+                await self._summarise(current)
+            elif current.recorder is not None:
+                current.recorder.close()
+                with contextlib.suppress(OSError):
+                    current.recorder.path.unlink()
+            self._publish_event({"type": "meeting_ended", "reason": reason})
+            if self._speakers is not None:
+                self._speakers.reset()
+            self.names = SpeakerNames()
+            self._current = None
+            if reason == "idle" and self._settings.exit_when_idle and self._stop is not None:
+                logger.info("Meeting ended after silence; stopping the engine")
+                self._stop()
+                return
+            await self.start()
+
+    async def watch_idle(self) -> None:
+        """End the meeting after ``idle_end_minutes`` without speech. Runs until cancelled."""
+        minutes = self._settings.idle_end_minutes
+        if minutes is None:
+            return
+        while True:
+            await asyncio.sleep(IDLE_CHECK_S)
+            current = self._current
+            if current and current.spoken and self._clock() - current.last_speech >= minutes * 60:
+                await self.end("idle")
+
+    async def close(self) -> None:
+        """Finish the recording when the engine stops (no summary: the app is closing).
+
+        The recording of a meeting in which nobody spoke is deleted.
+        """
+        current = self._current
+        if current is None or current.recorder is None:
+            return
+        current.recorder.close()
+        if not current.spoken:
+            with contextlib.suppress(OSError):
+                current.recorder.path.unlink()
+
+    # --- live transcript -------------------------------------------------------
+
+    def relabel(self, segment: Segment) -> Segment:
+        """Apply the names the user gave to speakers."""
+        return self.names.apply(segment)
+
+    def publish(self, segment: Segment) -> None:
+        """Show ``segment`` live, add it to the notes (redacted) and the meeting's transcript."""
+        self._publish_segment(segment)
+        current = self._current
+        if current is None:
+            return
+        if len(current.segments) < MAX_SEGMENTS:
+            current.segments.append(segment)
+        if segment.source != NOTE_SOURCE:
+            current.last_speech = self._clock()
+        if current.notes is not None:
+            try:
+                current.notes.add(redact_segment(segment) if self._settings.redact else segment)
+            except OSError:
+                logger.exception("Could not write meeting notes")
+
+    def remember(self, segment: Segment, disputed: bool) -> None:
+        """Store ``segment`` in memory under the current meeting (redacted). Blocks."""
+        current = self._current
+        if self._memory is None or current is None:
+            return
+        stored = redact_segment(segment) if self._settings.redact else segment
+        self._memory.add_segment(stored, current.meeting, disputed=disputed)
+
+    def record(self, source: str, block: np.ndarray) -> None:
+        """Add captured audio to the meeting's recording, when recording is on."""
+        if self._current is not None and self._current.recorder is not None:
+            self._current.recorder.feed(source, block)
+
+    # --- messages from the desktop app -------------------------------------------
+
+    async def handle(self, raw: str) -> None:
+        """Handle one message from the desktop app; malformed ones are ignored."""
+        command = parse(raw)
+        if command is None:
+            logger.warning("Ignored a malformed message from the desktop app")
+        elif isinstance(command, Ask):
+            await self._answer(command)
+        elif isinstance(command, EndMeeting):
+            await self.end("user")
+        else:
+            await self._note(command)
+
+    async def _note(self, command: Note | Rename) -> None:
+        if isinstance(command, Rename):
+            self.names.rename(command.old, command.new)
+            self._publish_event({"type": "renamed", "from": command.old, "to": command.new})
+            command = Note(f"{command.old} is now called {command.new}.")
+        started = self._current.started if self._current else self._clock()
+        segment = note_segment(command, self._clock() - started)
+        self.publish(segment)
+        try:
+            await asyncio.to_thread(self.remember, segment, False)
+        except Exception:
+            logger.exception("Could not store a note in memory")
+
+    async def _answer(self, command: Ask) -> None:
+        reply: dict[str, Any] = {"type": "answer", "id": command.request_id}
+        if self._memory is None:
+            reply["error"] = "Memory is off: set a workspace and project in Settings."
+        elif self._llm is None:
+            reply["error"] = "No AI model is configured: choose a provider in Settings."
+        else:
+            memory, llm = self._memory, self._llm
+            async with self._asking:
+                try:
+                    result = await asyncio.to_thread(answer, command.question, memory.search, llm)
+                except (ValueError, RuntimeError) as error:
+                    reply["error"] = str(error)
+                else:
+                    reply.update(result.to_dict())
+        self._publish_event(reply)
+
+    # --- ending a meeting ----------------------------------------------------------
+
+    async def _merge_duplicate_speakers(self, current: _Current) -> None:
+        if self._speakers is None:
+            return
+        merges = {
+            self.names.shown(old): self.names.shown(new)
+            for old, new in self._speakers.speaker_merges().items()
+        }
+        merges = {old: new for old, new in merges.items() if old != new}
+        if not merges:
+            return
+        logger.info("Merging duplicate speakers: %s", merges)
+        current.segments = [_rename(segment, merges) for segment in current.segments]
+        try:
+            if current.notes is not None:
+                current.notes.rename_speakers(merges)
+            if self._memory is not None:
+                for old, new in merges.items():
+                    await asyncio.to_thread(self._memory.rename_speaker, current.meeting.meeting_id, old, new)
+        except Exception:
+            logger.exception("Could not merge duplicate speakers everywhere")
+        for old, new in merges.items():
+            self._publish_event({"type": "renamed", "from": old, "to": new})
+
+    async def _summarise(self, current: _Current) -> None:
+        if self._llm is None:
+            return
+        # The AI provider gets the same (redacted) text the notes file holds.
+        clean = redact_segment if self._settings.redact else (lambda segment: segment)
+        transcript = "\n".join(
+            line for segment in current.segments for line in markdown_lines(clean(segment))
+        )
+        event: dict[str, Any] = {"type": "summary"}
+        try:
+            summary = await asyncio.to_thread(summarize, transcript, self._llm, self._now().date())
+        except (ValueError, RuntimeError) as error:
+            event["error"] = str(error)
+            self._publish_event(event)
+            return
+        markdown = to_markdown(summary)
+        event["markdown"] = markdown
+        if current.notes is not None:
+            try:
+                current.notes.append(markdown)
+            except OSError:
+                logger.exception("Could not add the summary to the notes")
+        if self._propose is not None and self._settings.auto_propose:
+            source = current.notes.path.name if current.notes else "the meeting"
+            queued, errors = await asyncio.to_thread(self._propose, summary, source)
+            event.update(queued=queued, errors=errors)
+        self._publish_event(event)
+
+
+def _rename(segment: Segment, names: dict[str, str]) -> Segment:
+    words = tuple(
+        replace(word, speaker=names.get(word.speaker, word.speaker)) if word.speaker else word
+        for word in segment.words
+    )
+    return replace(segment, speaker=names.get(segment.speaker, segment.speaker), words=words)

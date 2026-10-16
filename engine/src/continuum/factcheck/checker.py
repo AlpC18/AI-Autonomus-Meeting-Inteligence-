@@ -26,10 +26,12 @@ the embedding model changes.
 
 @dataclass(frozen=True, slots=True)
 class FactCheckAlert:
-    """A live statement whose figures differ from the most recent record.
+    """A live statement that contradicts the record.
 
-    ``claimed`` and ``recorded`` hold the conflicting figures as they were
-    spoken, for example ``("$50,000",)`` against ``("$35,000",)``.
+    For figures, ``claimed`` and ``recorded`` hold the conflicting values as
+    they were spoken, for example ``("$50,000",)`` against ``("$35,000",)``.
+    A contradiction judged by the AI model has no figures and says why in
+    ``explanation``.
     """
 
     statement: str
@@ -40,6 +42,7 @@ class FactCheckAlert:
     record_speaker: str
     record_spoken_at: datetime
     record_meeting_id: str
+    explanation: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable copy, used as the wire format."""

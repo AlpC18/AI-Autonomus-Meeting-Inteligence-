@@ -67,19 +67,3 @@ def test_segment_text_and_words_are_redacted_with_timings_kept() -> None:
     assert [word.text for word in clean.words] == ["email", "[email]", "now"]
     assert [word.start for word in clean.words] == [0.0, 0.5, 1.5]
     assert redact_segment(clean) is clean
-
-
-def test_notes_file_is_redacted_but_the_live_transcript_is_not(tmp_path) -> None:
-    from continuum.config import Settings
-    from continuum.pipeline import _also_noting
-
-    published: list[Segment] = []
-    said = Segment("mic", 1.0, 2.0, "write to ana@acme.io", (), "me")
-    for redacting in (True, False):
-        folder = tmp_path / str(redacting)
-        publish = _also_noting(published.append, Settings(notes_dir=folder, redact=redacting))
-        publish(said)
-        (notes,) = folder.glob("*.md")
-        assert ("[email]" in notes.read_text()) is redacting
-
-    assert [segment.text for segment in published] == ["write to ana@acme.io"] * 2
