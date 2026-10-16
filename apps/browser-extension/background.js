@@ -31,7 +31,8 @@ async function stop() {
   await show("off");
 }
 
-chrome.action.onClicked.addListener(async (tab) => {
+/** Starts or stops capturing `tab` (what clicking the toolbar button does). */
+async function toggle(tab) {
   if (await capturing()) {
     await stop();
     return;
@@ -44,7 +45,9 @@ chrome.action.onClicked.addListener(async (tab) => {
   });
   await show("waiting");
   await chrome.runtime.sendMessage({ target: "offscreen", type: "start", streamId });
-});
+}
+
+chrome.action.onClicked.addListener(toggle);
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.target !== "background") return;
