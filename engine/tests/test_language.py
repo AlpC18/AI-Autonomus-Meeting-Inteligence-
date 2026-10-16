@@ -13,7 +13,7 @@ from continuum.library import summary_of
 from continuum.stats import SpeakerStats
 from continuum.stats import to_markdown as stats_markdown
 from continuum.summarize_cli import split_summary
-from continuum.summary import ActionItem, MeetingSummary, to_markdown
+from continuum.summary import ActionItem, MeetingSummary, follow_up_email, to_markdown
 from continuum.transcript import Segment
 
 THURSDAY = date(2026, 10, 15)
@@ -79,3 +79,9 @@ def test_ai_replies_are_asked_for_in_the_chosen_language(turkish) -> None:
     )
     language.use("en")
     assert language.InLanguage(Echo()).complete("Summarise.", "x") == "Summarise."
+
+
+def test_the_follow_up_email_is_written_in_turkish(turkish) -> None:
+    subject, body = follow_up_email(MeetingSummary("Bütçe onaylandı.", (), (ActionItem("Raporu gönder", "Ayşe", None),)), "Bütçe")
+    assert subject == "Toplantı sonrası: Bütçe"
+    assert body.startswith("Herkese merhaba,") and "Sonraki adımlar\n- Raporu gönder (Ayşe)" in body

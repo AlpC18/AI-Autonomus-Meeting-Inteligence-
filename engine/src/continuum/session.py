@@ -50,7 +50,7 @@ from continuum.notes import MeetingNotes, markdown_lines
 from continuum.privacy import redact_segment
 from continuum.stats import speaker_stats
 from continuum.stats import to_markdown as stats_markdown
-from continuum.summary import MeetingSummary, summarize, to_markdown
+from continuum.summary import MeetingSummary, follow_up_email, summarize, to_markdown
 from continuum.transcript import Segment
 from continuum.translate import Translator
 
@@ -652,7 +652,8 @@ class MeetingSession:
             self._publish_event(event)
             return
         markdown = to_markdown(summary)
-        event["markdown"] = markdown
+        subject, body = follow_up_email(summary, current.title or "")
+        event.update(markdown=markdown, email={"subject": subject, "body": body})
         if current.notes is not None:
             try:
                 current.notes.append(markdown)

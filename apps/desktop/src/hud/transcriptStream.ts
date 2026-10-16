@@ -120,6 +120,8 @@ export interface MeetingSummaryEvent {
   queued: number;
   errors: string[];
   error: string | null;
+  /** A follow-up e-mail for the attendees, ready to copy or open in a mail app. */
+  email?: { subject: string; body: string } | null;
 }
 
 /** A task someone agreed to during the meeting, as the AI model heard it. */
@@ -295,6 +297,10 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
         queued: typeof message.queued === "number" ? message.queued : 0,
         errors: strings(message.errors),
         error: typeof message.error === "string" ? message.error : null,
+        email:
+          isRecord(message.email) && typeof message.email.subject === "string" && typeof message.email.body === "string"
+            ? { subject: message.email.subject, body: message.email.body }
+            : null,
       },
     };
   }

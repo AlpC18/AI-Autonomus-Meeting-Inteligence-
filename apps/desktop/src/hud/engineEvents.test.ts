@@ -25,7 +25,7 @@ describe("engine events", () => {
   it("reads summaries, errors and meeting changes", () => {
     expect(parseEngineEvent('{"type":"summary","markdown":"## Summary","queued":2,"errors":["x"]}')).toEqual({
       type: "summary",
-      summary: { markdown: "## Summary", queued: 2, errors: ["x"], error: null },
+      summary: { markdown: "## Summary", queued: 2, errors: ["x"], error: null, email: null },
     });
     expect(parseEngineEvent('{"type":"answer","id":"q2","error":"Memory is off"}')).toMatchObject({ answer: { error: "Memory is off" } });
     expect(parseEngineEvent('{"type":"meeting_started","title":"Weekly sync"}')).toEqual({ type: "meeting_started", title: "Weekly sync", project: null });
@@ -93,5 +93,14 @@ describe("translation", () => {
       text: "Hello",
     });
     expect(parseEngineEvent(JSON.stringify({ type: "translation", source: "system", text: "x" }))).toBeNull();
+  });
+});
+
+describe("follow-up email", () => {
+  it("comes with the summary and opens as a mail-app link", async () => {
+    const { mailtoLink } = await import("./MeetingBar");
+    const event = parseEngineEvent(JSON.stringify({ type: "summary", markdown: "## Summary", email: { subject: "Follow-up: Budget", body: "Hi all,\nThanks." } }));
+    expect(event?.type === "summary" && event.summary.email).toEqual({ subject: "Follow-up: Budget", body: "Hi all,\nThanks." });
+    expect(mailtoLink({ subject: "Follow-up: Budget", body: "Hi all,\nThanks." })).toBe("mailto:?subject=Follow-up%3A%20Budget&body=Hi%20all%2C%0AThanks.");
   });
 });

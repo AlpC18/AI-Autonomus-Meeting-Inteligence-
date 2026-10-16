@@ -22,7 +22,7 @@ from continuum.actions.settings import ActionSettings
 from continuum.actions.store import ActionStore
 from continuum.language import heading_pattern
 from continuum.llm import LlmSettings, connect
-from continuum.summary import MeetingSummary, summarize, to_markdown
+from continuum.summary import MeetingSummary, follow_up_email, summarize, to_markdown
 
 _SUMMARY = heading_pattern("Summary")
 _SLACK_LIMIT = 3000
@@ -72,13 +72,8 @@ def build_proposals(
             attempt("slack", lambda: proposals.slack_message(settings, _slack_text(summary, source)))
             continue
         if kind == "email":
-            subject = f"Recap: {title or 'our meeting'}"[:200]
-            attempt(
-                "email",
-                lambda subject=subject: proposals.email_recap(
-                    settings, attendees, subject, to_markdown(summary)
-                ),
-            )
+            subject, body = follow_up_email(summary, title)
+            attempt("email", lambda subject=subject, body=body: proposals.email_recap(settings, attendees, subject, body))
             continue
         if kind == "notion":
             page_title = f"{title or source}"[:200]

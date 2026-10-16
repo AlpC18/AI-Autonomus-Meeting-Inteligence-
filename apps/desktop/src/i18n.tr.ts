@@ -310,6 +310,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Google calendar": "Google takvimi",
   "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
   Translation: "Çeviri",
+  "Copy follow-up email": "Toplantı sonrası e-postayı kopyala",
+  "Open in mail app": "E-posta uygulamasında aç",
+  "Copied.": "Kopyalandı.",
+  "Could not copy; use Open in mail app.": "Kopyalanamadı; E-posta uygulamasında aç'ı kullanın.",
+  "No mail app answered.": "Hiçbir e-posta uygulaması yanıt vermedi.",
   "Copy diagnostics": "Tanılama bilgilerini kopyala",
   Diagnostics: "Tanılama bilgileri",
   "Versions, settings without secrets, problems and recent engine log lines, for a bug report.":

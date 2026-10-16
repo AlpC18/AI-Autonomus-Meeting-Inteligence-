@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { AnswerView } from "./AskPanel";
 import type { Answer, DocumentImport, EngineCommand, LiveActionItem, MeetingSummaryEvent, TalkTime } from "./transcriptStream";
 import { t } from "../i18n";
@@ -33,6 +34,38 @@ interface MeetingBarProps {
   lastImport?: DocumentImport | null;
   /** Chooses documents to import; the system file picker unless replaced (in tests). */
   pick?: () => Promise<string[] | null>;
+}
+
+/** Mail-app link for `email`; the body is cut so the link stays within what mail apps accept. */
+export function mailtoLink(email: { subject: string; body: string }): string {
+  return `mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body.slice(0, MAX_MAILTO_BODY))}`;
+}
+
+const MAX_MAILTO_BODY = 1800;
+
+/** Buttons to copy the follow-up e-mail or open it in the user's mail app. */
+function FollowUp({ email }: { email: { subject: string; body: string } }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = () =>
+    void navigator.clipboard
+      .writeText(`${email.subject}\n\n${email.body}`)
+      .then(() => setCopied(t("Copied.")))
+      .catch(() => setCopied(t("Could not copy; use Open in mail app.")));
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <button type="button" onClick={copy} className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1 hover:bg-zinc-100">
+        {t("Copy follow-up email")}
+      </button>
+      <button
+        type="button"
+        onClick={() => void openUrl(mailtoLink(email)).catch(() => setCopied(t("No mail app answered.")))}
+        className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1 hover:bg-zinc-100"
+      >
+        {t("Open in mail app")}
+      </button>
+      {copied && <span className="text-xs text-zinc-600">{copied}</span>}
+    </div>
+  );
 }
 
 function minutes(seconds: number): string {
@@ -183,6 +216,7 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
               {t("Not proposed: {error}", { error })}
             </p>
           ))}
+          {lastSummary.email && <FollowUp email={lastSummary.email} />}
         </div>
       )}
       {lastReport && (

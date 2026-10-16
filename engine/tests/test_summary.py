@@ -300,7 +300,10 @@ def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
     assert errors == []
     ((kind, payload),) = built
     assert kind == "email_recap" and payload["to"] == ["ana@acme.io"]
-    assert payload["subject"] == "Recap: Budget" and "Send the Q4 report" in payload["body"]
+    assert payload["subject"] == "Follow-up: Budget"
+    body = payload["body"]
+    assert body.startswith("Hi all,\n") and body.rstrip().endswith("Best regards")
+    assert "\nNext steps\n- Send the Q4 report (Ana, due 2026-11-30)" in body and "## " not in body
 
     _built, errors = build_proposals(summary, ["email"], settings, "notes.md")
     assert errors and "recipients" in errors[0]

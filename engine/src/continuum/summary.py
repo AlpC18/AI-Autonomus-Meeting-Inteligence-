@@ -135,6 +135,24 @@ def parse_summary(reply: str) -> MeetingSummary:
     return MeetingSummary(overview, decisions, tuple(items[:_MAX_ITEMS]))
 
 
+def follow_up_email(summary: MeetingSummary, title: str = "") -> tuple[str, str]:
+    """A follow-up e-mail for the attendees, as ``(subject, plain-text body)``, in the notes' language."""
+    subject = t("Follow-up: {title}", title=title) if title else t("Follow-up from our meeting")
+    lines = [t("Hi all,"), "", t("Thanks for joining. Here is a short recap."), "", summary.overview, ""]
+    if summary.decisions:
+        lines += [t("Decisions"), *(f"- {decision}" for decision in summary.decisions), ""]
+    if summary.action_items:
+        lines.append(t("Next steps"))
+        for item in summary.action_items:
+            extra = ", ".join(
+                part for part in (item.owner, t("due {date}", date=item.due) if item.due else None) if part
+            )
+            lines.append(f"- {item.task}" + (f" ({extra})" if extra else ""))
+        lines.append("")
+    lines += [t("Let me know if I missed anything."), "", t("Best regards")]
+    return subject[:200], "\n".join(lines)
+
+
 def to_markdown(summary: MeetingSummary) -> str:
     """Render ``summary`` as a Markdown section starting with ``## Summary`` (in the notes' language)."""
     lines = [f"## {t('Summary')}", "", summary.overview, ""]

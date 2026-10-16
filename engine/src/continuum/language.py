@@ -35,6 +35,13 @@ _TR = {
         "{speaker} kişisinin {open} açık {source} işi var, {due} tanesi o tarihe kadar bitmeli{sprint}.",
     ", {count} in the current sprint": ", {count} tanesi bu sprintte",
     "Recording": "Kayıt",
+    "Follow-up: {title}": "Toplantı sonrası: {title}",
+    "Follow-up from our meeting": "Toplantımızın ardından",
+    "Hi all,": "Herkese merhaba,",
+    "Thanks for joining. Here is a short recap.": "Katıldığınız için teşekkürler. Kısa bir özet:",
+    "Next steps": "Sonraki adımlar",
+    "Let me know if I missed anything.": "Atladığım bir şey varsa lütfen haber verin.",
+    "Best regards": "Saygılarımla",
 }
 _TABLES = {"tr": _TR}
 _current: str | None = None
