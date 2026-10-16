@@ -9,8 +9,12 @@ from fastembed import TextEmbedding
 
 from continuum.memory.store import Embedder
 
-DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-"""Small multilingual model, so meetings need not be in English."""
+DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+"""Multilingual model (about 1 GB), so meetings need not be in English.
+
+Chosen over the smaller MiniLM variant because fact checking depends on it
+separating related from unrelated statements, which MiniLM did not.
+"""
 
 
 def load_embedder(

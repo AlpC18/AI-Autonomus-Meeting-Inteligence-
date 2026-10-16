@@ -5,14 +5,15 @@
 | Layer | Choice | Status |
 | :--- | :--- | :--- |
 | Desktop shell | Tauri 2, Rust 1.95 (edition 2024) | scaffolded |
-| Frontend | React 19, TypeScript 6, Vite 8, pnpm 10 | scaffolded |
+| Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4, pnpm 10 | transcript feed + fact-check overlay |
 | Engine | Python 3.12 (pinned), uv | running |
 | MCP | FastMCP 4.1 | health tool only |
 | Transcription | faster-whisper (word timestamps, Silero VAD) | working |
 | Audio capture | sounddevice (mic), ScreenCaptureKit via PyObjC (system, macOS) | working |
 | Transport | websockets (transcript stream) | working |
 | Diarization | pyannote.audio 4 (`speaker-diarization-community-1`), optional extra | integrated, not yet run with a real token |
-| Vector DB | embedded Qdrant (qdrant-client local mode) + fastembed | working |
+| Vector DB | embedded Qdrant (qdrant-client local mode) + fastembed (multilingual mpnet, ~1 GB) | working |
+| Fact check | numbers rule over memory hits (no LLM) | working |
 | Relational store | SQLite | not needed yet |
 | Engine lifecycle | spawned and stopped by the Tauri shell | working (dev builds) |
 | LLM | Claude / Ollama | later |
@@ -45,6 +46,8 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MO
 
 - System audio capture is macOS-only and needs Screen Recording permission for the app that runs the engine.
 - pyannote speaker labels are only consistent within one utterance; stable identities across a meeting need speaker-embedding matching.
+- Fact checking only sees digits with a known unit: spelled-out numbers, dates and non-numeric contradictions are missed.
+- System audio captures everything the machine plays, so unrelated media is transcribed and stored too.
 - Only one process can open the memory database at a time, so search from another process needs the engine stopped.
 - Memory is stored unencrypted in `~/.continuum/memory` (folder readable by the user only).
 - The engine is not bundled into release builds; the app needs `uv` on its PATH and the repo's `engine/` folder.

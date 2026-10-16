@@ -4,31 +4,31 @@ _Last updated: 2026-10-11_
 
 ## Current focus
 
-Phase 3 (memory and engine lifecycle) is implemented on branch `feat/phase-3-memory-sidecar`, uncommitted. `main` holds Phases 1 and 2 and is pushed to the private GitHub repo `AlpC18/AI-Autonomus-Meeting-Inteligence-`.
+Fact-check HUD (first part of Phase 4) is implemented on branch `feat/phase-4-fact-check-hud`, uncommitted, stacked on `feat/phase-3-memory-sidecar` (PR #1, open). `main` holds Phases 1 and 2.
 
 ## What works end to end
 
-Opening the desktop app starts the engine → audio is captured and transcribed → segments appear in the window and, when a tenant and project are configured, are stored in that scope's memory → closing (or crashing) the app stops the engine. Stored segments can be searched per scope with `continuum-memory-search`.
+Open the app → engine starts → speech is transcribed → each statement with a figure is compared with the project's memory → a contradiction shows as a floating card at the top-right of the screen → the statement is stored (as disputed if it was flagged).
 
 ## Waiting on the owner
 
-- **Hugging Face token.** `engine/.env` does not exist yet. Create it from `.env.example`, set `HF_TOKEN`, and accept the terms of `pyannote/speaker-diarization-community-1`. The real multi-speaker check has not been run.
-- **Tenant and project.** Set `CONTINUUM_TENANT_ID` and `CONTINUUM_PROJECT_ID` in `engine/.env`, otherwise nothing is stored.
-- **Git name.** `~/.gitconfig` still has "Çığtekin"; this repo overrides it locally with "Çiğtekin".
+- **`engine/.env` does not exist.** It needs `HF_TOKEN` (pyannote, speaker clustering) and `CONTINUUM_TENANT_ID` + `CONTINUUM_PROJECT_ID` (without them nothing is stored and nothing is fact-checked).
+- **An LLM** (`ANTHROPIC_API_KEY` or Ollama) for non-numeric contradictions and for extracting action items.
+- **Credentials** for Jira, Slack and Google Calendar before those action tools can be tested for real. GitHub is reachable through `gh`.
+- **Git name** in `~/.gitconfig` still has "Çığtekin"; this repo overrides it locally.
 
 ## Next up
 
-- Run pyannote for real, then give speakers a stable identity across a meeting (match the pipeline's speaker embeddings per session).
-- Fact-checking HUD: query memory from inside the engine for each new segment and push alerts over the WebSocket.
+- Speaker clustering once the token exists.
+- Approval-gated action tools, starting with GitHub issues (`mcp-builder`, `securing-agentic-ai-tool-invocation`).
 
 ## Open questions
 
+- System audio also captures unrelated media playing on the machine; should capture be limited to the meeting app?
 - How the user picks tenant/project per meeting (today: environment variables).
-- Bundling the engine for release builds (today: `uv run` from the repo).
-- Serving memory search to other processes while the engine runs (embedded Qdrant allows one process).
-- Windows and Linux system audio capture.
+- Bundling the engine for release builds.
+- Windows and Linux system audio and overlay behaviour.
 - `AI_GUIDELINES_v2026.md` and `AI_Guidelines_Architecture_Standards.md` are unfilled templates; remove or archive?
-- The spec's Buzz link (`chime-vc/buzz`) needs verifying.
 
 ## Recent decisions
 

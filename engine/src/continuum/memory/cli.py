@@ -33,9 +33,10 @@ def main() -> None:
     if not settings.memory_dir.is_dir():
         sys.exit(f"No memory has been stored yet at {settings.memory_dir}.")
 
-    embed, dimensions = load_embedder(settings.embedding_model or DEFAULT_MODEL, settings.model_dir)
+    model_name = settings.embedding_model or DEFAULT_MODEL
+    embed, dimensions = load_embedder(model_name, settings.model_dir)
     try:
-        with MemoryStore(settings.memory_dir, embed, dimensions) as store:
+        with MemoryStore(settings.memory_dir, embed, dimensions, model_name) as store:
             hits = store.scoped(settings.scope).search(args.query, args.limit)
     except (RuntimeError, ValueError) as error:
         sys.exit(f"Could not search memory (is the engine still running?): {error}")

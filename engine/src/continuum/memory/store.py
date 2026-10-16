@@ -9,6 +9,7 @@ every query also filters on the tenant and project stored with each point.
 There is deliberately no way to read or write without a :class:`TenantScope`.
 """
 
+import hashlib
 import threading
 import uuid
 from collections.abc import Callable, Sequence
@@ -43,7 +44,11 @@ class Meeting:
 
 @dataclass(frozen=True, slots=True)
 class MemoryHit:
-    """One stored transcript segment returned by a search, best match first."""
+    """One stored transcript segment returned by a search, best match first.
+
+    ``disputed`` is true when the statement contradicted the record at the time
+    it was said, so it must not be treated as a record itself.
+    """
 
     text: str
     speaker: str
@@ -53,6 +58,7 @@ class MemoryHit:
     score: float
     tenant_id: str
     project_id: str
+    disputed: bool = False
 
 
 class MemoryStore:
@@ -61,15 +67,23 @@ class MemoryStore:
     Only one process may open a given ``directory`` at a time (embedded Qdrant
     locks it). Obtain a :class:`ScopedMemory` with :meth:`scoped` to do
     anything; the store itself exposes no read or write operations.
+
+    ``model_id`` names the embedding model behind ``embed``. Data stored with
+    one model is invisible when the store is opened with another.
     """
 
     # ponytail: embedded Qdrant scans vectors linearly and stores them
     # unencrypted; fine for tens of thousands of segments per project. Move to
     # a Qdrant server (same client API) and disk encryption beyond that.
-    def __init__(self, directory: Path, embed: Embedder, dimensions: int) -> None:
+    def __init__(
+        self, directory: Path, embed: Embedder, dimensions: int, model_id: str = "default"
+    ) -> None:
         self._client = QdrantClient(path=str(directory))
         self._embed = embed
         self._dimensions = dimensions
+        # Vectors from different models are not comparable, so each model gets
+        # its own collections: switching model starts fresh instead of mixing.
+        self._model_tag = hashlib.sha256(f"{model_id}/{dimensions}".encode()).hexdigest()[:8]
         # Embedded Qdrant is not safe for concurrent calls from several threads.
         self._lock = threading.Lock()
 
@@ -86,7 +100,9 @@ class MemoryStore:
 
     def scoped(self, scope: TenantScope) -> "ScopedMemory":
         """Return the memory of exactly one tenant and project."""
-        return ScopedMemory(self._client, self._lock, self._embed, self._dimensions, scope)
+        return ScopedMemory(
+            self._client, self._lock, self._embed, self._dimensions, scope, self._model_tag
+        )
 
 
 class ScopedMemory:
@@ -103,16 +119,20 @@ class ScopedMemory:
         embed: Embedder,
         dimensions: int,
         scope: TenantScope,
+        model_tag: str,
     ) -> None:
         self._client = client
         self._lock = lock
         self._embed = embed
         self._dimensions = dimensions
         self._scope = scope
-        self._collection = scope.collection_name
+        self._collection = f"{scope.collection_name}_{model_tag}"
 
-    def add_segment(self, segment: Segment, meeting: Meeting) -> None:
+    def add_segment(self, segment: Segment, meeting: Meeting, *, disputed: bool = False) -> None:
         """Store one transcript segment, tagged with scope, speaker and time.
+
+        Pass ``disputed=True`` for a statement that was flagged as
+        contradicting the record, so later fact checks do not rely on it.
 
         Storing the same segment of the same meeting again replaces the
         earlier copy instead of duplicating it.
@@ -134,6 +154,7 @@ class ScopedMemory:
                 "start": segment.start,
                 "end": segment.end,
                 "spoken_at": (meeting.started_at + timedelta(seconds=segment.start)).isoformat(),
+                "disputed": disputed,
             },
         )
         with self._lock:
@@ -187,6 +208,7 @@ class ScopedMemory:
                 score=point.score,
                 tenant_id=point.payload["tenant_id"],
                 project_id=point.payload["project_id"],
+                disputed=bool(point.payload.get("disputed", False)),
             )
             for point in response.points
             if point.payload is not None

@@ -112,3 +112,10 @@ def test_malformed_ids_are_rejected(bad: str) -> None:
 def test_search_limit_must_be_positive(store: MemoryStore) -> None:
     with pytest.raises(ValueError):
         store.scoped(ACME).search("budget", limit=0)
+
+
+def test_data_stored_with_one_model_is_invisible_to_another(tmp_path: Path) -> None:
+    with MemoryStore(tmp_path, embed, DIMENSIONS, "model-a") as first:
+        first.scoped(ACME).add_segment(segment("the budget was revised"), MEETING)
+    with MemoryStore(tmp_path, embed, DIMENSIONS, "model-b") as second:
+        assert second.scoped(ACME).search("budget") == []

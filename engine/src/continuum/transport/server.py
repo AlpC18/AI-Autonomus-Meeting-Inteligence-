@@ -13,6 +13,7 @@ from typing import Self
 from websockets.asyncio.server import Server, ServerConnection, broadcast, serve
 from websockets.typing import Origin
 
+from continuum.factcheck.checker import FactCheckAlert
 from continuum.transcript import Segment
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,9 @@ class TranscriptServer:
     ``allowed_origins``: transcripts are private, and without that check any
     web page open in a browser could connect and read them.
 
-    Messages are JSON: ``{"type": "segment", "segment": {...}}``. Clients that
-    connect late receive only segments published after they joined.
+    Messages are JSON, either ``{"type": "segment", "segment": {...}}`` or
+    ``{"type": "fact_check", "alert": {...}}``. Clients that connect late
+    receive only what is published after they joined.
     """
 
     def __init__(
@@ -87,6 +89,14 @@ class TranscriptServer:
         skipped so it cannot stall the audio pipeline.
         """
         message = json.dumps({"type": "segment", "segment": segment.to_dict()})
+        broadcast(self._clients, message)
+
+    def publish_alert(self, alert: FactCheckAlert) -> None:
+        """Send a fact-check alert to all connected clients without waiting.
+
+        Like :meth:`publish`, it never raises for client problems.
+        """
+        message = json.dumps({"type": "fact_check", "alert": alert.to_dict()})
         broadcast(self._clients, message)
 
     async def wait_for_clients(self, count: int) -> None:

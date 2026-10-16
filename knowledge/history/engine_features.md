@@ -4,6 +4,11 @@ Log every new feature, AI prompt template, or pipeline update here (`AI_GUIDELIN
 
 | Date | Module | Feature | Notes |
 | :--- | :--- | :--- | :--- |
+| 2026-10-11 | hud | Fact-check overlay window | Floating always-on-top card: said now vs on record, source quote, speaker and date; dismiss button, 30 s auto-dismiss, max 3 cards. |
+| 2026-10-11 | transport | `fact_check` messages | Alerts are broadcast on the transcript WebSocket. |
+| 2026-10-11 | pipeline | Live fact checking | Each segment is checked before it is stored; flagged segments are stored as disputed. |
+| 2026-10-11 | factcheck | Figure extraction and contradiction rule | Money, percent and counted units (English and Turkish); topic search with figures masked; most recent undisputed record wins. |
+| 2026-10-11 | memory | Model-keyed collections, `disputed` flag, mpnet default | Switching embedding model no longer mixes vectors. |
 | 2026-10-11 | desktop | Engine lifecycle (`engine.rs`) | App spawns the engine on launch, stops it on exit; engine also stops if the app crashes (stdin pipe closes). |
 | 2026-10-11 | pipeline | Memory ingestion and clean shutdown | Every published segment is stored when tenant and project are set; stops on SIGTERM or closed stdin. |
 | 2026-10-11 | memory | `continuum-memory-search` CLI | Semantic search within the configured tenant and project only. |

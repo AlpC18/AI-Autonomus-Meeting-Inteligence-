@@ -12,12 +12,14 @@ import shutil
 import subprocess
 import wave
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from continuum.audio.transcriber import Transcriber
+from continuum.factcheck.checker import FactCheckAlert
 from continuum.pipeline import Engine
 from continuum.transcript import Segment
 
@@ -47,7 +49,7 @@ async def test_spoken_audio_is_published_as_timed_words(tmp_path: Path) -> None:
     engine = Engine(
         Transcriber("tiny", Path(model_dir) if model_dir else None),
         published.append,
-        remember=remembered.append,
+        remember=lambda segment, _disputed: remembered.append(segment),
     )
 
     await engine.run_source("system", as_blocks(samples))
@@ -65,7 +67,7 @@ async def test_memory_failure_does_not_stop_the_live_transcript(tmp_path: Path) 
     model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
     published: list[Segment] = []
 
-    def failing_memory(_segment: Segment) -> None:
+    def failing_memory(_segment: Segment, _disputed: bool) -> None:
         raise OSError("disk full")
 
     engine = Engine(
@@ -77,3 +79,30 @@ async def test_memory_failure_does_not_stop_the_live_transcript(tmp_path: Path) 
     await engine.run_source("system", as_blocks(samples))
 
     assert published
+
+
+async def test_statement_is_checked_before_it_is_stored(tmp_path: Path) -> None:
+    samples = synthesise("The budget was revised.", tmp_path / "s.wav")
+    model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
+    events: list[str] = []
+    alerts: list[FactCheckAlert] = []
+    alert = FactCheckAlert(
+        "said", "others", ("$50k",), ("$35,000",), "record", "me", datetime.now(UTC), "m1"
+    )
+
+    def check(_segment: Segment) -> FactCheckAlert:
+        events.append("check")
+        return alert
+
+    engine = Engine(
+        Transcriber("tiny", Path(model_dir) if model_dir else None),
+        lambda _segment: events.append("publish"),
+        remember=lambda _segment, disputed: events.append(f"remember disputed={disputed}"),
+        check=check,
+        publish_alert=alerts.append,
+    )
+
+    await engine.run_source("system", as_blocks(samples))
+
+    assert events[:3] == ["publish", "check", "remember disputed=True"]
+    assert alerts and alerts[0] is alert

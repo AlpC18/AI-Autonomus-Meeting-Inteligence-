@@ -30,10 +30,18 @@
 - Verified: `uv run pytest` 40 passed; `cargo test` 4 passed; clippy and typecheck clean; live run stored a spoken sentence and found it only under its own tenant and project; the app launched the engine by itself and the engine exited after the app was force-killed.
 - **Not done: real pyannote check.** `engine/.env` with `HF_TOKEN` did not exist on this machine, so the model has still never been run.
 
+### Phase 4 (part) — Fact-check HUD (2026-10-11, branch `feat/phase-4-fact-check-hud`, uncommitted)
+
+- Phase 3 committed and pushed; PR #1 open against `main`.
+- `factcheck`: figure extraction and the contradiction rule; `pipeline` checks each segment before storing it; alerts over the WebSocket; floating overlay window with Tailwind.
+- Verified: `uv run pytest` 73 passed; `cargo test` 4 passed; clippy and typecheck clean; live run: saying "$35,000" and then "$50,000" about the budget produced the alert in the engine log and the overlay card on screen.
+- Not verified: clicking dismiss and the 30 s auto-dismiss (no UI automation access); real meetings; false-positive rate beyond the 17 calibration pairs.
+- Not started (blocked): speaker clustering (no `HF_TOKEN`), action tools (no credentials, no LLM for action-item extraction).
+
 ## Pending
 
 - **Real pyannote run** once `HF_TOKEN` is in `engine/.env`; then stable speaker identity across utterances.
-- **HUD phase:** fact-checking overlay and notepad UI.
+- **HUD:** LLM judge for non-numeric contradictions; spelled-out numbers and dates; notepad UI.
 - **Actions phase:** Jira/GitHub/Slack/Calendar MCP tools with approval gate; security review.
 - Bundling the engine into release builds; choosing tenant/project from the UI; non-macOS system audio.
 - CI workflow and pre-commit checks (add when there is logic to guard).

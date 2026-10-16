@@ -10,7 +10,7 @@
 pub mod commands;
 pub mod engine;
 
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 use engine::{EngineProcess, SHUTDOWN_GRACE};
 
@@ -51,6 +51,17 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            // The overlay window is usually hidden, so the app must quit with
+            // the main window or it would keep running, and recording, unseen.
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::Destroyed,
+                ..
+            } = &event
+                && label == "main"
+            {
+                app.exit(0);
+            }
             if let RunEvent::Exit = event
                 && let Some(process) = app.try_state::<EngineProcess>()
             {

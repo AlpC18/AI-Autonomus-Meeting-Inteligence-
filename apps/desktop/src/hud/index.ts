@@ -6,7 +6,9 @@
  *
  * Owns only the presentation of live alerts. It must not capture audio, query
  * memory, or dispatch actions; those arrive as data from the backend.
- * Phase 2 provides the live transcript feed; fact-check alerts come in Phase 3.
+ * Provides the live transcript feed for the main window and the floating
+ * fact-check overlay window.
  */
+export { HudOverlay } from "./HudOverlay";
 export { TranscriptFeed } from "./TranscriptFeed";
 export { useTranscriptStream } from "./transcriptStream";
