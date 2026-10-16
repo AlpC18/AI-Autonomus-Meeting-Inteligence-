@@ -8,6 +8,9 @@ The real engine is started; spoken audio (macOS ``say``) is streamed into it
 the way the browser extension does, and someone says the budget is fifty
 thousand dollars. The check passes when the transcript arrives, the fact
 check flags $50,000 against $35,000, and ending the meeting writes notes.
+With an AI provider set (CONTINUUM_LLM_PROVIDER and friends) it also needs
+Turkish captions, the summary with its follow-up e-mail, and an answer to a
+question about the meeting.
 
     uv run python scripts/live_meeting_check.py
 """
@@ -48,7 +51,14 @@ def spoken(text: str, folder: Path) -> np.ndarray:
     return np.frombuffer(data[offset + 8 :], dtype="<f4")
 
 
-async def run(env: dict[str, str], audio: np.ndarray) -> dict[str, list[dict]]:
+async def wait_for(seen: dict[str, list[dict]], kind: str, seconds: float) -> None:
+    for _ in range(int(seconds * 10)):
+        if kind in seen:
+            return
+        await asyncio.sleep(0.1)
+
+
+async def run(env: dict[str, str], audio: np.ndarray, ai: bool) -> dict[str, list[dict]]:
     seen: dict[str, list[dict]] = {}
     async with connect(f"ws://127.0.0.1:{ENGINE_PORT}", origin="tauri://localhost") as hud:  # as the app
 
@@ -71,11 +81,14 @@ async def run(env: dict[str, str], audio: np.ndarray) -> dict[str, list[dict]]:
             if "fact_check" in seen and "segment" in seen:
                 break
             await asyncio.sleep(0.1)
+        if ai:
+            await wait_for(seen, "translation", 60)
+            await hud.send(json.dumps({"type": "ask", "id": "q1", "question": "What budget did we mention for the website?"}))
+            await wait_for(seen, "answer", 120)
         await hud.send(json.dumps({"type": "end_meeting"}))
-        for _ in range(300):
-            if "meeting_ended" in seen:
-                break
-            await asyncio.sleep(0.1)
+        await wait_for(seen, "meeting_ended", 30)
+        if ai:
+            await wait_for(seen, "summary", 180)
         listener.cancel()
     return seen
 
@@ -94,6 +107,9 @@ def main() -> int:
             "CONTINUUM_NOTES_DIR": str(folder / "notes"),
             "CONTINUUM_RECORD_AUDIO": "0",
         }
+        ai = bool(env.get("CONTINUUM_LLM_PROVIDER"))
+        if ai:
+            env["CONTINUUM_TRANSLATE_TO"] = "tr"
         (folder / "plan.md").write_text(DOCUMENT, encoding="utf-8")
         subprocess.run(["continuum-import-docs", str(folder / "plan.md")], env=env, check=True)
         audio = spoken(SPEECH, folder)
@@ -110,11 +126,16 @@ def main() -> int:
                         break
                 except OSError:
                     time.sleep(0.2)
-            seen = asyncio.run(run(env, audio))
+            seen = asyncio.run(run(env, audio, ai))
         finally:
             engine.terminate()
-            engine.wait(10)
+            try:
+                engine.wait(10)
+            except subprocess.TimeoutExpired:
+                engine.kill()
+                print("FAIL engine did not stop within 10 s of SIGTERM")
             log.close()
+            print("--- engine log (end) ---\n" + (folder / "engine.log").read_text()[-2500:])
 
         text = " ".join(m["segment"]["text"] for m in seen.get("segment", []))
         alerts = [m["alert"] for m in seen.get("fact_check", [])]
@@ -127,6 +148,18 @@ def main() -> int:
             "meeting ended": "meeting_ended" in seen,
             "notes written": bool(notes) and "budget" in notes[0].read_text(encoding="utf-8").lower(),
         }
+        if ai:
+            summary = (seen.get("summary") or [{}])[0]
+            answer = (seen.get("answer") or [{}])[0]
+            print("  caption:", (seen.get("translation") or [{}])[0].get("text"))
+            print("  answer:", answer.get("text") or answer.get("error"))
+            print("  summary:", (summary.get("markdown") or summary.get("error") or "")[:300])
+            checks |= {
+                "Turkish caption": bool((seen.get("translation") or [{}])[0].get("text")),
+                "answer cites the meeting": "50,000" in (answer.get("text") or "") or "50000" in (answer.get("text") or ""),
+                "summary mentions the budget": "budget" in (summary.get("markdown") or "").lower(),
+                "follow-up e-mail": bool((summary.get("email") or {}).get("body")),
+            }
         for name, ok in checks.items():
             print(("PASS " if ok else "FAIL ") + name)
         if not all(checks.values()):

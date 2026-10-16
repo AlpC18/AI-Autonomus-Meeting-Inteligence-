@@ -9,14 +9,12 @@ use. Nothing here sends or creates anything; action items only become
 proposals, which a person must still approve.
 """
 
-import json
-import re
 from dataclasses import dataclass
 from datetime import date
 
 from continuum import templates
 from continuum.language import t
-from continuum.llm import Llm
+from continuum.llm import Llm, json_object
 
 MAX_TRANSCRIPT_CHARS = 400_000
 """Longer transcripts are refused rather than silently cut (about 100k tokens)."""
@@ -116,11 +114,7 @@ def parse_summary(reply: str, template: str | None = None) -> MeetingSummary:
     Raises:
         RuntimeError: if the reply holds no JSON object with an overview.
     """
-    match = re.search(r"\{.*\}", reply, re.DOTALL)
-    try:
-        data = json.loads(match.group(0)) if match else None
-    except json.JSONDecodeError:
-        data = None
+    data = json_object(reply)
     overview = _text(data.get("overview"), 3000) if isinstance(data, dict) else None
     if overview is None:
         raise RuntimeError("The model did not return a usable summary; try again or another model.")

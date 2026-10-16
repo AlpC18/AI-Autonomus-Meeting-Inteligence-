@@ -14,7 +14,6 @@ the meeting ends and adds the doubts the phrases missed.
 """
 
 import calendar
-import json
 import logging
 import re
 from collections.abc import Callable
@@ -23,7 +22,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from continuum.language import current, t
-from continuum.llm import Llm
+from continuum.llm import Llm, json_object
 from continuum.notes import clock
 from continuum.transcript import Segment
 
@@ -140,11 +139,7 @@ def _ai_hesitations(llm: Llm, lines: list[str]) -> list[tuple[int, str]]:
     while numbered and sum(len(line) + 1 for line in numbered) > MAX_AI_CHARS:
         numbered.pop(0)
     reply = llm.complete(_HESITATION_PROMPT, "\n".join(numbered))
-    match = re.search(r"\{.*\}", reply, re.DOTALL)
-    try:
-        data = json.loads(match.group(0)) if match else None
-    except json.JSONDecodeError:
-        data = None
+    data = json_object(reply)
     items = data.get("hesitations") if isinstance(data, dict) else None
     items = items if isinstance(items, list) else None
     if items is None:

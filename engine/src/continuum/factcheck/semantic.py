@@ -9,13 +9,11 @@ it adds, only substantial statements that closely match something on record
 are checked, at most once per cooldown.
 """
 
-import json
-import re
 import time
 from collections.abc import Callable
 
 from continuum.factcheck.checker import FactCheckAlert, Search
-from continuum.llm import Llm
+from continuum.llm import Llm, json_object
 from continuum.memory.store import MemoryHit
 from continuum.transcript import Segment
 
@@ -90,12 +88,8 @@ class SemanticChecker:
             reply = self._llm.complete(SYSTEM_PROMPT, _render(hits, segment))
         except RuntimeError:
             return None
-        match = re.search(r"\{.*\}", reply, re.DOTALL)
-        try:
-            verdict = json.loads(match.group(0)) if match else {}
-        except json.JSONDecodeError:
-            return None
-        number = verdict.get("record") if isinstance(verdict, dict) else None
+        verdict = json_object(reply) or {}
+        number = verdict.get("record")
         if verdict.get("contradicts") is not True or not isinstance(number, int) or not 1 <= number <= len(hits):
             return None
         record = hits[number - 1]
