@@ -33,6 +33,7 @@ from continuum.notes import markdown_lines, speaker_runs, srt, vtt
 from continuum.pipeline import Engine
 from continuum.privacy import redact_segment
 from continuum.summary import summarize, to_markdown
+from continuum.templates import for_meeting
 from continuum.transcript import Segment
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,8 @@ def with_summary(notes: str, llm: Llm) -> str:
     keeping, and the library can summarise it later.
     """
     try:
-        summary = summarize(notes, llm, today=date.today())
+        title = next((line[2:].strip() for line in notes.splitlines() if line.startswith("# ")), None)
+        summary = summarize(notes, llm, today=date.today(), template=for_meeting(title))
     except (ValueError, RuntimeError) as error:
         logger.warning("Not summarised: %s", error)
         return notes

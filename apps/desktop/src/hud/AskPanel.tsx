@@ -3,6 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { Answer, EngineCommand } from "./transcriptStream";
+import { t } from "../i18n";
 
 /** Longest question the engine accepts. */
 export const MAX_QUESTION_LENGTH = 500;
@@ -33,15 +34,15 @@ export function AskPanel({ connected, send, answers }: AskPanelProps) {
   };
 
   return (
-    <section aria-label="Ask your meetings" className="mt-6">
-      <h2 className="text-lg font-semibold">Ask your meetings</h2>
+    <section aria-label={t("Ask your meetings")} className="mt-6">
+      <h2 className="text-lg font-semibold">{t("Ask your meetings")}</h2>
       <form onSubmit={ask} className="mt-2 flex gap-2">
         <input
-          aria-label="Question"
+          aria-label={t("Question")}
           value={question}
           maxLength={MAX_QUESTION_LENGTH}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="e.g. What did we decide about the budget?"
+          placeholder={t("e.g. What did we decide about the budget?")}
           className="min-w-0 flex-1 rounded-md border border-zinc-300 p-1.5 text-sm"
         />
         <button
@@ -49,10 +50,10 @@ export function AskPanel({ connected, send, answers }: AskPanelProps) {
           disabled={!connected || question.trim() === ""}
           className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Ask
+          {t("Ask")}
         </button>
       </form>
-      {asked && !answer && <p className="mt-2 text-sm text-zinc-600">Looking through your meetings…</p>}
+      {asked && !answer && <p className="mt-2 text-sm text-zinc-600">{t("Looking through your meetings…")}</p>}
       {answer && <AnswerView answer={answer} />}
     </section>
   );
@@ -72,7 +73,7 @@ export function AnswerView({ answer }: { answer: Answer }) {
               {answer.sources.map((source) => (
                 <li key={source.number}>
                   [{source.number}] {source.spokenAt.toLocaleString()} · <strong>{source.speaker}</strong>
-                  {source.disputed ? " (disputed)" : ""}: “{source.text}”
+                  {source.disputed ? ` (${t("disputed")})` : ""}: “{source.text}”
                 </li>
               ))}
             </ol>

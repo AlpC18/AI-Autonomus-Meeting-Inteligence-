@@ -28,6 +28,7 @@ from continuum.actions.calendar import CalendarEvent
 from continuum.ask import answer, brief
 from continuum.audio.recorder import MixRecorder
 from continuum.config import Settings
+from continuum.language import t
 from continuum.live_controls import (
     NOTE_SOURCE,
     Ask,
@@ -49,12 +50,16 @@ from continuum.notes import MeetingNotes, markdown_lines
 from continuum.privacy import redact_segment
 from continuum.stats import speaker_stats
 from continuum.stats import to_markdown as stats_markdown
-from continuum.summary import MeetingSummary, summarize, to_markdown
+from continuum.summary import MeetingSummary, follow_up_email, summarize, to_markdown
+from continuum.templates import for_meeting
 from continuum.transcript import Segment
+from continuum.translate import Translator
 
 logger = logging.getLogger(__name__)
 
 MAX_SEGMENTS = 20_000
+MAX_TRANSLATING = 3
+"""Captions being translated at once; more lines are skipped rather than shown late."""
 """Transcript kept per meeting for its summary (many hours of speech)."""
 
 IDLE_CHECK_S = 15.0
@@ -188,6 +193,8 @@ class MeetingSession:
         self._current: _Current | None = None
         self._ending = asyncio.Lock()
         self._asking = asyncio.Lock()
+        self._translator = Translator(llm, settings.translate_to) if llm is not None and settings.translate_to else None
+        self._translating = 0
         self._briefing: asyncio.Task[None] | None = None
         self._listing: asyncio.Task[None] | None = None
 
@@ -242,7 +249,7 @@ class MeetingSession:
             if self._scope is not None:
                 directory = directory / self._scope.tenant_id / self._scope.project_id
             notes = MeetingNotes(
-                directory, started_at, title or "Meeting", attendees=event.attendees if event else ()
+                directory, started_at, title or t("Meeting"), attendees=event.attendees if event else ()
             )
             if self._settings.record_audio:
                 try:
@@ -253,7 +260,7 @@ class MeetingSession:
             logger.info("Writing meeting notes to %s", notes.path)
         now = self._clock()
         self._current = _Current(Meeting(str(uuid.uuid4()), started_at), event, notes, recorder, now, now)
-        started: dict[str, Any] = {"type": "meeting_started", "title": title or "Meeting"}
+        started: dict[str, Any] = {"type": "meeting_started", "title": title or t("Meeting")}
         if self._scope is not None:
             started["project"] = self._scope.project_id
         self._publish_event(started)
@@ -371,10 +378,36 @@ class MeetingSession:
             except OSError:
                 logger.exception("Could not write meeting notes")
         self._maybe_list_items(current)
+        if self._translator is not None and segment.source != NOTE_SOURCE:
+            self._start_translation(segment)
         if self._watchers and segment.source != NOTE_SOURCE:
             task = asyncio.create_task(self._watch(segment))
             self._watch_tasks.add(task)
             task.add_done_callback(self._watch_tasks.discard)
+
+    def _start_translation(self, segment: Segment) -> None:
+        # Captions are only useful while they are current: when the AI falls
+        # behind, lines are skipped instead of queueing up.
+        if self._translating >= MAX_TRANSLATING:
+            logger.info("Skipped a caption: translations are behind")
+            return
+        self._translating += 1
+        task = asyncio.create_task(self._translate(segment))
+        self._watch_tasks.add(task)
+        task.add_done_callback(self._watch_tasks.discard)
+
+    async def _translate(self, segment: Segment) -> None:
+        translator = self._translator
+        assert translator is not None
+        try:
+            text = await asyncio.to_thread(translator.translate, segment.text)
+        except RuntimeError as error:
+            logger.warning("Could not translate a caption: %s", error)
+            text = None
+        finally:
+            self._translating -= 1
+        if text:
+            self._publish_event({"type": "translation", "source": segment.source, "start": segment.start, "text": text})
 
     async def _watch(self, segment: Segment) -> None:
         """Run the watchers on ``segment`` (in order, off the event loop) and publish their hints."""
@@ -429,7 +462,9 @@ class MeetingSession:
     async def _list_items(self, current: _Current) -> None:
         """Publish the action items said so far in ``current`` (AI failures are only logged)."""
         try:
-            summary = await asyncio.to_thread(summarize, self._transcript(current), self._llm, self._now().date())
+            summary = await asyncio.to_thread(
+                summarize, self._transcript(current), self._llm, self._now().date(), for_meeting(current.title)
+            )
         except (ValueError, RuntimeError) as error:
             logger.warning("Could not list action items during the meeting: %s", error)
             return
@@ -620,7 +655,8 @@ class MeetingSession:
             self._publish_event(event)
             return
         markdown = to_markdown(summary)
-        event["markdown"] = markdown
+        subject, body = follow_up_email(summary, current.title or "")
+        event.update(markdown=markdown, email={"subject": subject, "body": body})
         if current.notes is not None:
             try:
                 current.notes.append(markdown)

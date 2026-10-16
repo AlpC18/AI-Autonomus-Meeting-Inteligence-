@@ -95,6 +95,31 @@ pub fn check_connections() -> Result<Vec<serde_json::Value>, String> {
         .ok_or_else(|| String::from("The connection test ended without an answer."))
 }
 
+/// A diagnostics report for a bug report: the app's version, then the
+/// engine's report (settings without secret values, problems, recent log
+/// lines with personal data removed).
+///
+/// # Errors
+/// Returns a user-facing message if the report could not be made.
+#[tauri::command(async)]
+pub fn diagnostics() -> Result<String, String> {
+    let dir = crate::engine::engine_dir()
+        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    let output = crate::engine::uv_run(&dir, "continuum-diagnostics")
+        .output()
+        .map_err(|error| format!("Could not make the diagnostics report: {error}"))?;
+    if !output.status.success() {
+        return Err(String::from("The diagnostics report could not be made."));
+    }
+    Ok(format!(
+        "Continuum desktop {} ({} {})\n\n{}",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        String::from_utf8_lossy(&output.stdout)
+    ))
+}
+
 /// Restarts the engine with the saved settings (or stops it under auto-start).
 fn restart_engine(app: &tauri::AppHandle, dir: &std::path::Path) -> Result<(), String> {
     use tauri::Manager;

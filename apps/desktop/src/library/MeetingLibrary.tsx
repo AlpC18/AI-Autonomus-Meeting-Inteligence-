@@ -13,6 +13,7 @@ import {
   type MeetingFile,
   type SearchHit,
 } from "./library";
+import { t } from "../i18n";
 
 const BUTTON =
   "cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50";
@@ -53,7 +54,7 @@ export function MeetingLibrary() {
         setMeeting(opened);
         setFilter("");
         pendingSeek.current = seekTo ?? null;
-        if (!opened) setNotice("That meeting could not be read.");
+        if (!opened) setNotice(t("That meeting could not be read."));
       })
       .catch((cause: unknown) => setNotice(String(cause)));
   };
@@ -62,7 +63,7 @@ export function MeetingLibrary() {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = seconds;
-    void audio.play().catch(() => setNotice("The recording could not be played."));
+    void audio.play().catch(() => setNotice(t("The recording could not be played.")));
   };
 
   const search = (event: FormEvent) => {
@@ -79,11 +80,11 @@ export function MeetingLibrary() {
   const summarize = () => {
     if (!meeting) return;
     setBusy(true);
-    setNotice("Summarizing… the transcript is being sent to your configured AI provider.");
+    setNotice(t("Summarizing… the transcript is being sent to your configured AI provider."));
     invoke<unknown>("library_summarize", { path: meeting.path })
       .then((reply) => {
         setMeeting(parseMeeting(reply));
-        setNotice("Summary saved in the notes.");
+        setNotice(t("Summary saved in the notes."));
         refresh();
       })
       .catch((cause: unknown) => setNotice(String(cause)))
@@ -93,24 +94,24 @@ export function MeetingLibrary() {
   const shown = meeting ? filterLines(meeting.lines, filter) : [];
 
   return (
-    <section aria-label="Past meetings" className="mt-4 grid gap-4 md:grid-cols-[16rem_1fr]">
+    <section aria-label={t("Past meetings")} className="mt-4 grid gap-4 md:grid-cols-[16rem_1fr]">
       <div>
         <form onSubmit={search} role="search" className="flex gap-2">
           <input
-            aria-label="Search all meetings"
+            aria-label={t("Search all meetings")}
             value={query}
             maxLength={200}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search all meetings"
+            placeholder={t("Search all meetings")}
             className="min-w-0 flex-1 rounded-md border border-zinc-300 p-1.5 text-sm"
           />
           <button type="submit" className={BUTTON}>
-            Search
+            {t("Search")}
           </button>
         </form>
         {hits !== null && (
-          <ul aria-label="Search results" className="mt-2 flex flex-col gap-1 text-sm">
-            {hits.length === 0 && <li className="text-zinc-600">No lines match.</li>}
+          <ul aria-label={t("Search results")} className="mt-2 flex flex-col gap-1 text-sm">
+            {hits.length === 0 && <li className="text-zinc-600">{t("No lines match.")}</li>}
             {hits.map((hit, index) => (
               <li key={`${hit.path}-${hit.time}-${index}`}>
                 <button
@@ -127,8 +128,8 @@ export function MeetingLibrary() {
             ))}
           </ul>
         )}
-        <h2 className="mt-4 text-sm font-semibold">Meetings</h2>
-        {meetings.length === 0 && <p className="text-sm text-zinc-600">No meeting notes yet.</p>}
+        <h2 className="mt-4 text-sm font-semibold">{t("Meetings")}</h2>
+        {meetings.length === 0 && <p className="text-sm text-zinc-600">{t("No meeting notes yet.")}</p>}
         <ul className="mt-1 flex flex-col gap-1 text-sm">
           {meetings.map((item) => (
             <li key={item.path}>
@@ -141,7 +142,7 @@ export function MeetingLibrary() {
                 {item.title}
                 <span className="block text-xs text-zinc-600">
                   {new Date(item.modified).toLocaleString()}
-                  {item.hasSummary ? " · summarized" : ""}
+                  {item.hasSummary ? ` · ${t("summarized")}` : ""}
                 </span>
               </button>
             </li>
@@ -155,7 +156,7 @@ export function MeetingLibrary() {
             {notice}
           </p>
         )}
-        {!meeting && <p className="text-sm text-zinc-600">Choose a meeting to read it.</p>}
+        {!meeting && <p className="text-sm text-zinc-600">{t("Choose a meeting to read it.")}</p>}
         {meeting && (
           <article>
             <h2 className="text-lg font-semibold">{meeting.title}</h2>
@@ -171,18 +172,18 @@ export function MeetingLibrary() {
                 className="mt-2 w-full"
               />
             ) : (
-              <p className="mt-1 text-xs text-zinc-600">No recording is linked to this meeting.</p>
+              <p className="mt-1 text-xs text-zinc-600">{t("No recording is linked to this meeting.")}</p>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               <input
-                aria-label="Filter this meeting"
+                aria-label={t("Filter this meeting")}
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                placeholder="Filter lines"
+                placeholder={t("Filter lines")}
                 className="min-w-0 flex-1 rounded-md border border-zinc-300 p-1.5 text-sm"
               />
               <button type="button" disabled={busy} onClick={summarize} className={BUTTON}>
-                {busy ? "Summarizing…" : meeting.summary ? "Summarize again" : "Summarize with AI"}
+                {busy ? t("Summarizing…") : meeting.summary ? t("Summarize again") : t("Summarize with AI")}
               </button>
             </div>
             {meeting.summary && (
@@ -195,7 +196,7 @@ export function MeetingLibrary() {
                     <button
                       type="button"
                       onClick={() => play(line.time)}
-                      aria-label={`Play from ${formatTime(line.time)}`}
+                      aria-label={t("Play from {time}", { time: formatTime(line.time) })}
                       className="mr-2 cursor-pointer font-mono text-xs text-blue-700 underline"
                     >
                       {formatTime(line.time)}

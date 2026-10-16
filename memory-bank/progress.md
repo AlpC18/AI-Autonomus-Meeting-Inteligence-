@@ -109,6 +109,14 @@
 - Workload lookups follow GitHub/GitLab pagination (up to 50 pages). Browser extension (`apps/browser-extension`, MV3) sends only the meeting tab's audio to the engine (`tab` source, ws://127.0.0.1:8766, extension origins only); with it on, browsers are left out of macOS system audio.
 - Verified: 409 pytest, 38 vitest, 17 cargo, clippy, ruff; connection check against the real GitHub, GitLab, Groq and Hugging Face APIs (wrong tokens rejected with readable reasons). Not verified: the Windows CI run (not pushed yet).
 
+## Phase 12 (toward 10/10, `feat/phase-12-ten`, stacked on phase 11)
+
+- Turkish: `CONTINUUM_LANGUAGE` (en/tr) for the app, notes, hints, AI replies; Turkish promises/doubts/dates; a test fails on any untranslated UI or settings text.
+- Live translation captions (`CONTINUUM_TRANSLATE_TO`); follow-up e-mail (plain text, copy or mailto, Gmail proposal); meeting templates (`CONTINUUM_MEETING_TEMPLATE`, auto from title).
+- Hear only the meeting app on Windows (WASAPI process loopback via comtypes) and Linux (`parec --monitor-stream`), both falling back to all system audio; shared `audio/follow.py` loop.
+- Shared-slide fact checks (`CONTINUUM_SCREEN_FACT_CHECK`, macOS Vision OCR of meeting windows only); Firefox extension (WebRTC track tap on meeting sites, web-ext lint clean); diagnostics report and file log (`~/.continuum/logs/engine.log`).
+- Verified: 456 pytest, 46 vitest, extension node tests, 17 cargo, clippy, ruff; real slide OCR of a "Google Meet" Safari window (Gmail in another browser window correctly ignored); comtypes API names checked against 1.4.17 source. Not verified: Windows process loopback and Linux parec on real machines, Firefox extension in a real call, captions/templates/e-mail against a real AI provider.
+
 ## Pending
 
 - Merge the stacked PRs into main; add `TAURI_SIGNING_PRIVATE_KEY` and the Apple secrets, then tag a release.

@@ -4,6 +4,7 @@
 """AI summaries: any provider, untrusted replies, action items only proposed."""
 
 import json
+import os
 import subprocess
 import sys
 from datetime import date
@@ -189,7 +190,7 @@ def test_claude_refusal_is_an_error() -> None:
 
 
 def test_connect_picks_the_client_for_the_provider() -> None:
-    assert isinstance(connect(LlmSettings("ollama", "llama3.2", "http://localhost:11434/v1")), OpenAiCompatible)
+    assert isinstance(connect(LlmSettings("ollama", "llama3.2", "http://localhost:11434/v1")).inner, OpenAiCompatible)
 
 
 def test_summary_is_parsed_and_bad_fields_are_dropped() -> None:
@@ -241,7 +242,7 @@ def test_wrong_types_in_reply_are_ignored() -> None:
     assert summary.action_items == (ActionItem("Do it"),)
 
 
-@pytest.mark.parametrize("transcript", ["   ", "x" * 400_001])
+@pytest.mark.parametrize("transcript", ["   ", "x" * 400_001], ids=["empty", "oversized"])
 def test_empty_or_oversized_transcripts_are_refused(transcript: str) -> None:
     llm = FakeLlm()
     with pytest.raises(ValueError):
@@ -284,7 +285,9 @@ def test_cli_explains_missing_model(tmp_path: Path) -> None:
         [sys.executable, "-m", "continuum.summarize_cli", str(notes)],
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin"},
+        # No provider settings, but a home folder: Windows finds it through USERPROFILE.
+        env={key: os.environ[key] for key in ("PATH", "HOME", "USERPROFILE", "SYSTEMROOT") if key in os.environ},
+        cwd=tmp_path,
         check=False,
     )
     assert result.returncode != 0 and "CONTINUUM_LLM_PROVIDER" in result.stderr
@@ -300,7 +303,10 @@ def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
     assert errors == []
     ((kind, payload),) = built
     assert kind == "email_recap" and payload["to"] == ["ana@acme.io"]
-    assert payload["subject"] == "Recap: Budget" and "Send the Q4 report" in payload["body"]
+    assert payload["subject"] == "Follow-up: Budget"
+    body = payload["body"]
+    assert body.startswith("Hi all,\n") and body.rstrip().endswith("Best regards")
+    assert "\nNext steps\n- Send the Q4 report (Ana, due 2026-11-30)" in body and "## " not in body
 
     _built, errors = build_proposals(summary, ["email"], settings, "notes.md")
     assert errors and "recipients" in errors[0]

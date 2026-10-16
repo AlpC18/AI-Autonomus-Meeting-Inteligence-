@@ -17,19 +17,21 @@ from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
+from continuum import templates
 from continuum.actions import proposals
 from continuum.actions.settings import ActionSettings
 from continuum.actions.store import ActionStore
+from continuum.language import heading_pattern
 from continuum.llm import LlmSettings, connect
-from continuum.summary import MeetingSummary, summarize, to_markdown
+from continuum.summary import MeetingSummary, follow_up_email, summarize, to_markdown
 
-SUMMARY_HEADING = "\n## Summary\n"
+_SUMMARY = heading_pattern("Summary")
 _SLACK_LIMIT = 3000
 
 
 def split_summary(notes: str) -> str:
     """Return ``notes`` without a summary section written earlier by this tool."""
-    return notes.split(SUMMARY_HEADING, 1)[0].rstrip() + "\n"
+    return _SUMMARY.split(notes, 1)[0].rstrip() + "\n"
 
 
 def _slack_text(summary: MeetingSummary, title: str) -> str:
@@ -71,13 +73,8 @@ def build_proposals(
             attempt("slack", lambda: proposals.slack_message(settings, _slack_text(summary, source)))
             continue
         if kind == "email":
-            subject = f"Recap: {title or 'our meeting'}"[:200]
-            attempt(
-                "email",
-                lambda subject=subject: proposals.email_recap(
-                    settings, attendees, subject, to_markdown(summary)
-                ),
-            )
+            subject, body = follow_up_email(summary, title)
+            attempt("email", lambda subject=subject, body=body: proposals.email_recap(settings, attendees, subject, body))
             continue
         if kind == "notion":
             page_title = f"{title or source}"[:200]
@@ -156,6 +153,11 @@ def main() -> None:
         metavar="TARGET",
         help="queue proposals: calendar, slack, notion, jira:PROJECT, github:owner/name, gitlab:group/name (repeatable)",
     )
+    parser.add_argument(
+        "--template",
+        choices=templates.CHOICES,
+        help="kind of meeting, for its extra sections (default: CONTINUUM_MEETING_TEMPLATE, or auto from the title)",
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args()
 
@@ -174,7 +176,9 @@ def main() -> None:
 
     notes = args.notes.read_text(encoding="utf-8")
     try:
-        summary = summarize(split_summary(notes), connect(llm_settings), today=date.today())
+        title = next((line[2:].strip() for line in notes.splitlines() if line.startswith("# ")), args.notes.stem)
+        template = templates.choose(args.template, title) if args.template else templates.for_meeting(title)
+        summary = summarize(split_summary(notes), connect(llm_settings), today=date.today(), template=template)
     except (ValueError, RuntimeError) as error:
         sys.exit(str(error))
 

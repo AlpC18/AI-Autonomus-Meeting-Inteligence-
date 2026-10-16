@@ -3,6 +3,7 @@
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import type { EngineCommand } from "../hud/transcriptStream";
+import { t } from "../i18n";
 
 /** Longest note the engine accepts, in characters. */
 export const MAX_NOTE_LENGTH = 2000;
@@ -32,7 +33,7 @@ export function Notepad({ connected, send }: NotepadProps) {
       setDraft("");
       setError(null);
     } else {
-      setError("The engine is not connected; your note was kept here and not added yet.");
+      setError(t("The engine is not connected; your note was kept here and not added yet."));
     }
   };
 
@@ -49,11 +50,11 @@ export function Notepad({ connected, send }: NotepadProps) {
   };
 
   return (
-    <section aria-label="Notes" className="mt-6">
-      <h2 className="text-lg font-semibold">Notes</h2>
+    <section aria-label={t("Notes")} className="mt-6">
+      <h2 className="text-lg font-semibold">{t("Notes")}</h2>
       <form onSubmit={onSubmit} className="mt-2 flex flex-col gap-2">
         <label htmlFor="meeting-note" className="text-sm text-zinc-600">
-          Write what matters to you. It is added to the transcript at this moment.
+          {t("Write what matters to you. It is added to the transcript at this moment.")}
         </label>
         <textarea
           id="meeting-note"
@@ -62,7 +63,7 @@ export function Notepad({ connected, send }: NotepadProps) {
           rows={3}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="e.g. Push back on the December date"
+          placeholder={t("e.g. Push back on the December date")}
           className="rounded-md border border-zinc-300 p-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
         />
         <div className="flex items-center gap-3">
@@ -71,9 +72,9 @@ export function Notepad({ connected, send }: NotepadProps) {
             disabled={!connected || draft.trim() === ""}
             className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Add note
+            {t("Add note")}
           </button>
-          {!connected && <span className="text-xs text-zinc-600">Waiting for the engine…</span>}
+          {!connected && <span className="text-xs text-zinc-600">{t("Waiting for the engine…")}</span>}
         </div>
         {error && (
           <p role="alert" className="text-sm text-red-700">

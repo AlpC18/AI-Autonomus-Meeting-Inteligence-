@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import type { Hint } from "./hints";
+import { t } from "../i18n";
 
 const LABELS: Record<Hint["kind"], string> = {
   code: "Code context",
@@ -18,11 +19,11 @@ export function HintCard({ hint, onDismiss }: { hint: Hint; onDismiss: () => voi
       className="rounded-xl border border-white/15 bg-zinc-900/95 p-3 text-zinc-100 shadow-lg motion-safe:animate-[fade-in_150ms_ease-out]"
     >
       <header className="flex items-center gap-2">
-        <h2 className="grow text-xs font-semibold uppercase tracking-wide text-sky-300">{LABELS[hint.kind]}</h2>
+        <h2 className="grow text-xs font-semibold uppercase tracking-wide text-sky-300">{t(LABELS[hint.kind])}</h2>
         <button
           type="button"
           onClick={onDismiss}
-          aria-label={`Dismiss ${LABELS[hint.kind].toLowerCase()}`}
+          aria-label={t("Dismiss {what}", { what: t(LABELS[hint.kind]).toLowerCase() })}
           className="-m-1 grid size-8 cursor-pointer place-items-center rounded-md text-zinc-400 hover:bg-white/10 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-sky-300"
         >
           <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 stroke-current" strokeWidth="2">

@@ -35,6 +35,7 @@ from continuum.context.workload import (
     JiraWorkload,
     combined,
 )
+from continuum.diagnostics import log_to_file
 from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
 from continuum.diarization.turns import label_segment
 from continuum.diarization.voices import VoiceBook
@@ -74,10 +75,30 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
     if sys.platform != "darwin":
         from continuum.audio.loopback import loopback_blocks
 
-        if settings.meeting_apps_only or settings.browser_tab_audio:
-            logger.warning(
-                "Leaving apps or browsers out of system audio needs macOS; capturing all of it. "
-                "With browser tab audio, set CONTINUUM_SOURCES=mic,tab to avoid hearing the call twice."
+        if sys.platform == "win32" and (settings.meeting_apps_only or settings.browser_tab_audio):
+            from continuum.audio.process_loopback import process_loopback_blocks
+            from continuum.audio.windows_apps import BROWSER_EXES, NATIVE_MEETING_EXES
+
+            extra = frozenset(app.lower() for app in settings.extra_meeting_apps if app.lower().endswith(".exe"))
+            browsers = frozenset() if settings.browser_tab_audio else BROWSER_EXES
+            return functools.partial(
+                _with_fallback,
+                functools.partial(process_loopback_blocks, NATIVE_MEETING_EXES | extra, browsers),
+                loopback_blocks,
+            )
+        if sys.platform.startswith("linux") and (settings.meeting_apps_only or settings.browser_tab_audio):
+            from continuum.audio.pulse_apps import (
+                BROWSER_BINARIES,
+                NATIVE_MEETING_BINARIES,
+                pulse_app_blocks,
+            )
+
+            extra = frozenset(app.lower() for app in settings.extra_meeting_apps if "." not in app)
+            browsers = frozenset() if settings.browser_tab_audio else BROWSER_BINARIES
+            return functools.partial(
+                _with_fallback,
+                functools.partial(pulse_app_blocks, NATIVE_MEETING_BINARIES | extra, browsers),
+                loopback_blocks,
             )
         return loopback_blocks
     from continuum.audio.apps import MEETING_APPS, NATIVE_MEETING_APPS
@@ -88,6 +109,23 @@ def _block_source(source: str, settings: Settings) -> BlockSource:
     return functools.partial(
         system_audio_blocks, settings.meeting_apps_only, MEETING_APPS | settings.extra_meeting_apps
     )
+
+
+async def _with_fallback(primary: BlockSource, fallback: BlockSource) -> AsyncIterator[np.ndarray]:
+    """``primary``'s blocks; ``fallback``'s if ``primary`` fails before its first block."""
+    blocks = primary()
+    try:
+        first = await anext(blocks)
+    except StopAsyncIteration:
+        return
+    except Exception as error:  # noqa: BLE001 - any start-up failure means: use the fallback
+        logger.warning("Capturing all system audio instead of only the meeting app: %s", error)
+        async for block in fallback():
+            yield block
+        return
+    yield first
+    async for block in blocks:
+        yield block
 
 
 class Engine:
@@ -139,24 +177,29 @@ class Engine:
         for segment in segments:
             self._publish(segment)
         for segment in segments:
-            flagged = False
-            if self._check is not None and self._publish_alert is not None:
-                try:
-                    alert = await asyncio.to_thread(self._check, segment)
-                except Exception:
-                    logger.exception("Could not fact-check a transcript segment")
-                else:
-                    if alert is not None:
-                        flagged = True
-                        logger.info(
-                            "Fact check: said %s, on record %s", alert.claimed, alert.recorded
-                        )
-                        self._publish_alert(alert)
-            if self._remember is not None:
-                try:
-                    await asyncio.to_thread(self._remember, segment, flagged)
-                except Exception:
-                    logger.exception("Could not store a transcript segment in memory")
+            await self.check_and_remember(segment)
+
+    async def check_and_remember(self, segment: Segment) -> None:
+        """Fact-check ``segment`` against memory, then store it (as disputed when flagged).
+
+        Also used for text read from shared slides, which is not part of the transcript.
+        """
+        flagged = False
+        if self._check is not None and self._publish_alert is not None:
+            try:
+                alert = await asyncio.to_thread(self._check, segment)
+            except Exception:
+                logger.exception("Could not fact-check a transcript segment")
+            else:
+                if alert is not None:
+                    flagged = True
+                    logger.info("Fact check: said %s, on record %s", alert.claimed, alert.recorded)
+                    self._publish_alert(alert)
+        if self._remember is not None:
+            try:
+                await asyncio.to_thread(self._remember, segment, flagged)
+            except Exception:
+                logger.exception("Could not store a transcript segment in memory")
 
     async def run_source(self, source: str, blocks: AsyncIterator[np.ndarray]) -> None:
         """Consume ``blocks`` from ``source`` until the stream ends or fails."""
@@ -301,6 +344,7 @@ async def run(settings: Settings) -> int:
                 session.relabel,
             )
             idle = asyncio.create_task(session.watch_idle())
+            slides = _watch_slides(settings, engine) if check is not None else None
             try:
                 results = await asyncio.gather(
                     *(
@@ -310,8 +354,23 @@ async def run(settings: Settings) -> int:
                 )
             finally:
                 idle.cancel()
+                if slides is not None:
+                    slides.cancel()
                 await session.close()
     return 0 if any(results) else 1
+
+
+def _watch_slides(settings: Settings, engine: Engine) -> asyncio.Task[None] | None:
+    """Start fact-checking shared slides, when turned on (macOS only)."""
+    if not settings.screen_fact_check:
+        return None
+    if sys.platform != "darwin":
+        logger.warning("Fact-checking shared slides needs macOS")
+        return None
+    from continuum.screen import watch_slides
+
+    logger.info("Fact-checking figures on shared slides (read on this computer)")
+    return asyncio.create_task(watch_slides(engine.check_and_remember))
 
 
 async def _watchers(settings: Settings, stack: contextlib.ExitStack, llm: Llm | None) -> list[Watcher]:
@@ -412,6 +471,7 @@ async def _serve(settings: Settings) -> int:
 def main() -> None:
     """Console entry point (``continuum-engine``). Stops on Ctrl+C."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log_to_file()
     try:
         settings = Settings.from_env(os.environ)
     except ValueError as error:

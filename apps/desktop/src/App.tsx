@@ -12,6 +12,7 @@ import { SettingsPanel } from "./settings/SettingsPanel";
 import { UpdateBanner } from "./update/UpdateBanner";
 import { SetupChecklist } from "./setup/SetupChecklist";
 import { setupComplete, setupSteps } from "./setup/setup";
+import { setLanguage, t } from "./i18n";
 
 type View = "setup" | "live" | "meetings" | "settings";
 const VIEW_NAMES: Record<View, string> = {
@@ -55,6 +56,7 @@ export default function App() {
   const [heardSpeech, setHeardSpeech] = useState(false);
   const [hidden, setHidden] = useState(setupHidden);
   if (!heardSpeech && stream.segments.some((segment) => segment.source !== "note")) setHeardSpeech(true);
+  if (settings) setLanguage(settings.values.CONTINUUM_LANGUAGE);
   const steps = settings ? setupSteps(settings, heardSpeech) : null;
   const showSetup = !hidden && steps !== null && !setupComplete(steps);
 
@@ -92,14 +94,14 @@ export default function App() {
   return (
     <main className="p-4">
       <h1 className="text-2xl font-bold">Continuum</h1>
-      {error && <p role="alert">Could not reach the desktop backend: {error}</p>}
+      {error && <p role="alert">{t("Could not reach the desktop backend: {error}", { error })}</p>}
       <UpdateBanner />
       {info && (
         <p>
           {info.name} v{info.version}
         </p>
       )}
-      <nav aria-label="Views" className="mt-3 flex gap-2">
+      <nav aria-label={t("Views")} className="mt-3 flex gap-2">
         {(showSetup || view === "setup" ? (["setup", "live", "meetings", "settings"] as const) : (["live", "meetings", "settings"] as const)).map((name) => (
           <button
             key={name}
@@ -108,14 +110,14 @@ export default function App() {
             onClick={() => setView(name)}
             className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 aria-pressed:bg-zinc-900 aria-pressed:text-white"
           >
-            {VIEW_NAMES[name]}
+            {t(VIEW_NAMES[name])}
           </button>
         ))}
       </nav>
       {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
       <div hidden={view !== "live"}>
         <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
-        <TranscriptFeed status={stream.status} segments={stream.segments} />
+        <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
         <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
         <Notepad connected={connected} send={stream.send} />
         <AskPanel connected={connected} send={stream.send} answers={stream.answers} />

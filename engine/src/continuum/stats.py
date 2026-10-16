@@ -10,6 +10,7 @@ AI call and works offline. Typed notes are not speech and are ignored.
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from continuum.language import t
 from continuum.live_controls import NOTE_SOURCE
 from continuum.notes import clock
 from continuum.transcript import Segment
@@ -82,5 +83,6 @@ def to_markdown(stats: list[SpeakerStats]) -> str:
         f"| {s.speaker} | {clock(s.talk_s)} | {s.share:.0%} | {clock(s.longest_s)} | {s.interruptions} |"
         for s in stats
     ]
-    header = "| Speaker | Talk time | Share | Longest turn | Interruptions |\n|---|---|---|---|---|"
-    return "## Talk time\n\n" + header + "\n" + "\n".join(rows) + "\n"
+    columns = (t("Speaker"), t("Talk time"), t("Share"), t("Longest turn"), t("Interruptions"))
+    header = "| " + " | ".join(columns) + " |\n|---|---|---|---|---|"
+    return f"## {t('Talk time')}\n\n" + header + "\n" + "\n".join(rows) + "\n"

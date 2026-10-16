@@ -10,6 +10,8 @@ from pathlib import Path
 
 from continuum.audio.transcriber import BACKENDS
 from continuum.memory.scope import TenantScope
+from continuum.templates import CHOICES as TEMPLATE_CHOICES
+from continuum.translate import TARGETS as TRANSLATION_TARGETS
 
 KNOWN_SOURCES = ("mic", "system", "tab")
 """Audio sources the engine can capture; ``tab`` is a browser tab sent by the extension."""
@@ -69,6 +71,9 @@ class Settings:
     which sends only the meeting tab, and leaves browsers out of system audio;
     ``browser_extension_id`` limits that to one installed extension.
     ``extra_meeting_apps`` are bundle IDs of further meeting apps to hear.
+    ``translate_to`` shows a live translation of every line in that language
+    (sent to the AI provider). ``screen_fact_check`` also checks the figures on
+    shared slides, read on this computer from the meeting window (macOS).
     """
 
     sources: tuple[str, ...] = DEFAULT_SOURCES
@@ -99,6 +104,9 @@ class Settings:
     browser_tab_audio: bool = False
     browser_extension_id: str | None = None
     extra_meeting_apps: frozenset[str] = frozenset()
+    translate_to: str | None = None
+    screen_fact_check: bool = False
+    meeting_template: str = "auto"
 
     @property
     def voices_file(self) -> Path:
@@ -123,7 +131,11 @@ class Settings:
         ``CONTINUUM_RISK_TRACKING`` (``0`` turns it off), ``CONTINUUM_WORKLOAD_CHECK``,
         ``CONTINUUM_MEETING_APPS_ONLY``, ``CONTINUUM_BROWSER_TAB_AUDIO`` (adds the
         ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``, ``CONTINUUM_MEETING_APPS`` (comma-separated
-        bundle IDs; ``*`` at the end matches a prefix). Unset variables
+        bundle IDs; ``*`` at the end matches a prefix), ``CONTINUUM_LANGUAGE`` (``en`` or
+        ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`),
+        ``CONTINUUM_TRANSLATE_TO`` (a code from :data:`continuum.translate.TARGETS`),
+        ``CONTINUUM_SCREEN_FACT_CHECK``, ``CONTINUUM_MEETING_TEMPLATE`` (see
+        :data:`continuum.templates.CHOICES`). Unset variables
         use defaults.
 
         Raises:
@@ -198,10 +210,28 @@ class Settings:
         if browser_tab_audio and "tab" not in sources:
             sources = (*sources, "tab")
         extension_id = env.get("CONTINUUM_BROWSER_EXTENSION_ID", "").strip() or None
-        if extension_id is not None and not re.fullmatch(r"[a-p]{32}", extension_id):
+        if extension_id is not None and not re.fullmatch(
+            r"[a-p]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", extension_id
+        ):
             raise ValueError(
-                "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions, "
-                f"got {extension_id!r}"
+                "CONTINUUM_BROWSER_EXTENSION_ID must be the 32-letter ID shown in chrome://extensions "
+                f"or the Firefox UUID shown in about:debugging, got {extension_id!r}"
+            )
+
+        language = env.get("CONTINUUM_LANGUAGE", "").strip().lower() or "en"
+        if language not in ("en", "tr"):
+            raise ValueError(f"CONTINUUM_LANGUAGE must be en or tr, got {language!r}")
+
+        translate_to = env.get("CONTINUUM_TRANSLATE_TO", "").strip().lower() or None
+        if translate_to is not None and translate_to not in TRANSLATION_TARGETS:
+            raise ValueError(
+                f"CONTINUUM_TRANSLATE_TO must be one of {', '.join(sorted(TRANSLATION_TARGETS))}, got {translate_to!r}"
+            )
+
+        meeting_template = env.get("CONTINUUM_MEETING_TEMPLATE", "").strip().lower() or "auto"
+        if meeting_template not in TEMPLATE_CHOICES:
+            raise ValueError(
+                f"CONTINUUM_MEETING_TEMPLATE must be one of {', '.join(TEMPLATE_CHOICES)}, got {meeting_template!r}"
             )
 
         extra_apps = frozenset(
@@ -245,4 +275,7 @@ class Settings:
             browser_tab_audio=browser_tab_audio,
             browser_extension_id=extension_id,
             extra_meeting_apps=extra_apps,
+            translate_to=translate_to,
+            screen_fact_check=_flag(env, "CONTINUUM_SCREEN_FACT_CHECK"),
+            meeting_template=meeting_template,
         )

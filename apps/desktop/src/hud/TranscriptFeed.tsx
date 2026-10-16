@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
 import { speakerTurns } from "./speakerTurns";
-import type { StreamStatus, TranscriptSegment } from "./transcriptStream";
+import { captionKey, type StreamStatus, type TranscriptSegment } from "./transcriptStream";
+import { t } from "../i18n";
 
 const STATUS_TEXT: Record<StreamStatus, string> = {
   connecting: "Connecting to the engine…",
@@ -13,6 +14,8 @@ const STATUS_TEXT: Record<StreamStatus, string> = {
 interface TranscriptFeedProps {
   status: StreamStatus;
   segments: readonly TranscriptSegment[];
+  /** Live translations by segment (see `captionKey`); shown under each line. */
+  captions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -21,21 +24,31 @@ interface TranscriptFeedProps {
  * people speak is shown as several lines; typed notes stand out. Presentation
  * only; all data comes from the engine's transcript stream.
  */
-export function TranscriptFeed({ status, segments }: TranscriptFeedProps) {
+export function TranscriptFeed({ status, segments, captions = {} }: TranscriptFeedProps) {
   return (
-    <section aria-label="Live transcript">
-      <p role="status">{STATUS_TEXT[status]}</p>
+    <section aria-label={t("Live transcript")}>
+      <p role="status">{t(STATUS_TEXT[status])}</p>
       <ol aria-live="polite">
-        {segments.flatMap((segment) =>
-          speakerTurns(segment).map((turn, index) => (
-            <li
-              key={`${segment.source}-${segment.start}-${index}`}
-              className={segment.source === "note" ? "my-1 border-l-4 border-amber-400 bg-amber-50 pl-2" : undefined}
-            >
-              <strong>{turn.speaker}:</strong> {turn.text}
-            </li>
-          )),
-        )}
+        {segments.flatMap((segment) => {
+          const caption = captions[captionKey(segment.source, segment.start)];
+          return [
+            ...speakerTurns(segment).map((turn, index) => (
+              <li
+                key={`${segment.source}-${segment.start}-${index}`}
+                className={segment.source === "note" ? "my-1 border-l-4 border-amber-400 bg-amber-50 pl-2" : undefined}
+              >
+                <strong>{turn.speaker}:</strong> {turn.text}
+              </li>
+            )),
+            ...(caption
+              ? [
+                  <li key={`${segment.source}-${segment.start}-caption`} lang="" aria-label={t("Translation")} className="pl-4 text-sm text-zinc-600 italic">
+                    {caption}
+                  </li>,
+                ]
+              : []),
+          ];
+        })}
       </ol>
     </section>
   );

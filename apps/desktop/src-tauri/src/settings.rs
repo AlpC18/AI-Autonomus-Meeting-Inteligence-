@@ -68,6 +68,34 @@ const fn field(
 /// Every setting, in the order shown.
 pub const FIELDS: &[Field] = &[
     field(
+        "CONTINUUM_LANGUAGE",
+        "Language",
+        "Meetings",
+        Kind::Choice(&["en", "tr"]),
+        "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.",
+    ),
+    field(
+        "CONTINUUM_SCREEN_FACT_CHECK",
+        "Fact-check shared slides",
+        "Meetings",
+        Kind::Toggle(false),
+        "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.",
+    ),
+    field(
+        "CONTINUUM_MEETING_TEMPLATE",
+        "Meeting template",
+        "AI",
+        Kind::Choice(&["auto", "general", "standup", "one_on_one", "sales", "interview", "retro"]),
+        "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.",
+    ),
+    field(
+        "CONTINUUM_TRANSLATE_TO",
+        "Live translation",
+        "AI",
+        Kind::Choice(&["", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko"]),
+        "Shows each line translated into this language under the transcript. Sends every line to your AI provider.",
+    ),
+    field(
         "CONTINUUM_NOTES_DIR",
         "Notes folder",
         "Meetings",
@@ -107,7 +135,7 @@ pub const FIELDS: &[Field] = &[
         "Hear only meeting apps",
         "Meetings",
         Kind::Toggle(false),
-        "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS only.",
+        "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS, Windows 10 (2004) or later, and Linux with PulseAudio or PipeWire.",
     ),
     field(
         "CONTINUUM_MEETING_APPS",
@@ -121,14 +149,14 @@ pub const FIELDS: &[Field] = &[
         "Calls in the browser from the extension",
         "Meetings",
         Kind::Toggle(false),
-        "Install the Continuum browser extension (apps/browser-extension) in Chrome, Edge, Brave or Arc and click it on the meeting tab: only that tab is heard, never your other tabs. Browsers are then left out of system audio (macOS).",
+        "Install the Continuum browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.",
     ),
     field(
         "CONTINUUM_BROWSER_EXTENSION_ID",
         "Extension ID",
         "Meetings",
         Kind::Text,
-        "Optional: the ID chrome://extensions shows for the Continuum extension, so no other extension can send audio.",
+        "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Continuum extension, so no other extension can send audio.",
     ),
     field(
         "CONTINUUM_WHISPER_MODEL",

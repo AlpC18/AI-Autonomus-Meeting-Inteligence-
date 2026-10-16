@@ -9,7 +9,7 @@ captures only the tab the user chose and streams it here: binary WebSocket
 messages of 16 kHz mono float32 samples, little-endian.
 
 The server listens on the loopback interface only and accepts connections
-only from a Chrome extension origin (or exactly the configured extension),
+only from a Chrome or Firefox extension origin (or exactly the configured extension),
 so a web page cannot send audio. One tab at a time: a second connection is
 refused while one is open, because two tabs would interleave in one transcript.
 """
@@ -32,6 +32,9 @@ TAB_PORT = 8766
 EXTENSION_ID = re.compile(r"[a-p]{32}")
 """Shape of a Chrome extension ID."""
 
+FIREFOX_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+"""Shape of a Firefox extension's internal UUID (about:debugging shows it)."""
+
 MAX_MESSAGE = 64 * 1024
 """Largest audio message accepted (about 1 s); the extension sends 100 ms."""
 
@@ -40,10 +43,12 @@ _QUEUE_BLOCKS = 600
 
 def _origins(extension_id: str | None) -> list[Origin | re.Pattern[str]]:
     if extension_id is not None:
-        if not EXTENSION_ID.fullmatch(extension_id):
-            raise ValueError(f"not a Chrome extension ID: {extension_id!r}")
-        return [Origin(f"chrome-extension://{extension_id}")]
-    return [re.compile(r"chrome-extension://[a-p]{32}")]
+        if EXTENSION_ID.fullmatch(extension_id):
+            return [Origin(f"chrome-extension://{extension_id}")]
+        if FIREFOX_ID.fullmatch(extension_id):
+            return [Origin(f"moz-extension://{extension_id}")]
+        raise ValueError(f"not a Chrome or Firefox extension ID: {extension_id!r}")
+    return [re.compile(rf"chrome-extension://{EXTENSION_ID.pattern}"), re.compile(rf"moz-extension://{FIREFOX_ID.pattern}")]
 
 
 def to_block(message: bytes | str) -> np.ndarray | None:

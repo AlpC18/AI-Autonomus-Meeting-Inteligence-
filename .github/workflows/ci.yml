@@ -45,7 +45,48 @@ jobs:
         run: uv run --with pytest-cov pytest -q --cov=continuum --cov-report=term --cov-fail-under=70
       - name: Test
         if: matrix.os != 'ubuntu-latest'
-        run: uv run pytest -q
+        timeout-minutes: 15
+        # Unbuffered and UTF-8 so the failure report reaches the log (the Windows
+        # console is cp1252); a test stuck for two minutes dumps every thread's stack.
+        env:
+          PYTHONUNBUFFERED: "1"
+          PYTHONIOENCODING: utf-8
+        run: uv run pytest -q -rfE --tb=short -o faulthandler_timeout=120 --junitxml=pytest-report.xml
+      - name: Keep the test report
+        if: always() && matrix.os != 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-${{ matrix.os }}
+          path: engine/pytest-report.xml
+          if-no-files-found: ignore
+
+  audio:
+    name: Meeting-app audio (${{ matrix.os }})
+    # Real audio stacks, not mocks: two apps play different tones and only the
+    # meeting app's must be recorded. Linux runs PulseAudio in a container;
+    # Windows gets a virtual sound card for WASAPI process loopback.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - name: PulseAudio
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$PWD":/engine:ro debian:bookworm sh /engine/scripts/linux_app_audio_check.sh
+      - name: Virtual sound card
+        if: runner.os == 'Windows'
+        uses: LABSN/sound-ci-helpers@d08c889a7bba7d9b1b059f8f76dac4672ea3a9cf # v1
+      - uses: astral-sh/setup-uv@v6
+        if: runner.os == 'Windows'
+      - name: WASAPI process loopback
+        if: runner.os == 'Windows'
+        run: uv run python scripts/windows_app_audio_check.py
 
   desktop:
     name: Desktop (TypeScript)
@@ -65,12 +106,12 @@ jobs:
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - name: Test with coverage (floor 50% of lines; raise, never lower)
-        run: pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.thresholds.lines=50
+      - name: Test with coverage (floor 90% of lines; raise, never lower)
+        run: pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.thresholds.lines=90
       - run: pnpm exec vite build
       - name: Browser extension
         working-directory: apps/browser-extension
-        run: node --test worklet.test.mjs
+        run: node --test worklet.test.mjs firefox/tap.test.mjs
 
   shell:
     name: Desktop shell (Rust)

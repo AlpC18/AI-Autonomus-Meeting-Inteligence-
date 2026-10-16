@@ -9,6 +9,7 @@ Studio) and any other OpenAI-compatible server are reached over their
 SDK, installed with the ``claude`` extra.
 """
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -118,6 +119,32 @@ class LlmSettings:
             base_url=(env.get("CONTINUUM_LLM_BASE_URL") or preset.base_url or "").rstrip("/") or None,
             api_key=key or None,
         )
+
+
+def json_object(reply: str) -> dict[str, Any] | None:
+    """The first JSON object in a model's reply (bare, fenced or amid prose), or ``None``.
+
+    Small local models sometimes close the object too early and carry on with
+    more keys (``...]}, "sections": {...}}``); those keys are read too.
+    """
+    decoder = json.JSONDecoder()
+    for start in (index for index, char in enumerate(reply) if char == "{"):
+        try:
+            data, end = decoder.raw_decode(reply, start)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(data, dict):
+            continue
+        rest = reply[end:].lstrip()
+        if rest.startswith(","):
+            try:
+                more, _ = decoder.raw_decode("{" + rest[1:].lstrip())
+            except json.JSONDecodeError:
+                more = None
+            if isinstance(more, dict):
+                data = {**more, **data}
+        return data
+    return None
 
 
 class Llm(Protocol):
@@ -247,11 +274,11 @@ class Claude:
 
 
 def connect(settings: LlmSettings) -> Llm:
-    """Return a client for the configured provider.
+    """Return a client for the configured provider, writing in ``CONTINUUM_LANGUAGE``.
 
     Raises:
         RuntimeError: if Claude is chosen but the SDK is not installed.
     """
-    if settings.provider == CLAUDE:
-        return Claude(settings)
-    return OpenAiCompatible(settings)
+    from continuum.language import InLanguage  # imports this module
+
+    return InLanguage(Claude(settings) if settings.provider == CLAUDE else OpenAiCompatible(settings))
