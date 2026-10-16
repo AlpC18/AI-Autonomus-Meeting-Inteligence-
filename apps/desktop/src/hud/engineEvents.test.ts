@@ -84,3 +84,14 @@ describe("documents_imported", () => {
     ).toEqual({ type: "documents_imported", result: { imported: [{ name: "a.md", passages: 3 }], errors: ["b: not found"] } });
   });
 });
+
+describe("translation", () => {
+  it("pairs a caption with its segment", () => {
+    expect(parseEngineEvent(JSON.stringify({ type: "translation", source: "system", start: 1.5, text: "Hello" }))).toEqual({
+      type: "translation",
+      key: "system:1.5",
+      text: "Hello",
+    });
+    expect(parseEngineEvent(JSON.stringify({ type: "translation", source: "system", text: "x" }))).toBeNull();
+  });
+});

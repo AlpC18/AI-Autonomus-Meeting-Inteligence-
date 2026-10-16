@@ -117,7 +117,7 @@ export default function App() {
       {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
       <div hidden={view !== "live"}>
         <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
-        <TranscriptFeed status={stream.status} segments={stream.segments} />
+        <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
         <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
         <Notepad connected={connected} send={stream.send} />
         <AskPanel connected={connected} send={stream.send} answers={stream.answers} />

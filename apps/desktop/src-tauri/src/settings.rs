@@ -75,6 +75,13 @@ pub const FIELDS: &[Field] = &[
         "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.",
     ),
     field(
+        "CONTINUUM_TRANSLATE_TO",
+        "Live translation",
+        "AI",
+        Kind::Choice(&["", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko"]),
+        "Shows each line translated into this language under the transcript. Sends every line to your AI provider.",
+    ),
+    field(
         "CONTINUUM_NOTES_DIR",
         "Notes folder",
         "Meetings",

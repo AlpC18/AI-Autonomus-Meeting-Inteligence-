@@ -77,6 +77,8 @@ export interface TranscriptStream {
   projectError: string | null;
   /** The result of the last document import, if any. */
   lastImport: DocumentImport | null;
+  /** Live translations of the current meeting's segments, by {@link captionKey}. */
+  captions: Readonly<Record<string, string>>;
 }
 
 /** What the desktop app can ask the engine to do during a meeting. */
@@ -145,6 +147,7 @@ export type EngineEvent =
   | { type: "meeting_started"; title: string; project: string | null }
   | { type: "project_error"; error: string }
   | { type: "documents_imported"; result: DocumentImport }
+  | { type: "translation"; key: string; text: string }
   | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
@@ -263,6 +266,11 @@ function toAnswer(id: string, message: Record<string, unknown>): Answer {
   };
 }
 
+/** Identifies a transcript segment, to pair it with its translation. */
+export function captionKey(source: string, start: number): string {
+  return `${source}:${start}`;
+}
+
 /** Extracts an answer, summary or meeting change from one raw WebSocket message, or `null`. */
 export function parseEngineEvent(raw: unknown): EngineEvent | null {
   if (typeof raw !== "string") return null;
@@ -304,6 +312,9 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
   }
   if (message.type === "project_error" && typeof message.error === "string") {
     return { type: "project_error", error: message.error };
+  }
+  if (message.type === "translation" && typeof message.source === "string" && typeof message.start === "number" && typeof message.text === "string") {
+    return { type: "translation", key: captionKey(message.source, message.start), text: message.text };
   }
   if (message.type === "documents_imported") {
     const imported = Array.isArray(message.imported)
@@ -370,6 +381,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   }, []);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [lastImport, setLastImport] = useState<DocumentImport | null>(null);
+  const [captions, setCaptions] = useState<Readonly<Record<string, string>>>({});
   const send = useCallback((message: EngineCommand) => {
     const socket = socketRef.current;
     if (socket === null || socket.readyState !== WebSocket.OPEN) return false;
@@ -426,6 +438,9 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLiveItems(engineEvent.items);
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
+        } else if (engineEvent?.type === "translation") {
+          const { key, text } = engineEvent;
+          setCaptions((current) => ({ ...current, [key]: text }));
         } else if (engineEvent?.type === "documents_imported") {
           setLastImport(engineEvent.result);
         } else if (engineEvent?.type === "project_error") {
@@ -436,6 +451,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setProject(engineEvent.project);
           setProjectError(null);
           setSegments([]);
+          setCaptions({});
           setBrief(null);
           setLiveItems([]);
         }
@@ -456,5 +472,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastImport };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
 }

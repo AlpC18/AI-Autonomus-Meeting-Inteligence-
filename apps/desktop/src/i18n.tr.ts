@@ -309,4 +309,8 @@ export const TR: Readonly<Record<string, string>> = {
     "İstemci kimliğini ve gizli anahtarı kaydedin, ardından bunu doldurmak için Google'ı bağla'yı kullanın.",
   "Google calendar": "Google takvimi",
   "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
+  Translation: "Çeviri",
+  "Live translation": "Canlı çeviri",
+  "Shows each line translated into this language under the transcript. Sends every line to your AI provider.":
+    "Her satırın bu dile çevirisini dökümün altında gösterir. Her satırı yapay zekâ sağlayıcınıza gönderir.",
 };

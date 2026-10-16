@@ -10,6 +10,7 @@ from pathlib import Path
 
 from continuum.audio.transcriber import BACKENDS
 from continuum.memory.scope import TenantScope
+from continuum.translate import TARGETS as TRANSLATION_TARGETS
 
 KNOWN_SOURCES = ("mic", "system", "tab")
 """Audio sources the engine can capture; ``tab`` is a browser tab sent by the extension."""
@@ -69,6 +70,8 @@ class Settings:
     which sends only the meeting tab, and leaves browsers out of system audio;
     ``browser_extension_id`` limits that to one installed extension.
     ``extra_meeting_apps`` are bundle IDs of further meeting apps to hear.
+    ``translate_to`` shows a live translation of every line in that language
+    (sent to the AI provider).
     """
 
     sources: tuple[str, ...] = DEFAULT_SOURCES
@@ -99,6 +102,7 @@ class Settings:
     browser_tab_audio: bool = False
     browser_extension_id: str | None = None
     extra_meeting_apps: frozenset[str] = frozenset()
+    translate_to: str | None = None
 
     @property
     def voices_file(self) -> Path:
@@ -124,7 +128,8 @@ class Settings:
         ``CONTINUUM_MEETING_APPS_ONLY``, ``CONTINUUM_BROWSER_TAB_AUDIO`` (adds the
         ``tab`` source), ``CONTINUUM_BROWSER_EXTENSION_ID``, ``CONTINUUM_MEETING_APPS`` (comma-separated
         bundle IDs; ``*`` at the end matches a prefix), ``CONTINUUM_LANGUAGE`` (``en`` or
-        ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`). Unset variables
+        ``tr``: notes, hints and AI replies; read by :mod:`continuum.language`),
+        ``CONTINUUM_TRANSLATE_TO`` (a code from :data:`continuum.translate.TARGETS`). Unset variables
         use defaults.
 
         Raises:
@@ -209,6 +214,12 @@ class Settings:
         if language not in ("en", "tr"):
             raise ValueError(f"CONTINUUM_LANGUAGE must be en or tr, got {language!r}")
 
+        translate_to = env.get("CONTINUUM_TRANSLATE_TO", "").strip().lower() or None
+        if translate_to is not None and translate_to not in TRANSLATION_TARGETS:
+            raise ValueError(
+                f"CONTINUUM_TRANSLATE_TO must be one of {', '.join(sorted(TRANSLATION_TARGETS))}, got {translate_to!r}"
+            )
+
         extra_apps = frozenset(
             part.strip() for part in env.get("CONTINUUM_MEETING_APPS", "").split(",") if part.strip()
         )
@@ -250,4 +261,5 @@ class Settings:
             browser_tab_audio=browser_tab_audio,
             browser_extension_id=extension_id,
             extra_meeting_apps=extra_apps,
+            translate_to=translate_to,
         )
