@@ -146,9 +146,13 @@ async def run(settings: Settings) -> int:
     )
     diarizer = None
     if settings.hf_token:
-        diarizer = await asyncio.to_thread(
-            PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir
-        )
+        try:
+            diarizer = await asyncio.to_thread(
+                PyannoteDiarizer.from_pretrained, settings.hf_token, settings.model_dir
+            )
+        except RuntimeError as error:
+            # Speaker separation is an enhancement; transcription must still run.
+            logger.error("%s Continuing with speakers labelled by audio source only.", error)
     else:
         logger.info("HF_TOKEN is not set: speakers are labelled by audio source only")
 

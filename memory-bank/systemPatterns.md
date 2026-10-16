@@ -16,13 +16,13 @@ human notes, docs, codebase ----------------> memory (SQLite + vector, tenant-sc
 
 | Path | Responsibility |
 | :--- | :--- |
-| `apps/desktop/src-tauri/` | Rust shell: window, IPC commands, engine process lifecycle (`engine.rs`). No business logic. |
+| `apps/desktop/src-tauri/` | Rust shell: window, IPC commands, engine process lifecycle (`engine.rs`), action review commands (`actions.rs`). No business logic. |
 | `apps/desktop/src/` | React UI. `hud/` holds the transcript feed (main window) and the fact-check overlay (its own `hud` window). |
 | `engine/src/continuum/audio/` | Loopback capture and transcription. |
 | `engine/src/continuum/diarization/` | Speaker separation. |
 | `engine/src/continuum/memory/` | Tenant-isolated vector memory (embedded Qdrant) and its search CLI. |
 | `engine/src/continuum/factcheck/` | Figure extraction and the rule that flags statements contradicting memory. |
-| `engine/src/continuum/actions/` | FastMCP server and external-system tools. |
+| `engine/src/continuum/actions/` | FastMCP server (propose-only tools), action queue (SQLite), human approval, GitHub issue action, review CLI. |
 | `engine/src/continuum/transport/` | Local WebSocket that streams transcript segments to the HUD. |
 | `engine/src/continuum/pipeline.py` | Wires capture → chunk → transcribe → label → publish. No logic of its own. |
 | `engine/src/continuum/transcript.py` | `Segment` and `Word`, the data shared by all engine modules. |
@@ -48,6 +48,12 @@ human notes, docs, codebase ----------------> memory (SQLite + vector, tenant-sc
 - **2026-10-11 — Alerts travel on the transcript WebSocket** as `{"type": "fact_check", "alert": {...}}`.
 - **2026-10-11 — The HUD is a second Tauri window** (`hud`): transparent, undecorated, always on top, top-right. It is never hidden, because macOS suspends scripts in hidden windows and it would stop reconnecting; when empty it is one click-through pixel. Needs `macOSPrivateApi` for transparency. The app exits when the main window closes.
 - **2026-10-11 — Tailwind CSS v4** (Vite plugin, CSS-first config in `src/styles.css`) for desktop styling.
+
+- **2026-10-12 — The model proposes, a person disposes.** MCP tools can only queue a proposal (`continuum_propose_github_issue`); no MCP tool approves or executes. Execution lives in `actions/approval.py`, reachable only from the review CLI and the desktop Approve button. Controls: repository allowlist (`CONTINUUM_GITHUB_REPOS`, deny by default, re-checked at execution), field validation, SHA-256 of the stored payload (tampering refused), single-use claim (an approval cannot be replayed), cap of 50 pending proposals, rows never deleted (audit trail). `GITHUB_TOKEN` is read only when executing.
+- **2026-10-12 — Action queue is SQLite** (`~/.continuum/actions.db`), because the MCP server, the CLI and the desktop app are separate processes.
+- **2026-10-12 — The desktop app reviews actions by running the review CLI** (`uv run continuum-actions-review --json ...`) from Rust commands, so there is one implementation of the gate.
+- **2026-10-12 — Speaker names come from a per-session voice registry, not from re-diarizing a window.** Each utterance is diarized alone, each speaker's audio is embedded, and the embedding is matched to known voices (cosine 0.5; same person measured 0.58-0.96, different people 0.44 or less). A 60 s sliding window was more accurate inside short utterances but about 10 times too slow for live use.
+- **2026-10-12 — A failed pyannote load no longer stops the engine**; it logs the reason and continues with source-based speaker labels.
 
 ## Rules every module follows
 

@@ -37,15 +37,8 @@ impl EngineProcess {
     /// Returns the underlying I/O error if `uv` is not installed or
     /// `engine_dir` does not exist.
     pub fn spawn(engine_dir: &Path) -> io::Result<Self> {
-        let mut command = Command::new("uv");
-        command.arg("run");
-        if engine_dir.join(".env").is_file() {
-            command.args(["--env-file", ".env"]);
-        }
-        command
-            .arg("continuum-engine")
-            .current_dir(engine_dir)
-            .env("CONTINUUM_EXIT_ON_STDIN_EOF", "1");
+        let mut command = uv_run(engine_dir, "continuum-engine");
+        command.env("CONTINUUM_EXIT_ON_STDIN_EOF", "1");
         Self::spawn_command(command)
     }
 
@@ -97,6 +90,20 @@ impl Drop for EngineProcess {
     fn drop(&mut self) {
         self.shutdown(SHUTDOWN_GRACE);
     }
+}
+
+/// Builds the command `uv run <script>` for a console script of the engine.
+///
+/// Runs in `engine_dir` and loads settings from `engine_dir/.env` when that
+/// file exists. The caller adds arguments and decides how to run it.
+pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
+    let mut command = Command::new("uv");
+    command.arg("run");
+    if engine_dir.join(".env").is_file() {
+        command.args(["--env-file", ".env"]);
+    }
+    command.arg(script).current_dir(engine_dir);
+    command
 }
 
 /// Finds the engine directory to run, if any.

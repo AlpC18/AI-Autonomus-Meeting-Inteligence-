@@ -11,6 +11,7 @@ dependencies = [
     "fastembed>=0.9.0",
     "faster-whisper>=1.2.1",
     "fastmcp>=4.1.0",
+    "httpx>=0.28.1",
     "numpy>=2.5.4",
     "pyobjc-framework-libdispatch>=12.2.2 ; sys_platform == 'darwin'",
     "pyobjc-framework-screencapturekit>=12.2.2 ; sys_platform == 'darwin'",
@@ -23,6 +24,7 @@ dependencies = [
 continuum-actions = "continuum.actions.server:main"
 continuum-engine = "continuum.pipeline:main"
 continuum-memory-search = "continuum.memory.cli:main"
+continuum-actions-review = "continuum.actions.review_cli:main"
 
 [project.optional-dependencies]
 diarization = [

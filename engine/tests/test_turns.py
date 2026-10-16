@@ -36,6 +36,15 @@ def test_word_straddling_two_turns_goes_to_the_larger_overlap() -> None:
     assert labelled.words[0].speaker == "B"
 
 
+def test_word_without_duration_takes_the_turn_it_starts_in() -> None:
+    labelled = label_segment(
+        segment(Word("I", 2.0, 2.0, "others"), Word("heard", 2.0, 2.4, "others")),
+        [SpeakerTurn(0.0, 1.0, "A"), SpeakerTurn(1.5, 3.0, "B")],
+    )
+
+    assert [word.speaker for word in labelled.words] == ["B", "B"]
+
+
 def test_segment_is_unchanged_when_no_turn_overlaps() -> None:
     original = segment(Word("hello", 5.0, 5.5))
 
