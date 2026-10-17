@@ -117,11 +117,20 @@
 - Shared-slide fact checks (`CONTINUUM_SCREEN_FACT_CHECK`, macOS Vision OCR of meeting windows only); Firefox extension (WebRTC track tap on meeting sites, web-ext lint clean); diagnostics report and file log (`~/.continuum/logs/engine.log`).
 - Verified: 456 pytest, 46 vitest, extension node tests, 17 cargo, clippy, ruff; real slide OCR of a "Google Meet" Safari window (Gmail in another browser window correctly ignored); comtypes API names checked against 1.4.17 source. Not verified: Windows process loopback and Linux parec on real machines, Firefox extension in a real call, captions/templates/e-mail against a real AI provider.
 
+## Release v0.1.0 (proving it, merged to main)
+
+- All phase PRs (#1-#11) merged into main; tagged v0.1.0. `TAURI_SIGNING_PRIVATE_KEY` is a repo secret; the release builds unsigned until the Apple secrets are added (it failed on empty Apple variables before, now fixed).
+- Windows CI was hanging after 7 test failures, all in the tests (system-encoding text, `\\` paths, a test id too long for a Windows environment variable, a subprocess without `USERPROFILE`). Fixed; failures now reach the log (UTF-8, unbuffered, JUnit artifact).
+- Real audio in CI ("Meeting-app audio" job): with a "zoom" and a "spotify" playing different tones, only zoom is recorded, on PulseAudio 16.1 (`engine/scripts/linux_app_audio_check.sh`) and on Windows WASAPI process loopback with a virtual sound card (`engine/scripts/windows_app_audio_check.py`).
+- `engine/scripts/live_meeting_check.py`: real speech streamed into the live engine; the transcript, a fact check against an imported document ($50,000 vs $35,000), and notes. With an AI provider it also checks Turkish captions, Ask, the summary and the follow-up e-mail. Passed with Qwen2.5-3B (mlx-lm, local).
+- Found by that run: small models close the JSON object early, which threw away every templated summary. `llm.json_object()` now serves the summary, the AI fact check and the hesitation pass.
+- Desktop tests 46 → 83, line coverage 54% → 94% counting every source file; CI floor 90%.
+
 ## Pending
 
-- Merge the stacked PRs into main; add `TAURI_SIGNING_PRIVATE_KEY` and the Apple secrets, then tag a release.
-- **Real use:** speaker names and voice re-splitting in a real meeting; Slack, Calendar, Jira, GitHub, GitLab and AI summaries against real services.
-- Test loopback on real Windows/Linux machines (CI now runs the engine tests there, not audio capture).
+- Apple secrets (`APPLE_CERTIFICATE`, ...) for a signed, notarised app; then publish the v0.1.0 draft release.
+- Real services not yet tried: Slack, Google Calendar, Gmail, Jira, Notion actions; a cloud AI provider (only a local model so far).
+- A real multi-person call: speaker names and voice re-splitting.
 
 ## Known issues
 
