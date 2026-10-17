@@ -173,7 +173,7 @@ def _number_runs(text: str) -> list[tuple[int, int, float]]:
         counted = words and (words[0] == "a" or any(word in _WORD_VALUES for word in words))
         if len(words) == 1 and words[0] in _AMBIGUOUS:
             after = tokens[j].group().lower() if j < len(tokens) else ""
-            counted = words[0] != "bir" and after in _TR_UNITS
+            counted = words[0] != "bir" and _singular(after) in _TR_UNITS
         if counted:
             runs.append((tokens[i].start(), tokens[j - 1].end(), _words_value(words)))
             i = j
@@ -210,10 +210,25 @@ def _original(position: int, replacements: list[Replacement], end: bool) -> int:
     return position + shift
 
 
+# Endings a Turkish unit takes in speech: "dolarlık", "günde", "müşteriye", "kişilik".
+_TR_SUFFIXES = frozenset(
+    {
+        "lık", "lik", "luk", "lük", "lı", "li", "lu", "lü",
+        "da", "de", "ta", "te", "dan", "den", "tan", "ten",
+        "a", "e", "ya", "ye", "ı", "i", "u", "ü", "yı", "yi", "yu", "yü",
+        "ın", "in", "un", "ün", "nın", "nin", "nun", "nün", "la", "le", "yla", "yle",
+    }
+)  # fmt: skip
+
+
 def _singular(word: str) -> str:
+    """The unit or currency a word names: "weeks" → "week", "dolarlık" → "dolar"."""
     lowered = word.lower()
     if lowered.endswith("s") and lowered[:-1] in _UNITS | _CURRENCY_WORDS:
         return lowered[:-1]
+    for base in _TR_UNITS:
+        if lowered.startswith(base) and lowered[len(base) :] in _TR_SUFFIXES:
+            return base
     return lowered
 
 
