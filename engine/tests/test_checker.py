@@ -5,9 +5,9 @@
 
 from datetime import UTC, datetime
 
-from continuum.factcheck.checker import FactChecker
-from continuum.memory.store import MemoryHit
-from continuum.transcript import Segment
+from recall.factcheck.checker import FactChecker
+from recall.memory.store import MemoryHit
+from recall.transcript import Segment
 
 AUGUST = datetime(2026, 8, 14, 10, 0, tzinfo=UTC)
 JUNE = datetime(2026, 6, 2, 10, 0, tzinfo=UTC)

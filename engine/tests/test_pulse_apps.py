@@ -12,8 +12,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from continuum.audio.follow import Process
-from continuum.audio.pulse_apps import (
+from recall.audio.follow import Process
+from recall.audio.pulse_apps import (
     BROWSER_BINARIES,
     NATIVE_MEETING_BINARIES,
     ParecCapture,

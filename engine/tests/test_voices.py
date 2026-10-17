@@ -9,8 +9,8 @@ from pathlib import Path
 
 import numpy as np
 
-from continuum.diarization.tracker import SpeakerTracker
-from continuum.diarization.voices import VoiceBook
+from recall.diarization.tracker import SpeakerTracker
+from recall.diarization.voices import VoiceBook
 
 AYSE = np.array([1.0, 0.0, 0.0])
 MARK = np.array([0.0, 1.0, 0.0])

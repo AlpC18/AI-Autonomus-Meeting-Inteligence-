@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Continuum call audio",
+  "name": "Recall call audio",
   "version": "0.1.0",
-  "description": "Sends the other participants' audio of a web meeting to the Continuum app on this computer.",
+  "description": "Sends the other participants' audio of a web meeting to the Recall app on this computer.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "call-audio@continuum.local",
+      "id": "call-audio@recall.local",
       "strict_min_version": "128.0",
       "data_collection_permissions": {
         "required": [
@@ -20,7 +20,7 @@
     ]
   },
   "action": {
-    "default_title": "Continuum: capture this call's audio"
+    "default_title": "Recall: capture this call's audio"
   },
   "host_permissions": [
     "https://meet.google.com/*",

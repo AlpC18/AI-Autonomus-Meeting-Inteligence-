@@ -1,6 +1,6 @@
 # Project Brief
 
-**Project Continuum** is an open-source, autonomous AI meeting intelligence platform. Full spec: `ai_meeting_intelligence_spec-v2.md`. Rules: `AI_GUIDELINES.md`.
+**Project Recall** is an open-source, autonomous AI meeting intelligence platform. Full spec: `ai_meeting_intelligence_spec-v2.md`. Rules: `AI_GUIDELINES.md`.
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# Project Skill Integration & Execution Guide (Project Continuum)
+# Project Skill Integration & Execution Guide (Project Recall)
 
 > **Document Purpose:** This document defines the exact skills required from the **Skill Direction Guide (Skill Yönlendirme Rehberi)** to build, test, secure, and scale our **Autonomous AI Meeting Intelligence Platform**. All AI agents contributing to this codebase must invoke the designated skills according to their domain responsibility.
 

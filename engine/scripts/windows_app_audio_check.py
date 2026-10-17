@@ -19,9 +19,9 @@ from pathlib import Path
 
 import numpy as np
 
-from continuum.audio.blocks import SAMPLE_RATE
-from continuum.audio.process_loopback import process_loopback_blocks
-from continuum.audio.windows_apps import BROWSER_EXES, NATIVE_MEETING_EXES
+from recall.audio.blocks import SAMPLE_RATE
+from recall.audio.process_loopback import process_loopback_blocks
+from recall.audio.windows_apps import BROWSER_EXES, NATIVE_MEETING_EXES
 
 PLAYER = "import sys, time, winsound; winsound.PlaySound(sys.argv[1], winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP); time.sleep(60)"
 

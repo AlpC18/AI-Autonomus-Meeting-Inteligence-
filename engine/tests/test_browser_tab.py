@@ -13,8 +13,8 @@ import pytest
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 
-from continuum.audio.browser_tab import tab_audio_blocks, to_block
-from continuum.config import Settings
+from recall.audio.browser_tab import tab_audio_blocks, to_block
+from recall.config import Settings
 
 EXTENSION = "chrome-extension://" + "a" * 32
 
@@ -74,17 +74,17 @@ def test_only_audio_frames_are_accepted_and_clipped() -> None:
 
 
 def test_browser_tab_audio_adds_the_tab_source() -> None:
-    settings = Settings.from_env({"CONTINUUM_BROWSER_TAB_AUDIO": "1", "CONTINUUM_BROWSER_EXTENSION_ID": "c" * 32})
+    settings = Settings.from_env({"RECALL_BROWSER_TAB_AUDIO": "1", "RECALL_BROWSER_EXTENSION_ID": "c" * 32})
     assert settings.sources == ("mic", "system", "tab") and settings.browser_extension_id == "c" * 32
     assert Settings.from_env({}).sources == ("mic", "system")
-    with pytest.raises(ValueError, match="CONTINUUM_BROWSER_EXTENSION_ID"):
-        Settings.from_env({"CONTINUUM_BROWSER_EXTENSION_ID": "not-an-id"})
+    with pytest.raises(ValueError, match="RECALL_BROWSER_EXTENSION_ID"):
+        Settings.from_env({"RECALL_BROWSER_EXTENSION_ID": "not-an-id"})
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="system audio is filtered per app only on macOS")
 def test_with_tab_audio_browsers_are_left_out_of_system_audio() -> None:
-    from continuum.audio.apps import BROWSERS, MEETING_APPS, NATIVE_MEETING_APPS
-    from continuum.pipeline import _block_source
+    from recall.audio.apps import BROWSERS, MEETING_APPS, NATIVE_MEETING_APPS
+    from recall.pipeline import _block_source
 
     assert _block_source("system", Settings(browser_tab_audio=True)).args == (True, NATIVE_MEETING_APPS)
     assert _block_source("system", Settings(meeting_apps_only=True)).args == (True, MEETING_APPS)
@@ -96,4 +96,4 @@ async def test_the_firefox_extension_can_send_audio_too() -> None:
     async with receiving() as (port, first, _blocks), connect(f"ws://127.0.0.1:{port}", origin=firefox) as tab:
         await tab.send(np.zeros(1600, dtype="<f4").tobytes())
         assert (await asyncio.wait_for(first, 2)).size == 1600
-    assert Settings.from_env({"CONTINUUM_BROWSER_EXTENSION_ID": firefox.removeprefix("moz-extension://")}).browser_extension_id
+    assert Settings.from_env({"RECALL_BROWSER_EXTENSION_ID": firefox.removeprefix("moz-extension://")}).browser_extension_id

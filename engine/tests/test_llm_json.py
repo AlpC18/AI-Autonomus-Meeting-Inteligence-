@@ -5,7 +5,7 @@
 
 import pytest
 
-from continuum.llm import json_object
+from recall.llm import json_object
 
 # Seen from Qwen2.5-3B: the object is closed after "action_items" and the reply carries on.
 CLOSED_EARLY = """{"overview": "Ship 2.1 on Monday.",

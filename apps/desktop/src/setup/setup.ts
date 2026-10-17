@@ -23,11 +23,11 @@ const LOCAL_PROVIDERS = new Set(["ollama", "lmstudio"]);
  */
 export function setupSteps(settings: SettingsView, heardSpeech: boolean): SetupStep[] {
   const value = (key: string) => (settings.values[key] ?? "").trim();
-  const provider = value("CONTINUUM_LLM_PROVIDER");
+  const provider = value("RECALL_LLM_PROVIDER");
   return [
     {
       id: "permissions",
-      title: "Let Continuum hear the meeting",
+      title: "Let Recall hear the meeting",
       help: "macOS asks for Microphone and Screen Recording (for the other people's audio). Allow both, then say something: this step is done when your words appear in the Live view.",
       done: heardSpeech,
       optional: false,
@@ -36,27 +36,27 @@ export function setupSteps(settings: SettingsView, heardSpeech: boolean): SetupS
       id: "ai",
       title: "Choose an AI provider",
       help: "Used for summaries, answers and briefs. Groq and Gemini have free keys; Ollama runs on this computer with no key.",
-      done: provider !== "" && (LOCAL_PROVIDERS.has(provider) || settings.secretsSet.includes("CONTINUUM_LLM_API_KEY")),
+      done: provider !== "" && (LOCAL_PROVIDERS.has(provider) || settings.secretsSet.includes("RECALL_LLM_API_KEY")),
       optional: false,
     },
     {
       id: "memory",
       title: "Name your workspace and project",
       help: "Meetings are remembered per workspace and project, so you can ask about them later.",
-      done: value("CONTINUUM_TENANT_ID") !== "" && value("CONTINUUM_PROJECT_ID") !== "",
+      done: value("RECALL_TENANT_ID") !== "" && value("RECALL_PROJECT_ID") !== "",
       optional: false,
     },
     {
       id: "notes",
       title: "Pick a notes folder",
       help: "Each meeting is also saved there as a Markdown file (an Obsidian vault folder works well).",
-      done: value("CONTINUUM_NOTES_DIR") !== "",
+      done: value("RECALL_NOTES_DIR") !== "",
       optional: false,
     },
     {
       id: "speakers",
       title: "Tell speakers apart (optional)",
-      help: "A free Hugging Face token lets Continuum separate and recognise the other people in a call.",
+      help: "A free Hugging Face token lets Recall separate and recognise the other people in a call.",
       done: settings.secretsSet.includes("HF_TOKEN"),
       optional: true,
     },
@@ -77,16 +77,16 @@ export const PRIVACY_PANES = {
 /** The settings each step can be completed with, right in the checklist. */
 export const STEP_FIELDS: Record<SetupStep["id"], readonly string[]> = {
   permissions: [],
-  ai: ["CONTINUUM_LLM_PROVIDER", "CONTINUUM_LLM_API_KEY"],
-  memory: ["CONTINUUM_TENANT_ID", "CONTINUUM_PROJECT_ID"],
-  notes: ["CONTINUUM_NOTES_DIR"],
+  ai: ["RECALL_LLM_PROVIDER", "RECALL_LLM_API_KEY"],
+  memory: ["RECALL_TENANT_ID", "RECALL_PROJECT_ID"],
+  notes: ["RECALL_NOTES_DIR"],
   speakers: ["HF_TOKEN"],
 };
 
 /** Whether `key` should be shown for the step given what is typed so far (no key for a local AI). */
 export function fieldShown(key: string, drafts: Record<string, string>, settings: SettingsView): boolean {
-  if (key !== "CONTINUUM_LLM_API_KEY") return true;
-  const provider = (drafts.CONTINUUM_LLM_PROVIDER ?? settings.values.CONTINUUM_LLM_PROVIDER ?? "").trim();
+  if (key !== "RECALL_LLM_API_KEY") return true;
+  const provider = (drafts.RECALL_LLM_PROVIDER ?? settings.values.RECALL_LLM_PROVIDER ?? "").trim();
   return !LOCAL_PROVIDERS.has(provider);
 }
 

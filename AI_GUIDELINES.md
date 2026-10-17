@@ -1,4 +1,4 @@
-# AI Guidelines for Project Continuum Development (AI Meeting & Workflow Agent)
+# AI Guidelines for Project Recall Development (AI Meeting & Workflow Agent)
 
 > [!IMPORTANT]
 > All AI assistants contributing to this repository MUST read and adhere to these guidelines before proposing or executing any code changes.

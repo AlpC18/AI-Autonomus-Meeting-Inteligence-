@@ -6,7 +6,7 @@
 import numpy as np
 import pytest
 
-from continuum.audio.loopback import loopback_blocks
+from recall.audio.loopback import loopback_blocks
 
 
 class FakeRecorder:

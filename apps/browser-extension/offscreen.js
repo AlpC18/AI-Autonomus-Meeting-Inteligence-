@@ -19,7 +19,7 @@ async function start(streamId) {
   const source = context.createMediaStreamSource(stream);
   source.connect(context.destination); // so the user still hears the call
   await context.audioWorklet.addModule("worklet.js");
-  const blocks = new AudioWorkletNode(context, "continuum-blocks");
+  const blocks = new AudioWorkletNode(context, "recall-blocks");
   source.connect(blocks);
 
   let socket = null;

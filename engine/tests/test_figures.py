@@ -5,7 +5,7 @@
 
 import pytest
 
-from continuum.factcheck.figures import extract_figures, mask_figures
+from recall.factcheck.figures import extract_figures, mask_figures
 
 
 def figures(text: str) -> set[tuple[str, float]]:

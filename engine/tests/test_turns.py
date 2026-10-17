@@ -3,8 +3,8 @@
 
 """Speaker assignment: words and segments take the speaker they overlap most."""
 
-from continuum.diarization.turns import SpeakerTurn, default_speaker, label_segment
-from continuum.transcript import Segment, Word
+from recall.diarization.turns import SpeakerTurn, default_speaker, label_segment
+from recall.transcript import Segment, Word
 
 
 def segment(*words: Word) -> Segment:

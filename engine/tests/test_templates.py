@@ -7,10 +7,10 @@ import json
 
 import pytest
 
-from continuum import language
-from continuum.config import Settings
-from continuum.summary import follow_up_email, summarize, to_markdown
-from continuum.templates import choose
+from recall import language
+from recall.config import Settings
+from recall.summary import follow_up_email, summarize, to_markdown
+from recall.templates import choose
 
 STANDUP = json.dumps(
     {
@@ -76,6 +76,6 @@ def test_sections_are_headed_in_turkish(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_the_template_setting_is_checked() -> None:
-    assert Settings.from_env({"CONTINUUM_MEETING_TEMPLATE": "Retro"}).meeting_template == "retro"
-    with pytest.raises(ValueError, match="CONTINUUM_MEETING_TEMPLATE"):
-        Settings.from_env({"CONTINUUM_MEETING_TEMPLATE": "party"})
+    assert Settings.from_env({"RECALL_MEETING_TEMPLATE": "Retro"}).meeting_template == "retro"
+    with pytest.raises(ValueError, match="RECALL_MEETING_TEMPLATE"):
+        Settings.from_env({"RECALL_MEETING_TEMPLATE": "party"})

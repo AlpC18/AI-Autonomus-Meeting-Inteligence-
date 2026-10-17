@@ -12,9 +12,9 @@ pytest.importorskip("pyannote.audio")
 from pyannote.core import Annotation
 from pyannote.core import Segment as Span
 
-from continuum.audio.chunker import Utterance
-from continuum.diarization.pyannote_diarizer import PyannoteDiarizer
-from continuum.diarization.turns import SpeakerTurn
+from recall.audio.chunker import Utterance
+from recall.diarization.pyannote_diarizer import PyannoteDiarizer
+from recall.diarization.turns import SpeakerTurn
 
 
 @dataclass
@@ -115,7 +115,7 @@ def test_silence_gives_no_turns() -> None:
 
 
 def test_a_named_voice_is_recognised_in_the_next_meeting(tmp_path) -> None:
-    from continuum.diarization.voices import VoiceBook
+    from recall.diarization.voices import VoiceBook
 
     one = _annotation((0.0, 2.0, "SPEAKER_00"))
     first = PyannoteDiarizer(_replaying(one), _embed, VoiceBook(tmp_path / "v.json"))

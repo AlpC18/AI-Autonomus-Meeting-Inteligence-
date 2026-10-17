@@ -3,9 +3,9 @@
 
 """Speaker statistics: talk time, longest turn and interruptions."""
 
-from continuum.live_controls import NOTE_SOURCE
-from continuum.stats import speaker_stats, to_markdown, turns
-from continuum.transcript import Segment, Word
+from recall.live_controls import NOTE_SOURCE
+from recall.stats import speaker_stats, to_markdown, turns
+from recall.transcript import Segment, Word
 
 
 def words(source: str, *spoken: tuple[str, float, float]) -> Segment:

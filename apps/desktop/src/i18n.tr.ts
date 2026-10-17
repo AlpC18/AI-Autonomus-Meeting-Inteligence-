@@ -10,7 +10,7 @@ export const TR: Readonly<Record<string, string>> = {
   "Live meeting": "Canlı toplantı",
   "Past meetings": "Geçmiş toplantılar",
   Settings: "Ayarlar",
-  "Continuum {version} is available.": "Continuum {version} hazır.",
+  "Recall {version} is available.": "Recall {version} hazır.",
   "Installing…": "Yükleniyor…",
   "Install and restart": "Yükle ve yeniden başlat",
   "The update failed: {error}": "Güncelleme başarısız oldu: {error}",
@@ -171,7 +171,7 @@ export const TR: Readonly<Record<string, string>> = {
   "Hide this checklist": "Bu listeyi gizle",
   Microphone: "Mikrofon",
   "Screen Recording": "Ekran Kaydı",
-  "Let Continuum hear the meeting": "Continuum'un toplantıyı duymasına izin verin",
+  "Let Recall hear the meeting": "Recall'un toplantıyı duymasına izin verin",
   "macOS asks for Microphone and Screen Recording (for the other people's audio). Allow both, then say something: this step is done when your words appear in the Live view.":
     "macOS, Mikrofon ve Ekran Kaydı (diğer kişilerin sesi için) izni ister. İkisine de izin verin ve bir şey söyleyin: sözleriniz Canlı görünümde belirince bu adım tamamlanır.",
   "Choose an AI provider": "Bir yapay zekâ sağlayıcısı seçin",
@@ -184,8 +184,8 @@ export const TR: Readonly<Record<string, string>> = {
   "Each meeting is also saved there as a Markdown file (an Obsidian vault folder works well).":
     "Her toplantı oraya Markdown dosyası olarak da kaydedilir (bir Obsidian kasası klasörü iyi çalışır).",
   "Tell speakers apart (optional)": "Konuşanları ayırt et (isteğe bağlı)",
-  "A free Hugging Face token lets Continuum separate and recognise the other people in a call.":
-    "Ücretsiz bir Hugging Face anahtarı, Continuum'un görüşmedeki diğer kişileri ayırıp tanımasını sağlar.",
+  "A free Hugging Face token lets Recall separate and recognise the other people in a call.":
+    "Ücretsiz bir Hugging Face anahtarı, Recall'un görüşmedeki diğer kişileri ayırıp tanımasını sağlar.",
 
   // Settings fields: groups
   Privacy: "Gizlilik",
@@ -218,11 +218,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Bundle IDs of other meeting apps to hear, comma-separated (find one with: osascript -e 'id of app \"AppName\"').":
     "Dinlenecek diğer toplantı uygulamalarının paket kimlikleri, virgülle ayrılmış (bulmak için: osascript -e 'id of app \"UygulamaAdı\"').",
   "Calls in the browser from the extension": "Tarayıcıdaki görüşmeler eklentiden",
-  "Install the Continuum browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.":
-    "Continuum tarayıcı eklentisini (apps/browser-extension; Firefox için apps/browser-extension/firefox) kurun ve toplantı sekmesinde tıklayın: yalnızca o görüşme duyulur, diğer sekmeleriniz asla. Tarayıcılar böylece sistem sesinin dışında kalır.",
+  "Install the Recall browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.":
+    "Recall tarayıcı eklentisini (apps/browser-extension; Firefox için apps/browser-extension/firefox) kurun ve toplantı sekmesinde tıklayın: yalnızca o görüşme duyulur, diğer sekmeleriniz asla. Tarayıcılar böylece sistem sesinin dışında kalır.",
   "Extension ID": "Eklenti kimliği",
-  "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Continuum extension, so no other extension can send audio.":
-    "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Continuum eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
+  "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Recall extension, so no other extension can send audio.":
+    "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Recall eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
   "Speech model": "Konuşma modeli",
   "Larger is more accurate and slower.": "Büyük model daha doğru ama daha yavaştır.",
   "Speech engine": "Konuşma motoru",

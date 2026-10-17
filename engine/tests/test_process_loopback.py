@@ -8,15 +8,15 @@ import threading
 
 import numpy as np
 
-from continuum.audio import follow
-from continuum.audio.blocks import BlockQueue
-from continuum.audio.windows_apps import (
+from recall.audio import follow
+from recall.audio.blocks import BlockQueue
+from recall.audio.windows_apps import (
     BROWSER_EXES,
     NATIVE_MEETING_EXES,
     Process,
     meeting_process,
 )
-from continuum.pipeline import _with_fallback
+from recall.pipeline import _with_fallback
 
 RUNNING = [
     Process(4, 0, "System"),

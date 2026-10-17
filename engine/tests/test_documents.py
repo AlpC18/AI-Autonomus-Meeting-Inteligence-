@@ -9,15 +9,15 @@ from pathlib import Path
 
 from test_memory import ACME, DIMENSIONS, embed
 
-from continuum.factcheck.checker import FactChecker
-from continuum.memory.documents import (
+from recall.factcheck.checker import FactChecker
+from recall.memory.documents import (
     document_files,
     forget_document,
     import_document,
     passages,
 )
-from continuum.memory.store import MemoryStore
-from continuum.transcript import Segment
+from recall.memory.store import MemoryStore
+from recall.transcript import Segment
 
 BUDGET = """# Q3 plan
 

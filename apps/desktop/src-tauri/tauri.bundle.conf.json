@@ -8,7 +8,7 @@
       "binaries/uv"
     ],
     "resources": {
-      "../../../engine/src/continuum/": "engine/src/continuum/",
+      "../../../engine/src/recall/": "engine/src/recall/",
       "../../../engine/pyproject.toml": "engine/pyproject.toml",
       "../../../engine/uv.lock": "engine/uv.lock"
     }

@@ -12,15 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from continuum.notes import vtt
-from continuum.transcribe_cli import (
+from recall.notes import vtt
+from recall.transcribe_cli import (
     AUDIO_MARKER,
     meeting_for,
     render,
     watch,
     with_summary,
 )
-from continuum.transcript import Segment, Word
+from recall.transcript import Segment, Word
 
 DUET = Segment(
     "system",
@@ -128,14 +128,14 @@ def test_cli_imports_a_recording_into_memory_and_writes_vtt(tmp_path: Path) -> N
     )
     env = {
         **os.environ,
-        "CONTINUUM_TENANT_ID": "acme",
-        "CONTINUUM_PROJECT_ID": "imports",
-        "CONTINUUM_MEMORY_DIR": str(tmp_path / "memory"),
-        "CONTINUUM_WHISPER_MODEL": "tiny",
-        "CONTINUUM_ASR_BACKEND": "faster-whisper",
+        "RECALL_TENANT_ID": "acme",
+        "RECALL_PROJECT_ID": "imports",
+        "RECALL_MEMORY_DIR": str(tmp_path / "memory"),
+        "RECALL_WHISPER_MODEL": "tiny",
+        "RECALL_ASR_BACKEND": "faster-whisper",
         "HF_TOKEN": "",
     }
-    command = [sys.executable, "-m", "continuum.transcribe_cli", str(recording), "--remember"]
+    command = [sys.executable, "-m", "recall.transcribe_cli", str(recording), "--remember"]
     for _ in range(2):  # importing twice must not duplicate the meeting
         result = subprocess.run(
             [*command, "--format", "vtt", "--output", str(tmp_path / "out" / "standup.vtt")],
@@ -148,7 +148,7 @@ def test_cli_imports_a_recording_into_memory_and_writes_vtt(tmp_path: Path) -> N
 
     assert (tmp_path / "out" / "standup.vtt").read_text().startswith("WEBVTT")
     search = subprocess.run(
-        [sys.executable, "-m", "continuum.memory.cli", "launch budget", "--limit", "10"],
+        [sys.executable, "-m", "recall.memory.cli", "launch budget", "--limit", "10"],
         env=env,
         capture_output=True,
         text=True,

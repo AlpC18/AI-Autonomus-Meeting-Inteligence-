@@ -4,7 +4,7 @@
 //! Auto-start: listen only while a call is going on.
 //!
 //! With the "Start when a call begins" setting on, the engine is not started
-//! with the app. Instead the engine's `continuum-detect-call` watcher reports
+//! with the app. Instead the engine's `recall-detect-call` watcher reports
 //! when another app (Zoom, Meet, Teams, ...) uses the microphone. After
 //! [`CALL_CONFIRM`] of that, the engine starts, set to end the meeting and
 //! stop itself after a silence; then watching resumes.
@@ -21,7 +21,7 @@ use tauri::{AppHandle, Manager};
 use crate::engine::{self, EngineSlot};
 
 /// The setting that turns auto-start on.
-pub const SETTING: &str = "CONTINUUM_AUTO_START";
+pub const SETTING: &str = "RECALL_AUTO_START";
 
 /// How long the microphone must be in use before the engine starts.
 pub const CALL_CONFIRM: Duration = Duration::from_secs(5);
@@ -73,7 +73,7 @@ pub fn decide(
     }
 }
 
-/// The running `continuum-detect-call` process and its reported states.
+/// The running `recall-detect-call` process and its reported states.
 struct Watcher {
     child: Child,
     states: Receiver<bool>,
@@ -82,7 +82,7 @@ struct Watcher {
 impl Watcher {
     fn start() -> Option<Self> {
         let dir = engine::engine_dir()?;
-        let mut child = engine::uv_run(&dir, "continuum-detect-call")
+        let mut child = engine::uv_run(&dir, "recall-detect-call")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -151,11 +151,11 @@ pub fn supervise(app: AppHandle) {
                     }
                     call_since = None;
                     if let Some(dir) = engine::engine_dir() {
-                        let idle = engine::settings_value("CONTINUUM_IDLE_END_MINUTES")
+                        let idle = engine::settings_value("RECALL_IDLE_END_MINUTES")
                             .unwrap_or_else(|| DEFAULT_IDLE_MINUTES.to_owned());
                         let extra = [
-                            ("CONTINUUM_EXIT_WHEN_IDLE", "1"),
-                            ("CONTINUUM_IDLE_END_MINUTES", idle.as_str()),
+                            ("RECALL_EXIT_WHEN_IDLE", "1"),
+                            ("RECALL_IDLE_END_MINUTES", idle.as_str()),
                         ];
                         if let Err(error) = slot.restart_with(&dir, &extra) {
                             eprintln!("Auto-start could not start the engine: {error}");

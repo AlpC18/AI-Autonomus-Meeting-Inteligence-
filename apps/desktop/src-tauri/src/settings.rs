@@ -18,7 +18,7 @@ use std::sync::{Mutex, OnceLock, PoisonError};
 use serde_json::{Value, json};
 
 /// Keychain service under which secrets are stored.
-pub const KEYCHAIN_SERVICE: &str = "com.continuum.desktop";
+pub const KEYCHAIN_SERVICE: &str = "com.recall.desktop";
 
 /// Longest value accepted for any setting.
 pub const MAX_VALUE_CHARS: usize = 2000;
@@ -68,105 +68,105 @@ const fn field(
 /// Every setting, in the order shown.
 pub const FIELDS: &[Field] = &[
     field(
-        "CONTINUUM_LANGUAGE",
+        "RECALL_LANGUAGE",
         "Language",
         "Meetings",
         Kind::Choice(&["en", "tr"]),
         "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.",
     ),
     field(
-        "CONTINUUM_SCREEN_FACT_CHECK",
+        "RECALL_SCREEN_FACT_CHECK",
         "Fact-check shared slides",
         "Meetings",
         Kind::Toggle(false),
         "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.",
     ),
     field(
-        "CONTINUUM_MEETING_TEMPLATE",
+        "RECALL_MEETING_TEMPLATE",
         "Meeting template",
         "AI",
         Kind::Choice(&["auto", "general", "standup", "one_on_one", "sales", "interview", "retro"]),
         "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.",
     ),
     field(
-        "CONTINUUM_TRANSLATE_TO",
+        "RECALL_TRANSLATE_TO",
         "Live translation",
         "AI",
         Kind::Choice(&["", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko"]),
         "Shows each line translated into this language under the transcript. Sends every line to your AI provider.",
     ),
     field(
-        "CONTINUUM_NOTES_DIR",
+        "RECALL_NOTES_DIR",
         "Notes folder",
         "Meetings",
         Kind::Text,
         "Each meeting is saved here as Markdown (e.g. a folder in your Obsidian vault).",
     ),
     field(
-        "CONTINUUM_TENANT_ID",
+        "RECALL_TENANT_ID",
         "Workspace",
         "Meetings",
         Kind::Text,
         "Memory and notes are kept per workspace and project. Letters, digits, '_', '.', '-'.",
     ),
     field(
-        "CONTINUUM_PROJECT_ID",
+        "RECALL_PROJECT_ID",
         "Project",
         "Meetings",
         Kind::Text,
         "Set both workspace and project to keep a searchable memory.",
     ),
     field(
-        "CONTINUUM_CODE_DIRS",
+        "RECALL_CODE_DIRS",
         "Code folders",
         "Meetings",
         Kind::Text,
         "Comma-separated local checkouts. When a meeting names something in the code, the overlay lists the files. Nothing leaves this machine.",
     ),
     field(
-        "CONTINUUM_SOURCES",
+        "RECALL_SOURCES",
         "Listen to",
         "Meetings",
         Kind::Choice(&["mic,system", "mic", "system"]),
         "Your microphone, the other participants (system audio), or both.",
     ),
     field(
-        "CONTINUUM_MEETING_APPS_ONLY",
+        "RECALL_MEETING_APPS_ONLY",
         "Hear only meeting apps",
         "Meetings",
         Kind::Toggle(false),
         "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS, Windows 10 (2004) or later, and Linux with PulseAudio or PipeWire.",
     ),
     field(
-        "CONTINUUM_MEETING_APPS",
+        "RECALL_MEETING_APPS",
         "More meeting apps",
         "Meetings",
         Kind::Text,
         "Bundle IDs of other meeting apps to hear, comma-separated (find one with: osascript -e 'id of app \"AppName\"').",
     ),
     field(
-        "CONTINUUM_BROWSER_TAB_AUDIO",
+        "RECALL_BROWSER_TAB_AUDIO",
         "Calls in the browser from the extension",
         "Meetings",
         Kind::Toggle(false),
-        "Install the Continuum browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.",
+        "Install the Recall browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.",
     ),
     field(
-        "CONTINUUM_BROWSER_EXTENSION_ID",
+        "RECALL_BROWSER_EXTENSION_ID",
         "Extension ID",
         "Meetings",
         Kind::Text,
-        "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Continuum extension, so no other extension can send audio.",
+        "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Recall extension, so no other extension can send audio.",
     ),
     field(
-        "CONTINUUM_WHISPER_MODEL",
+        "RECALL_WHISPER_MODEL",
         "Speech model",
         "Meetings",
         Kind::Choice(&["base", "tiny", "small", "medium", "large-v3-turbo"]),
         "Larger is more accurate and slower.",
     ),
     field(
-        "CONTINUUM_ASR_BACKEND",
+        "RECALL_ASR_BACKEND",
         "Speech engine",
         "Meetings",
         Kind::Choice(&["auto", "faster-whisper", "mlx"]),
@@ -180,56 +180,56 @@ pub const FIELDS: &[Field] = &[
         "Enables telling speakers apart (pyannote).",
     ),
     field(
-        "CONTINUUM_REMEMBER_VOICES",
+        "RECALL_REMEMBER_VOICES",
         "Recognise people you named",
         "Meetings",
         Kind::Toggle(true),
         "Keeps the voices of speakers you name (on this computer only), so later meetings show their names.",
     ),
     field(
-        "CONTINUUM_REDACT",
+        "RECALL_REDACT",
         "Hide personal data in saved notes",
         "Privacy",
         Kind::Toggle(true),
         "E-mails, phone and card numbers, IBANs, keys and passwords are replaced before saving.",
     ),
     field(
-        "CONTINUUM_RETENTION_DAYS",
+        "RECALL_RETENTION_DAYS",
         "Forget memories after (days)",
         "Privacy",
         Kind::Number,
         "Empty keeps everything.",
     ),
     field(
-        "CONTINUUM_REQUIRE_DISK_ENCRYPTION",
+        "RECALL_REQUIRE_DISK_ENCRYPTION",
         "Require disk encryption",
         "Privacy",
         Kind::Toggle(false),
         "Store nothing unless FileVault is on. The live transcript still works.",
     ),
     field(
-        "CONTINUUM_AUTO_START",
+        "RECALL_AUTO_START",
         "Start when a call begins",
         "Meetings",
         Kind::Toggle(false),
         "Listen only while another app (Zoom, Meet, Teams, ...) uses the microphone.",
     ),
     field(
-        "CONTINUUM_IDLE_END_MINUTES",
+        "RECALL_IDLE_END_MINUTES",
         "End a meeting after silence (minutes)",
         "Meetings",
         Kind::Number,
         "The meeting is summarised and a new one starts. Empty never ends it automatically.",
     ),
     field(
-        "CONTINUUM_RECORD_AUDIO",
+        "RECALL_RECORD_AUDIO",
         "Record meeting audio",
         "Privacy",
         Kind::Toggle(false),
         "Saves the audio next to the notes for playback. Recordings are not redacted.",
     ),
     field(
-        "CONTINUUM_LLM_PROVIDER",
+        "RECALL_LLM_PROVIDER",
         "AI provider",
         "AI",
         Kind::Choice(&[
@@ -247,70 +247,70 @@ pub const FIELDS: &[Field] = &[
         "Free: groq, gemini, openrouter, mistral. Local: ollama, lmstudio. Transcripts are sent to the provider you pick.",
     ),
     field(
-        "CONTINUUM_LLM_MODEL",
+        "RECALL_LLM_MODEL",
         "AI model",
         "AI",
         Kind::Text,
         "Empty uses the provider's default (required for openrouter, lmstudio and custom).",
     ),
     field(
-        "CONTINUUM_LLM_BASE_URL",
+        "RECALL_LLM_BASE_URL",
         "AI server URL",
         "AI",
         Kind::Text,
         "Only for custom, OpenAI-compatible servers.",
     ),
     field(
-        "CONTINUUM_LLM_API_KEY",
+        "RECALL_LLM_API_KEY",
         "AI API key",
         "AI",
         Kind::Secret,
         "Not needed for ollama or lmstudio.",
     ),
     field(
-        "CONTINUUM_LLM_HESITATIONS",
+        "RECALL_LLM_HESITATIONS",
         "AI hesitation finder",
         "AI",
         Kind::Toggle(false),
         "When a meeting ends, also list doubts the phrase list missed. Sends the transcript to your AI provider.",
     ),
     field(
-        "CONTINUUM_LLM_FACT_CHECK",
+        "RECALL_LLM_FACT_CHECK",
         "AI fact check",
         "AI",
         Kind::Toggle(false),
         "Also catch contradictions without numbers. Sends statements to your AI provider.",
     ),
     field(
-        "CONTINUUM_LIVE_ACTION_ITEMS",
+        "RECALL_LIVE_ACTION_ITEMS",
         "Live action items",
         "AI",
         Kind::Toggle(false),
         "Show tasks as they are said. Sends the transcript to your AI provider at most every 3 minutes.",
     ),
     field(
-        "CONTINUUM_RISK_TRACKING",
+        "RECALL_RISK_TRACKING",
         "Commitments and hesitations",
         "AI",
         Kind::Toggle(true),
         "Lists promised dates and moments of doubt in the notes. Runs on this computer.",
     ),
     field(
-        "CONTINUUM_WORKLOAD_CHECK",
+        "RECALL_WORKLOAD_CHECK",
         "Check promised dates against Jira, GitHub and GitLab",
         "AI",
         Kind::Toggle(false),
         "Warns when someone promises a date while holding many open Jira, GitHub or GitLab issues, or a full sprint. Sends their name to those services.",
     ),
     field(
-        "CONTINUUM_AUTO_PROPOSE",
+        "RECALL_AUTO_PROPOSE",
         "Propose after each meeting",
         "AI",
         Kind::Text,
         "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name, gitlab:group/name. Each still needs your approval.",
     ),
     field(
-        "CONTINUUM_GITHUB_REPOS",
+        "RECALL_GITHUB_REPOS",
         "GitHub repositories",
         "Actions",
         Kind::Text,
@@ -324,14 +324,14 @@ pub const FIELDS: &[Field] = &[
         "Fine-grained token with Issues: read and write.",
     ),
     field(
-        "CONTINUUM_GITLAB_PROJECTS",
+        "RECALL_GITLAB_PROJECTS",
         "GitLab projects",
         "Actions",
         Kind::Text,
         "Comma-separated group/name; issues can only be proposed for these.",
     ),
     field(
-        "CONTINUUM_GITLAB_URL",
+        "RECALL_GITLAB_URL",
         "GitLab address",
         "Actions",
         Kind::Text,
@@ -345,14 +345,14 @@ pub const FIELDS: &[Field] = &[
         "Personal or project access token with the api scope.",
     ),
     field(
-        "CONTINUUM_SLACK_WEBHOOK_URL",
+        "RECALL_SLACK_WEBHOOK_URL",
         "Slack webhook URL",
         "Actions",
         Kind::Secret,
         "Incoming-webhook URL of the one channel messages may go to.",
     ),
     field(
-        "CONTINUUM_JIRA_SITE",
+        "RECALL_JIRA_SITE",
         "Jira site",
         "Actions",
         Kind::Text,
@@ -373,7 +373,7 @@ pub const FIELDS: &[Field] = &[
         "From id.atlassian.com > Security > API tokens.",
     ),
     field(
-        "CONTINUUM_JIRA_PROJECTS",
+        "RECALL_JIRA_PROJECTS",
         "Jira projects",
         "Actions",
         Kind::Text,
@@ -387,7 +387,7 @@ pub const FIELDS: &[Field] = &[
         "From notion.so/profile/integrations. Share the parent page with the integration.",
     ),
     field(
-        "CONTINUUM_NOTION_PAGE_ID",
+        "RECALL_NOTION_PAGE_ID",
         "Notion parent page",
         "Actions",
         Kind::Text,
@@ -415,7 +415,7 @@ pub const FIELDS: &[Field] = &[
         "Save the client ID and secret, then use Connect Google to fill this in.",
     ),
     field(
-        "CONTINUUM_GOOGLE_CALENDAR_ID",
+        "RECALL_GOOGLE_CALENDAR_ID",
         "Google calendar",
         "Actions",
         Kind::Text,
@@ -719,26 +719,26 @@ mod tests {
 
     #[test]
     fn values_and_secrets_reach_the_engine_but_secrets_never_reach_the_view() {
-        let dir = std::env::temp_dir().join(format!("continuum-settings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
 
         settings
             .update(
                 &map(&[
-                    ("CONTINUUM_LLM_PROVIDER", "groq"),
-                    ("CONTINUUM_TENANT_ID", " acme "),
+                    ("RECALL_LLM_PROVIDER", "groq"),
+                    ("RECALL_TENANT_ID", " acme "),
                 ]),
-                &map(&[("CONTINUUM_LLM_API_KEY", "gsk-secret")]),
+                &map(&[("RECALL_LLM_API_KEY", "gsk-secret")]),
             )
             .unwrap();
 
         let env = settings.env();
-        assert!(env.contains(&("CONTINUUM_TENANT_ID".into(), "acme".into())));
-        assert!(env.contains(&("CONTINUUM_LLM_API_KEY".into(), "gsk-secret".into())));
+        assert!(env.contains(&("RECALL_TENANT_ID".into(), "acme".into())));
+        assert!(env.contains(&("RECALL_LLM_API_KEY".into(), "gsk-secret".into())));
         let view = settings.view().to_string();
         assert!(!view.contains("gsk-secret"));
-        assert!(view.contains("CONTINUUM_LLM_API_KEY"));
+        assert!(view.contains("RECALL_LLM_API_KEY"));
 
         let reloaded = Settings::load(dir.join("settings.json"), Box::new(store));
         assert_eq!(reloaded.env(), env);
@@ -762,7 +762,7 @@ mod tests {
     #[test]
     fn setting_one_secret_keeps_the_other_settings() {
         let dir =
-            std::env::temp_dir().join(format!("continuum-settings-one-{}", std::process::id()));
+            std::env::temp_dir().join(format!("recall-settings-one-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -788,7 +788,7 @@ mod tests {
     #[test]
     fn empty_secret_deletes_it() {
         let dir =
-            std::env::temp_dir().join(format!("continuum-settings-del-{}", std::process::id()));
+            std::env::temp_dir().join(format!("recall-settings-del-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -806,25 +806,25 @@ mod tests {
     #[test]
     fn invalid_or_unknown_settings_change_nothing() {
         let dir =
-            std::env::temp_dir().join(format!("continuum-settings-bad-{}", std::process::id()));
+            std::env::temp_dir().join(format!("recall-settings-bad-{}", std::process::id()));
         let mut settings =
             Settings::load(dir.join("settings.json"), Box::new(MemoryStore::default()));
         for (values, secrets) in [
             (map(&[("PATH", "/evil")]), BTreeMap::new()),
-            (map(&[("CONTINUUM_RETENTION_DAYS", "0")]), BTreeMap::new()),
-            (map(&[("CONTINUUM_REDACT", "yes")]), BTreeMap::new()),
+            (map(&[("RECALL_RETENTION_DAYS", "0")]), BTreeMap::new()),
+            (map(&[("RECALL_REDACT", "yes")]), BTreeMap::new()),
             (
-                map(&[("CONTINUUM_ASR_BACKEND", "parakeet")]),
+                map(&[("RECALL_ASR_BACKEND", "parakeet")]),
                 BTreeMap::new(),
             ),
-            (map(&[("CONTINUUM_NOTES_DIR", "a\nb")]), BTreeMap::new()),
+            (map(&[("RECALL_NOTES_DIR", "a\nb")]), BTreeMap::new()),
             (
                 map(&[("GITHUB_TOKEN", "in the wrong place")]),
                 BTreeMap::new(),
             ),
             (
                 BTreeMap::new(),
-                map(&[("CONTINUUM_NOTES_DIR", "not a secret")]),
+                map(&[("RECALL_NOTES_DIR", "not a secret")]),
             ),
         ] {
             assert!(settings.update(&values, &secrets).is_err());
@@ -837,7 +837,7 @@ mod tests {
     #[test]
     #[ignore = "uses the real Keychain"]
     fn keychain_round_trip() {
-        let key = "CONTINUUM_TEST_ONLY_SECRET";
+        let key = "RECALL_TEST_ONLY_SECRET";
         let mut keychain = Keychain;
         keychain.set(key, "round-trip-value").unwrap();
         assert_eq!(keychain.get(key).as_deref(), Some("round-trip-value"));
@@ -858,7 +858,7 @@ mod tests {
     #[test]
     fn toggles_show_the_engine_default_when_unset() {
         let settings = Settings::load(
-            std::env::temp_dir().join("continuum-toggle-defaults.json"),
+            std::env::temp_dir().join("recall-toggle-defaults.json"),
             Box::new(MemoryStore::default()),
         );
         let view = settings.view();
@@ -871,10 +871,10 @@ mod tests {
                 .map(|field| field["options"][0].clone())
                 .unwrap()
         };
-        assert_eq!(default_of("CONTINUUM_REDACT"), "1");
-        assert_eq!(default_of("CONTINUUM_REMEMBER_VOICES"), "1");
-        assert_eq!(default_of("CONTINUUM_RECORD_AUDIO"), "0");
-        assert_eq!(default_of("CONTINUUM_LLM_FACT_CHECK"), "0");
-        assert_eq!(default_of("CONTINUUM_LLM_HESITATIONS"), "0");
+        assert_eq!(default_of("RECALL_REDACT"), "1");
+        assert_eq!(default_of("RECALL_REMEMBER_VOICES"), "1");
+        assert_eq!(default_of("RECALL_RECORD_AUDIO"), "0");
+        assert_eq!(default_of("RECALL_LLM_FACT_CHECK"), "0");
+        assert_eq!(default_of("RECALL_LLM_HESITATIONS"), "0");
     }
 }

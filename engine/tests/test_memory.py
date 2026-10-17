@@ -10,9 +10,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from continuum.memory.scope import TenantScope
-from continuum.memory.store import Meeting, MemoryStore
-from continuum.transcript import Segment
+from recall.memory.scope import TenantScope
+from recall.memory.store import Meeting, MemoryStore
+from recall.transcript import Segment
 
 DIMENSIONS = 64
 STARTED = datetime(2026, 8, 14, 10, 0, tzinfo=UTC)

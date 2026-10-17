@@ -5,12 +5,12 @@
 
 from fastmcp import Client
 
-from continuum.actions.server import mcp
+from recall.actions.server import mcp
 
 
 async def test_health_reports_ok_and_version() -> None:
     async with Client(mcp) as client:
-        result = await client.call_tool("continuum_health")
+        result = await client.call_tool("recall_health")
 
     assert result.data["status"] == "ok"
     assert result.data["version"]

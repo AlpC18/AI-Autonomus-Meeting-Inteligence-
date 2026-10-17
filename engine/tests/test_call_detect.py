@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from continuum.audio.call_detect import microphone_in_use, watch
+from recall.audio.call_detect import microphone_in_use, watch
 
 
 def test_only_changes_are_reported() -> None:
@@ -23,7 +23,7 @@ def test_the_microphone_state_can_be_read_on_macos() -> None:
 
 
 def test_windows_counts_a_microphone_use_that_has_not_stopped() -> None:
-    from continuum.audio.call_detect import any_open_use
+    from recall.audio.call_detect import any_open_use
 
     assert any_open_use([(0, 0), (133_000, 133_500), (134_000, 0)]) is True
     assert any_open_use([(0, 0), (133_000, 133_500)]) is False
@@ -32,7 +32,7 @@ def test_windows_counts_a_microphone_use_that_has_not_stopped() -> None:
 def test_linux_asks_pulseaudio_for_recording_streams(monkeypatch) -> None:
     import subprocess
 
-    from continuum.audio import call_detect
+    from recall.audio import call_detect
 
     monkeypatch.setattr(call_detect.shutil, "which", lambda name: "/usr/bin/pactl")
     answers = iter(["42\t1\t17\tPipeWire\ts16le 1ch 48000Hz\n", ""])

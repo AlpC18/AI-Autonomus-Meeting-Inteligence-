@@ -53,6 +53,6 @@ test("the call's incoming audio becomes 100 ms blocks at 16 kHz", () => {
     processors[0].onaudioprocess({ inputBuffer: { getChannelData: () => second.subarray(i, i + 4096) } });
   }
   assert.equal(posted.length, 10);
-  assert.ok(posted.every((message) => message.type === "continuum-call-audio" && message.samples.length === 1600));
+  assert.ok(posted.every((message) => message.type === "recall-call-audio" && message.samples.length === 1600));
   assert.ok(Math.abs(posted[0].samples[0] - 0.25) < 1e-6);
 });

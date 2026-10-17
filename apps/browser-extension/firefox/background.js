@@ -20,12 +20,12 @@ async function show(text, color, title) {
 function connect() {
   socket = new WebSocket(ENGINE);
   socket.binaryType = "arraybuffer";
-  socket.addEventListener("open", () => void show("ON", "#15803d", "Continuum hears this call. Click to stop."));
+  socket.addEventListener("open", () => void show("ON", "#15803d", "Recall hears this call. Click to stop."));
   socket.addEventListener("close", (event) => {
     socket = null;
     if (capturedTab === null) return;
     void show(event.code === 1008 ? "!" : "…", event.code === 1008 ? "#b91c1c" : "#a16207",
-      event.code === 1008 ? "Continuum is already capturing another tab." : "Waiting for the Continuum app.");
+      event.code === 1008 ? "Recall is already capturing another tab." : "Waiting for the Recall app.");
     retry = setTimeout(connect, RECONNECT_MS);
   });
 }
@@ -35,7 +35,7 @@ function stop() {
   clearTimeout(retry);
   socket?.close();
   socket = null;
-  void show("", "#000000", "Continuum: capture this call's audio");
+  void show("", "#000000", "Recall: capture this call's audio");
 }
 
 /** Starts or stops capturing `tab` (what clicking the toolbar button does). */
@@ -45,7 +45,7 @@ function toggle(tab) {
     return;
   }
   capturedTab = tab.id;
-  void show("…", "#a16207", "Waiting for the Continuum app.");
+  void show("…", "#a16207", "Waiting for the Recall app.");
   connect();
 }
 

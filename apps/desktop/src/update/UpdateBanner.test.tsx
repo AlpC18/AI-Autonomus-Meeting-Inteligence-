@@ -29,7 +29,7 @@ describe("UpdateBanner", () => {
     updater.check.mockResolvedValue({ version: "0.2.0", downloadAndInstall });
     render(<UpdateBanner />);
 
-    expect((await screen.findByRole("status")).textContent).toContain("Continuum 0.2.0 is available.");
+    expect((await screen.findByRole("status")).textContent).toContain("Recall 0.2.0 is available.");
     expect(downloadAndInstall).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Install and restart" }));
     await waitFor(() => expect(updater.relaunch).toHaveBeenCalled());
