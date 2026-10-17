@@ -11,10 +11,11 @@
 import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
-const [engineDir, uv] = process.argv.slice(2);
-if (!engineDir || !uv) {
+// Absolute, because uv runs from inside the engine folder.
+const [engineDir, uv] = process.argv.slice(2).map((path) => resolve(path));
+if (process.argv.length < 4) {
   console.error("Usage: node scripts/smoke-bundle.mjs <engine-dir> <bundled-uv>");
   process.exit(2);
 }
