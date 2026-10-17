@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { canConnectGoogle, changedSecrets, connectionLines, groupFields, parseSettings, type SettingField, type SettingsView } from "./settings";
 import { t } from "../i18n";
 
-const INPUT = "mt-1 w-full rounded-md border border-zinc-300 p-1.5 text-sm text-zinc-900";
+const INPUT = "mt-1 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-900";
 
 /**
  * Settings screen. Ordinary values are saved to a private file and secrets
@@ -124,7 +124,7 @@ export function SettingsPanel() {
           type="checkbox"
           checked={(value || field.options[0]) === "1"}
           onChange={(event) => set(event.target.checked ? "1" : "0")}
-          className="mt-1 h-4 w-4"
+          className="ml-2 size-4 cursor-pointer align-[-3px]"
         />
       );
     }
@@ -154,16 +154,16 @@ export function SettingsPanel() {
   return (
     <form onSubmit={save} aria-label={t("Settings")} className="mt-4 flex flex-col gap-6">
       {groupFields(view.fields).map(([group, fields]) => (
-        <fieldset key={group} className="rounded-lg border border-zinc-300 p-3">
-          <legend className="px-1 font-semibold">{t(group)}</legend>
-          <div className="grid gap-3 md:grid-cols-2">
+        <fieldset key={group} className="rounded-xl border border-zinc-200 bg-surface px-5 pt-2 pb-5">
+          <legend className="px-1.5 text-sm font-semibold">{t(group)}</legend>
+          <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
             {fields.map((field) => (
               <div key={field.key}>
                 <label htmlFor={`setting-${field.key}`} className="text-sm font-medium">
                   {t(field.label)}
                 </label>
                 {input(field)}
-                {field.help && <p className="mt-0.5 text-xs text-zinc-600">{t(field.help)}</p>}
+                {field.help && <p className="mt-1 max-w-prose text-xs leading-relaxed text-zinc-600">{t(field.help)}</p>}
                 {field.key === "GOOGLE_REFRESH_TOKEN" && (
                   <button
                     type="button"
@@ -184,7 +184,7 @@ export function SettingsPanel() {
         <button
           type="submit"
           disabled={busy}
-          className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? t("Working…") : t("Save and restart engine")}
         </button>

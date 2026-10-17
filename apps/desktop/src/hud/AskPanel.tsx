@@ -48,7 +48,7 @@ export function AskPanel({ connected, send, answers }: AskPanelProps) {
         <button
           type="submit"
           disabled={!connected || question.trim() === ""}
-          className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("Ask")}
         </button>

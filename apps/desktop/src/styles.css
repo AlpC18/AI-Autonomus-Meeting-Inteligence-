@@ -2,6 +2,155 @@
 /* Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved. */
 
 @import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+/*
+ * Theme. Components use the zinc scale for every neutral, so the light and
+ * dark themes are two settings of that scale (plus a few accents) rather
+ * than per-component dark: variants. "canvas" is the page, "surface" a panel
+ * on it, "accent" the one brand colour (focus, selection, the active view).
+ */
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", monospace;
+
+  --color-canvas: #f6f6f7;
+  --color-surface: #ffffff;
+  --color-accent: #0f766e;
+  --color-accent-soft: #e3f1ef;
+
+  --color-zinc-50: #f8f8f9;
+  --color-zinc-100: #efeff2;
+  --color-zinc-200: #e2e2e7;
+  --color-zinc-300: #cfcfd6;
+  --color-zinc-400: #a3a3ad;
+  --color-zinc-500: #737380;
+  --color-zinc-600: #575762;
+  --color-zinc-700: #3f3f48;
+  --color-zinc-800: #28282e;
+  --color-zinc-900: #18181c;
+  --color-zinc-950: #0d0d10;
+}
+
+/* The overlay keeps its own dark glass look over any meeting, whatever the theme. */
+:root[data-theme="dark"]:not([data-window="hud"]) {
+  --color-canvas: #0f1012;
+  --color-surface: #16171a;
+  --color-accent: #5fb3a8;
+  --color-accent-soft: #15302d;
+  color-scheme: dark;
+
+  /* The neutral scale turned around: "900" is the strongest ink on any canvas. */
+  --color-white: #0f1012;
+  --color-zinc-50: #1a1b1f;
+  --color-zinc-100: #212227;
+  --color-zinc-200: #2a2b31;
+  --color-zinc-300: #34353d;
+  --color-zinc-400: #4a4b55;
+  --color-zinc-500: #8a8b96;
+  --color-zinc-600: #a2a3ad;
+  --color-zinc-700: #c3c4cc;
+  --color-zinc-800: #dbdce1;
+  --color-zinc-900: #ecedf0;
+  --color-zinc-950: #f6f6f8;
+
+  /* Accents readable on a dark canvas. */
+  --color-red-700: #f08a80;
+  --color-blue-700: #8ab8ff;
+  --color-sky-50: #10222c;
+  --color-amber-50: #2a2312;
+  --color-amber-400: #b8892c;
+  /* One colour per person in the transcript (see hud/speakers.ts). */
+  --color-teal-700: #6fc7bb;
+  --color-violet-700: #b9a3f5;
+  --color-amber-700: #e0b356;
+  --color-sky-700: #7fc2ec;
+  --color-rose-700: #f29bb0;
+  --color-lime-700: #a9d46b;
+}
+
+@layer base {
+  :root:not([data-window="hud"]) {
+    color-scheme: light;
+    background: var(--color-canvas);
+    color: var(--color-zinc-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :root:not([data-window="hud"]) ::selection {
+    background: var(--color-accent-soft);
+  }
+
+  :root:not([data-window="hud"]) :where(h1, h2, h3, legend) {
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  :root:not([data-window="hud"]) :where(p, li) {
+    text-wrap: pretty;
+  }
+
+  /* Form controls sit on the surface colour, so they read as fields in either theme. */
+  :root:not([data-window="hud"]) :where(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+    background-color: var(--color-surface);
+    color: var(--color-zinc-900);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  /* Native selects ignore padding in WebKit, so they would sit shorter than text fields. */
+  :root:not([data-window="hud"]) :where(select) {
+    appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238a8b96' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 14px;
+  }
+
+  :root:not([data-window="hud"]) :where(input, select, textarea)::placeholder {
+    color: var(--color-zinc-500);
+  }
+
+  :root:not([data-window="hud"]) :where(input, select, textarea):focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 22%, transparent);
+  }
+
+  :root:not([data-window="hud"]) :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--color-accent);
+  }
+
+  :root:not([data-window="hud"]) :where(button) {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 100ms ease;
+  }
+
+  :root:not([data-window="hud"]) :where(button:not(:disabled)):active {
+    transform: translateY(1px);
+  }
+
+  :root:not([data-window="hud"]) :where(button, a, summary):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-window="hud"]) * {
+      transition: none !important;
+    }
+  }
+}
 
 /* The overlay window shows only its cards; everything else is see-through. */
 html[data-window="hud"],

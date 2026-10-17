@@ -53,7 +53,7 @@ describe("App", () => {
     backend();
     render(<App />);
 
-    expect(await screen.findByText("recall-desktop v0.1.0")).toBeTruthy();
+    expect(await screen.findByText("Recall v0.1.0")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Get started" }).getAttribute("aria-pressed")).toBe("true"));
 
     fireEvent.click(screen.getByRole("button", { name: "Past meetings" }));
@@ -67,7 +67,7 @@ describe("App", () => {
     window.localStorage.setItem("recall.setupHidden", "1");
     backend();
     render(<App />);
-    await screen.findByText("recall-desktop v0.1.0");
+    await screen.findByText("Recall v0.1.0");
 
     const socket = FakeSocket.all[0];
     act(() => {

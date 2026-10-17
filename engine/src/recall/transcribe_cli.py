@@ -277,7 +277,11 @@ def main() -> None:
             raise LookupError("--summarize needs an AI model: set RECALL_LLM_PROVIDER (see .env.example).")
         llm = connect(llm_settings) if llm_settings is not None else None
         transcriber = load_transcriber(
-            settings.asr_backend, settings.whisper_model, settings.model_dir, translate=args.translate
+            settings.asr_backend,
+            settings.whisper_model,
+            settings.model_dir,
+            translate=args.translate,
+            languages=settings.meeting_languages,
         )
     except (ValueError, LookupError, RuntimeError) as error:
         sys.exit(f"Invalid configuration: {error}")

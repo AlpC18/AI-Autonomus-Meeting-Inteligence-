@@ -163,3 +163,30 @@ pub fn google_connect(app: tauri::AppHandle) -> Result<String, String> {
     restart_engine(&app, &dir)?;
     Ok(String::from("Google is connected."))
 }
+
+/// Whether the engine is running, for the app's start/stop button.
+#[tauri::command]
+pub fn engine_running(slot: tauri::State<'_, crate::engine::EngineSlot>) -> bool {
+    slot.running()
+}
+
+/// Starts the engine by hand (or restarts it if it is running).
+///
+/// # Errors
+/// Returns a user-facing message if the engine folder is unknown or it cannot start.
+#[tauri::command(async)]
+pub fn engine_start(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
+    let dir = crate::engine::engine_dir()
+        .ok_or_else(|| String::from("The engine folder is not configured."))?;
+    app.state::<crate::engine::EngineSlot>()
+        .restart(&dir)
+        .map_err(|error| format!("The engine could not be started: {error}"))
+}
+
+/// Stops the engine: nothing is heard or recorded until it is started again.
+#[tauri::command(async)]
+pub fn engine_stop(slot: tauri::State<'_, crate::engine::EngineSlot>) {
+    slot.stop();
+}

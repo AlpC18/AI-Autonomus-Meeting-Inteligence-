@@ -10,14 +10,21 @@ import { Notepad } from "./notes/Notepad";
 import { parseSettings, type SettingsView } from "./settings/settings";
 import { SettingsPanel } from "./settings/SettingsPanel";
 import { UpdateBanner } from "./update/UpdateBanner";
+import { ThemeSelect } from "./ThemeSelect";
+import { EngineButton } from "./EngineButton";
+import { MeetingLanguages } from "./hud/MeetingLanguages";
+import { Timeline } from "./hud/Timeline";
+import { SaveConversation } from "./hud/SaveConversation";
+import { SummaryPage } from "./hud/SummaryPage";
 import { SetupChecklist } from "./setup/SetupChecklist";
 import { setupComplete, setupSteps } from "./setup/setup";
 import { setLanguage, t } from "./i18n";
 
-type View = "setup" | "live" | "meetings" | "settings";
+type View = "setup" | "live" | "summary" | "meetings" | "settings";
 const VIEW_NAMES: Record<View, string> = {
   setup: "Get started",
   live: "Live meeting",
+  summary: "Summary",
   meetings: "Past meetings",
   settings: "Settings",
 };
@@ -91,49 +98,96 @@ export default function App() {
       .catch((cause: unknown) => setError(String(cause)));
   }, []);
 
+  const views = showSetup || view === "setup" ? (["setup", "live", "summary", "meetings", "settings"] as const) : (["live", "summary", "meetings", "settings"] as const);
+  const engineState = connected ? "Engine running" : stream.status === "connecting" ? "Starting the engine…" : "Engine stopped";
+
   return (
-    <main className="p-4">
-      <h1 className="text-2xl font-bold">Recall</h1>
-      {error && <p role="alert">{t("Could not reach the desktop backend: {error}", { error })}</p>}
-      <UpdateBanner />
-      {info && (
-        <p>
-          {info.name} v{info.version}
-        </p>
-      )}
-      <nav aria-label={t("Views")} className="mt-3 flex gap-2">
-        {(showSetup || view === "setup" ? (["setup", "live", "meetings", "settings"] as const) : (["live", "meetings", "settings"] as const)).map((name) => (
-          <button
-            key={name}
-            type="button"
-            aria-pressed={view === name}
-            onClick={() => setView(name)}
-            className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 aria-pressed:bg-zinc-900 aria-pressed:text-white"
-          >
-            {t(VIEW_NAMES[name])}
-          </button>
-        ))}
-      </nav>
-      {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
-      <div hidden={view !== "live"}>
-        <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
-        <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
-        <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
-        <Notepad connected={connected} send={stream.send} />
-        <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
-      </div>
-      {view === "setup" && steps && settings && (
-        <SetupChecklist
-          steps={steps}
-          settings={settings}
-          saved={() => setSettingsVersion((version) => version + 1)}
-          openSettings={() => setView("settings")}
-          dismiss={hideSetup}
-        />
-      )}
-      {view === "meetings" && <MeetingLibrary />}
-      {view === "settings" && <SettingsPanel />}
-      <PendingActions />
-    </main>
+    <div className="min-h-dvh">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-canvas/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5">
+          <div className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="grid size-7 place-items-center rounded-lg bg-accent text-sm font-semibold text-white">
+              R
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight">Recall</span>
+          </div>
+          <nav aria-label={t("Views")} className="flex gap-1">
+            {views.map((name) => (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={view === name}
+                onClick={() => setView(name)}
+                className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 aria-pressed:bg-zinc-100 aria-pressed:text-zinc-900"
+              >
+                {t(VIEW_NAMES[name])}
+              </button>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-xs text-zinc-600" role="status">
+              <span
+                aria-hidden="true"
+                className={`size-1.5 rounded-full ${connected ? "bg-accent" : stream.status === "connecting" ? "bg-amber-400" : "bg-zinc-400"}`}
+              />
+              {t(engineState)}
+            </span>
+            <EngineButton status={stream.status} />
+            <ThemeSelect />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-5 pt-6 pb-10">
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-red-700">
+            {t("Could not reach the desktop backend: {error}", { error })}
+          </p>
+        )}
+        <UpdateBanner />
+        {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
+        <div hidden={view !== "live"} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 space-y-5">
+            <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} polishing={stream.polishing} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setView("summary")}
+                    className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100"
+                  >
+                    {t("Summary")}
+                  </button>
+                  <SaveConversation title={stream.meetingTitle} segments={stream.segments} captions={stream.captions} topics={stream.topics} />
+                </>
+              }
+            />
+            <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
+            <Notepad connected={connected} send={stream.send} />
+            <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
+          </div>
+          <aside className="space-y-5">
+            <Timeline topics={stream.topics} />
+            <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
+            <MeetingLanguages settings={settings} saved={() => setSettingsVersion((version) => version + 1)} />
+          </aside>
+        </div>
+        {view === "setup" && steps && settings && (
+          <SetupChecklist
+            steps={steps}
+            settings={settings}
+            saved={() => setSettingsVersion((version) => version + 1)}
+            openSettings={() => setView("settings")}
+            dismiss={hideSetup}
+          />
+        )}
+        {view === "summary" && (
+          <SummaryPage connected={connected} send={stream.send} summary={stream.lastSummary} polishing={stream.polishing} topics={stream.topics} back={() => setView("live")} />
+        )}
+        {view === "meetings" && <MeetingLibrary />}
+        {view === "settings" && <SettingsPanel />}
+        <PendingActions />
+        {info && <p className="mt-10 text-xs text-zinc-500">Recall v{info.version}</p>}
+      </main>
+    </div>
   );
 }

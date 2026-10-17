@@ -85,14 +85,24 @@ pub const FIELDS: &[Field] = &[
         "RECALL_MEETING_TEMPLATE",
         "Meeting template",
         "AI",
-        Kind::Choice(&["auto", "general", "standup", "one_on_one", "sales", "interview", "retro"]),
+        Kind::Choice(&[
+            "auto",
+            "general",
+            "standup",
+            "one_on_one",
+            "sales",
+            "interview",
+            "retro",
+        ]),
         "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.",
     ),
     field(
         "RECALL_TRANSLATE_TO",
         "Live translation",
         "AI",
-        Kind::Choice(&["", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko"]),
+        Kind::Choice(&[
+            "", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko",
+        ]),
         "Shows each line translated into this language under the transcript. Sends every line to your AI provider.",
     ),
     field(
@@ -162,15 +172,36 @@ pub const FIELDS: &[Field] = &[
         "RECALL_WHISPER_MODEL",
         "Speech model",
         "Meetings",
-        Kind::Choice(&["base", "tiny", "small", "medium", "large-v3-turbo"]),
-        "Larger is more accurate and slower.",
+        Kind::Choice(&["small", "base", "tiny", "medium", "large-v3-turbo"]),
+        "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.",
+    ),
+    field(
+        "RECALL_MEETING_LANGUAGES",
+        "Meeting languages",
+        "Meetings",
+        Kind::Text,
+        "Codes of the languages spoken in your meetings, e.g. en,tr,de,it,sq. The accurate transcript then picks among them, so a less common language such as Albanian is not mistaken for another. Empty: any language.",
+    ),
+    field(
+        "RECALL_FINAL_MODEL",
+        "Accurate transcript after the meeting",
+        "Meetings",
+        Kind::Choice(&["large-v3-turbo", "medium", "small", "off"]),
+        "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.",
     ),
     field(
         "RECALL_ASR_BACKEND",
         "Speech engine",
         "Meetings",
-        Kind::Choice(&["auto", "faster-whisper", "mlx"]),
-        "auto uses the Apple Silicon GPU when available.",
+        Kind::Choice(&["auto", "faster-whisper", "mlx", "groq"]),
+        "Live captions. auto uses the Apple Silicon GPU when available. groq sends each sentence's audio to Groq (large-v3-turbo, about 1 s): for languages the local models cannot follow live, such as Albanian. Needs the Groq key; the transcript after the meeting stays on this computer.",
+    ),
+    field(
+        "GROQ_API_KEY",
+        "Groq key for cloud speech",
+        "Meetings",
+        Kind::Secret,
+        "Free at console.groq.com. Only used when the speech engine is groq (or the AI provider is Groq).",
     ),
     field(
         "HF_TOKEN",
@@ -761,8 +792,7 @@ mod tests {
 
     #[test]
     fn setting_one_secret_keeps_the_other_settings() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-one-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-one-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -787,8 +817,7 @@ mod tests {
 
     #[test]
     fn empty_secret_deletes_it() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-del-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-del-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -805,18 +834,14 @@ mod tests {
 
     #[test]
     fn invalid_or_unknown_settings_change_nothing() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-bad-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-bad-{}", std::process::id()));
         let mut settings =
             Settings::load(dir.join("settings.json"), Box::new(MemoryStore::default()));
         for (values, secrets) in [
             (map(&[("PATH", "/evil")]), BTreeMap::new()),
             (map(&[("RECALL_RETENTION_DAYS", "0")]), BTreeMap::new()),
             (map(&[("RECALL_REDACT", "yes")]), BTreeMap::new()),
-            (
-                map(&[("RECALL_ASR_BACKEND", "parakeet")]),
-                BTreeMap::new(),
-            ),
+            (map(&[("RECALL_ASR_BACKEND", "parakeet")]), BTreeMap::new()),
             (map(&[("RECALL_NOTES_DIR", "a\nb")]), BTreeMap::new()),
             (
                 map(&[("GITHUB_TOKEN", "in the wrong place")]),
@@ -874,6 +899,8 @@ mod tests {
         assert_eq!(default_of("RECALL_REDACT"), "1");
         assert_eq!(default_of("RECALL_REMEMBER_VOICES"), "1");
         assert_eq!(default_of("RECALL_RECORD_AUDIO"), "0");
+        assert_eq!(default_of("RECALL_WHISPER_MODEL"), "small");
+        assert_eq!(default_of("RECALL_FINAL_MODEL"), "large-v3-turbo");
         assert_eq!(default_of("RECALL_LLM_FACT_CHECK"), "0");
         assert_eq!(default_of("RECALL_LLM_HESITATIONS"), "0");
     }

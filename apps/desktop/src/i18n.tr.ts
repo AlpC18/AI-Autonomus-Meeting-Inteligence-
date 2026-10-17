@@ -10,6 +10,35 @@ export const TR: Readonly<Record<string, string>> = {
   "Live meeting": "Canlı toplantı",
   "Past meetings": "Geçmiş toplantılar",
   Settings: "Ayarlar",
+  "Engine running": "Motor çalışıyor",
+  "Starting the engine…": "Motor başlatılıyor…",
+  "Engine stopped": "Motor durdu",
+  Appearance: "Görünüm",
+  "Start engine": "Motoru başlat",
+  "Stop engine": "Motoru durdur",
+  "Starting…": "Başlatılıyor…",
+  "Stopping…": "Durduruluyor…",
+  "Waiting for someone to speak…": "Birinin konuşması bekleniyor…",
+  "Person {n}": "Kişi {n}",
+  Others: "Diğerleri",
+  People: "Kişiler",
+  "People appear here as they speak.": "Kişiler konuştukça burada görünür.",
+  "Name for {person}": "{person} için ad",
+  "Save name for {person}": "{person} için adı kaydet",
+  "Everyone else is heard as one voice. To tell them apart as Person 1, Person 2, …, add a free Hugging Face token in Get started.":
+    "Diğer herkes tek bir ses olarak duyuluyor. Onları Kişi 1, Kişi 2, … olarak ayırmak için Başlarken bölümünde ücretsiz bir Hugging Face token ekleyin.",
+  Timeline: "Zaman çizelgesi",
+  "Topics appear here every two minutes of conversation.": "Konular, konuşmanın her iki dakikasında burada görünür.",
+  "Speech is written only in these languages.": "Konuşmalar yalnızca bu dillerde yazılır.",
+  "Any language. Pick the ones spoken here, so nothing is written in another alphabet.":
+    "Her dil. Burada konuşulanları seçin, böylece hiçbir şey başka bir alfabeyle yazılmaz.",
+  "Save languages": "Dilleri kaydet",
+  "Restarts the engine: set this before the meeting.": "Motoru yeniden başlatır: toplantıdan önce ayarlayın.",
+  "Saved. Live captions now stay in these languages.": "Kaydedildi. Canlı altyazılar artık bu dillerde kalır.",
+  You: "Siz",
+  "System appearance": "Sistem görünümü",
+  Light: "Açık",
+  Dark: "Koyu",
   "Recall {version} is available.": "Recall {version} hazır.",
   "Installing…": "Yükleniyor…",
   "Install and restart": "Yükle ve yeniden başlat",
@@ -224,9 +253,22 @@ export const TR: Readonly<Record<string, string>> = {
   "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Recall extension, so no other extension can send audio.":
     "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Recall eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
   "Speech model": "Konuşma modeli",
-  "Larger is more accurate and slower.": "Büyük model daha doğru ama daha yavaştır.",
+  "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.":
+    "Canlı altyazı için. Büyük model daha doğru ama daha yavaştır; small her yeni bilgisayarda yetişir.",
+  "Accurate transcript after the meeting": "Toplantıdan sonra doğru döküm",
+  "Meeting languages": "Toplantı dilleri",
+  "Codes of the languages spoken in your meetings, e.g. en,tr,de,it,sq. The accurate transcript then picks among them, so a less common language such as Albanian is not mistaken for another. Empty: any language.":
+    "Toplantılarınızda konuşulan dillerin kodları, ör. en,tr,de,it,sq. Doğru döküm bu diller arasından seçer; böylece Arnavutça gibi daha az yaygın bir dil başka bir dille karıştırılmaz. Boş: her dil.",
+  "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.":
+    "Toplantı bitince ses bu bilgisayarda bu modelle yeniden yazıya dökülür; notlar, hafıza ve özet bu metni kullanır. Toplantının her saati için yaklaşık 10 dakika sürer. “Toplantı sesini kaydet” kapalıysa ses hemen ardından silinir.",
+  "Making the transcript accurate… The notes and summary follow in a few minutes.":
+    "Döküm düzeltiliyor… Notlar ve özet birkaç dakika içinde gelecek.",
   "Speech engine": "Konuşma motoru",
-  "auto uses the Apple Silicon GPU when available.": "auto, varsa Apple Silicon GPU'yu kullanır.",
+  "Live captions. auto uses the Apple Silicon GPU when available. groq sends each sentence's audio to Groq (large-v3-turbo, about 1 s): for languages the local models cannot follow live, such as Albanian. Needs the Groq key; the transcript after the meeting stays on this computer.":
+    "Canlı altyazı. auto, varsa Apple Silicon GPU'yu kullanır. groq her cümlenin sesini Groq'a gönderir (large-v3-turbo, yaklaşık 1 sn): Arnavutça gibi yerel modellerin canlı takip edemediği diller için. Groq anahtarı gerekir; toplantı sonrası döküm bu bilgisayarda kalır.",
+  "Groq key for cloud speech": "Bulut konuşma tanıma için Groq anahtarı",
+  "Free at console.groq.com. Only used when the speech engine is groq (or the AI provider is Groq).":
+    "console.groq.com'da ücretsiz. Yalnızca konuşma motoru groq olduğunda (veya yapay zeka sağlayıcısı Groq olduğunda) kullanılır.",
   "Hugging Face token": "Hugging Face anahtarı",
   "Enables telling speakers apart (pyannote).": "Konuşanları ayırt etmeyi sağlar (pyannote).",
   "Recognise people you named": "Adlandırdığınız kişileri tanı",
@@ -331,4 +373,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Live translation": "Canlı çeviri",
   "Shows each line translated into this language under the transcript. Sends every line to your AI provider.":
     "Her satırın bu dile çevirisini dökümün altında gösterir. Her satırı yapay zekâ sağlayıcınıza gönderir.",
+  Summary: "Özet",
+  Conversation: "Konuşma",
+  "Save conversation": "Konuşmayı kaydet",
+  "Saved.": "Kaydedildi.",
+  "Back to the live meeting": "Canlı toplantıya dön",
+  "No summary yet. End the meeting and the AI summary appears here.": "Henüz özet yok. Toplantıyı bitirin, yapay zekâ özeti burada görünür.",
+  "End meeting and summarize": "Toplantıyı bitir ve özetle",
 };

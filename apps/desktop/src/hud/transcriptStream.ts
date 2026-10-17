@@ -23,6 +23,8 @@ export interface TranscriptSegment {
   words: TranscriptWord[];
   /** Dominant speaker of the segment. */
   speaker: string;
+  /** Wall-clock time the segment started (ms since epoch), stamped when it arrived. */
+  at?: number;
 }
 
 /** Whether the HUD currently has a live connection to the engine. */
@@ -65,6 +67,10 @@ export interface TranscriptStream {
   answers: Readonly<Record<string, Answer>>;
   /** The summary of the meeting that ended last, if any. */
   lastSummary: MeetingSummaryEvent | null;
+  /** The ended meeting's recording is being transcribed again, accurately. */
+  polishing: boolean;
+  /** What was talked about, from what time, in this meeting (oldest first). */
+  topics: Topic[];
   /** The brief for the current meeting from earlier meetings, if one arrived. */
   brief: Answer | null;
   /** Action items said so far in the current meeting (only with live action items on). */
@@ -140,6 +146,12 @@ export interface TalkTime {
   interruptions: number;
 }
 
+/** One timeline entry: from `at` (ISO time) the meeting talked about `title`. */
+export interface Topic {
+  at: string;
+  title: string;
+}
+
 /** Meeting-level events from the engine, other than transcript and alerts. */
 export type EngineEvent =
   | { type: "answer"; answer: Answer }
@@ -150,7 +162,10 @@ export type EngineEvent =
   | { type: "project_error"; error: string }
   | { type: "documents_imported"; result: DocumentImport }
   | { type: "translation"; key: string; text: string }
-  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null };
+  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null }
+  | { type: "polishing" }
+  | { type: "topic"; topic: Topic }
+  | { type: "polished"; improved: boolean };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
 export interface Renamed {
@@ -332,6 +347,11 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
       : [];
     return { type: "documents_imported", result: { imported, errors: strings(message.errors) } };
   }
+  if (message.type === "polishing") return { type: "polishing" };
+  if (message.type === "topic" && typeof message.at === "string" && typeof message.title === "string") {
+    return { type: "topic", topic: { at: message.at, title: message.title } };
+  }
+  if (message.type === "polished") return { type: "polished", improved: message.improved === true };
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
     const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
     const talkTime = rows.flatMap((row): TalkTime[] =>
@@ -376,6 +396,8 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [meetingTitle, setMeetingTitle] = useState("Meeting");
   const [answers, setAnswers] = useState<Readonly<Record<string, Answer>>>({});
   const [lastSummary, setLastSummary] = useState<MeetingSummaryEvent | null>(null);
+  const [polishing, setPolishing] = useState(false);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [brief, setBrief] = useState<Answer | null>(null);
   const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
   const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
@@ -402,16 +424,24 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     let socket: WebSocket | null = null;
     let retry: number | undefined;
     let stopped = false;
+    // Wall-clock ms of second 0 on the engine's timeline. The smallest estimate
+    // seen is the one with the least transcription delay in it.
+    let anchor = Infinity;
 
     const open = () => {
       setStatus("connecting");
       socket = new WebSocket(url);
       socketRef.current = socket;
-      socket.onopen = () => setStatus("open");
+      socket.onopen = () => {
+        anchor = Infinity; // the engine may have restarted its timeline
+        setStatus("open");
+      };
       socket.onmessage = (event: MessageEvent<unknown>) => {
         const segment = parseSegmentMessage(event.data);
         if (segment) {
-          setSegments((current) => [...current, segment].slice(-MAX_SEGMENTS));
+          anchor = Math.min(anchor, Date.now() - segment.end * 1000);
+          const stamped = { ...segment, at: anchor + segment.start * 1000 };
+          setSegments((current) => [...current, stamped].slice(-MAX_SEGMENTS));
           return;
         }
         const alert = parseAlertMessage(event.data);
@@ -442,6 +472,11 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLastReport(engineEvent.report);
         } else if (engineEvent?.type === "action_items") {
           setLiveItems(engineEvent.items);
+        } else if (engineEvent?.type === "topic") {
+          const { topic } = engineEvent;
+          setTopics((current) => [...current, topic]);
+        } else if (engineEvent?.type === "polishing" || engineEvent?.type === "polished") {
+          setPolishing(engineEvent.type === "polishing");
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
         } else if (engineEvent?.type === "translation") {
@@ -458,6 +493,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setProjectError(null);
           setSegments([]);
           setCaptions({});
+          setTopics([]);
           setBrief(null);
           setLiveItems([]);
         }
@@ -478,5 +514,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, polishing, topics, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
 }

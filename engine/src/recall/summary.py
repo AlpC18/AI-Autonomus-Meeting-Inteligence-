@@ -63,6 +63,9 @@ class MeetingSummary:
     """A template's extra sections, as ``(heading, points)``; see :mod:`recall.templates`."""
 
 
+_WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
 def summarize(transcript: str, llm: Llm, today: date | None = None, template: str | None = None) -> MeetingSummary:
     """Ask ``llm`` for the summary of ``transcript`` (Markdown notes or plain text).
 
@@ -82,7 +85,8 @@ def summarize(transcript: str, llm: Llm, today: date | None = None, template: st
             f"The transcript has {len(transcript):,} characters; at most "
             f"{MAX_TRANSCRIPT_CHARS:,} can be summarised at once."
         )
-    hint = f"\n\nToday is {today.isoformat()}." if today else ""
+    # The weekday too, or "by Friday" cannot be turned into a date.
+    hint = f"\n\nToday is {_WEEKDAYS[today.weekday()]}, {today.isoformat()}." if today else ""
     # A closing tag inside the transcript must not end the data block early.
     body = transcript.replace("</transcript>", "</ transcript>")
     system = SYSTEM_PROMPT.replace("{today}", hint) + (templates.prompt(template) if template else "")

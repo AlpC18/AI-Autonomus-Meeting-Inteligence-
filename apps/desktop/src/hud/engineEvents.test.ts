@@ -56,6 +56,20 @@ describe("engine events", () => {
     });
   });
 
+  it("reads timeline entries and drops malformed ones", () => {
+    expect(parseEngineEvent('{"type":"topic","at":"2026-10-17T10:02:00+00:00","title":"Budget"}')).toEqual({
+      type: "topic",
+      topic: { at: "2026-10-17T10:02:00+00:00", title: "Budget" },
+    });
+    expect(parseEngineEvent('{"type":"topic","title":"Budget"}')).toBeNull();
+  });
+
+  it("reads the accurate-transcript progress", () => {
+    expect(parseEngineEvent('{"type":"polishing"}')).toEqual({ type: "polishing" });
+    expect(parseEngineEvent('{"type":"polished","improved":true}')).toEqual({ type: "polished", improved: true });
+    expect(parseEngineEvent('{"type":"polished"}')).toEqual({ type: "polished", improved: false });
+  });
+
   it("reads talk time when a meeting ends", () => {
     const event = parseEngineEvent(
       '{"type":"meeting_ended","reason":"user","talk_time":[{"speaker":"Ana","seconds":90,"share":0.75,"longest_seconds":60,"interruptions":2},{"speaker":5}]}',

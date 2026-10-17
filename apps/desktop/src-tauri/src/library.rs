@@ -112,9 +112,58 @@ pub fn library_summarize(app: AppHandle, path: String) -> Result<Value, String> 
     Ok(meeting)
 }
 
+/// Largest transcript the main window may save, in bytes.
+pub const MAX_SAVED_BYTES: usize = 5 * 1024 * 1024;
+
+/// Whether `path` is somewhere the main window may save a transcript:
+/// absolute, no NUL, and a Markdown or text file (never an app or script).
+pub fn is_export_path(path: &str) -> bool {
+    let extension = Path::new(path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(str::to_ascii_lowercase);
+    is_notes_path(path) && matches!(extension.as_deref(), Some("md" | "txt"))
+}
+
+/// Saves the live meeting's conversation to a file the user chose in the save dialog.
+///
+/// # Errors
+/// Returns a user-facing message if the path is not a `.md`/`.txt` file,
+/// the text is too large, or the file cannot be written.
+#[tauri::command(async)]
+pub fn save_transcript(path: String, text: String) -> Result<(), String> {
+    if !is_export_path(&path) {
+        return Err(String::from("Save the conversation as a .md or .txt file."));
+    }
+    if text.len() > MAX_SAVED_BYTES {
+        return Err(String::from(
+            "The conversation is too long to save at once.",
+        ));
+    }
+    std::fs::write(&path, text).map_err(|error| format!("Could not save the conversation: {error}"))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::is_notes_path;
+    use super::{is_export_path, is_notes_path};
+
+    #[test]
+    fn saves_only_markdown_or_text_at_absolute_paths() {
+        let base = if cfg!(windows) {
+            r"C:\Users\ana\"
+        } else {
+            "/Users/ana/"
+        };
+        assert!(is_export_path(&format!("{base}Meeting.md")));
+        assert!(is_export_path(&format!("{base}Meeting.TXT")));
+        for bad in [
+            format!("{base}run.sh"),
+            format!("{base}Meeting"),
+            String::from("Meeting.md"),
+        ] {
+            assert!(!is_export_path(&bad), "{bad:?} should be rejected");
+        }
+    }
 
     #[test]
     fn accepts_absolute_paths() {

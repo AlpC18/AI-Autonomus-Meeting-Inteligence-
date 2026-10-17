@@ -113,7 +113,7 @@ def storage_settings(settings: "Settings") -> "Settings":
         "(no notes, memory, recordings or voices). Turn it on in System Settings > "
         "Privacy & Security > FileVault."
     )
-    return replace(settings, scope=None, notes_dir=None, record_audio=False, remember_voices=False)
+    return replace(settings, scope=None, notes_dir=None, record_audio=False, remember_voices=False, final_model=None)
 
 
 def warn_if_disk_unencrypted() -> None:

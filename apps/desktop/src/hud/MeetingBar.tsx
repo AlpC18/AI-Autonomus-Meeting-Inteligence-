@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { AnswerView } from "./AskPanel";
@@ -23,6 +23,8 @@ interface MeetingBarProps {
   connected: boolean;
   send: (message: EngineCommand) => boolean;
   lastSummary: MeetingSummaryEvent | null;
+  /** The last meeting's transcript is being made accurate (see the engine's recall.polish). */
+  polishing?: boolean;
   brief: Answer | null;
   liveItems: readonly LiveActionItem[];
   lastTalkTime: readonly TalkTime[];
@@ -32,6 +34,8 @@ interface MeetingBarProps {
   /** What the live hints found in the meeting that ended last (Markdown). */
   lastReport?: string | null;
   lastImport?: DocumentImport | null;
+  /** Extra buttons shown after "Brief me" (the live page's Summary and Save). */
+  actions?: ReactNode;
   /** Chooses documents to import; the system file picker unless replaced (in tests). */
   pick?: () => Promise<string[] | null>;
 }
@@ -68,6 +72,30 @@ function FollowUp({ email }: { email: { subject: string; body: string } }) {
   );
 }
 
+/** The AI summary of the meeting that ended last, with its follow-up e-mail. */
+export function LastSummary({ summary }: { summary: MeetingSummaryEvent }) {
+  return (
+    <div role="status" className="mt-2 rounded-md bg-zinc-50 p-3 text-sm">
+      {summary.error ? (
+        <p className="text-red-700">{t("The summary could not be made: {error}", { error: summary.error })}</p>
+      ) : (
+        <pre className="whitespace-pre-wrap">{summary.markdown}</pre>
+      )}
+      {summary.queued > 0 && (
+        <p className="mt-1 text-zinc-700">
+          {t("{count} proposed action(s) are waiting for your approval below.", { count: summary.queued })}
+        </p>
+      )}
+      {summary.errors.map((error) => (
+        <p key={error} className="text-xs text-zinc-600">
+          {t("Not proposed: {error}", { error })}
+        </p>
+      ))}
+      {summary.email && <FollowUp email={summary.email} />}
+    </div>
+  );
+}
+
 function minutes(seconds: number): string {
   const whole = Math.round(seconds);
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
@@ -81,7 +109,7 @@ function minutes(seconds: number): string {
  * what earlier meetings said about it; "Brief me" asks for it again.
  * Switching the project ends this meeting and files the next under it.
  */
-export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null, lastImport = null, pick = pickDocuments }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, polishing = false, brief, liveItems, lastTalkTime, project, projectError, lastReport = null, lastImport = null, actions, pick = pickDocuments }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
   const [nextProject, setNextProject] = useState("");
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
@@ -115,6 +143,7 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
         >
           {t("Brief me")}
         </button>
+        {actions}
       </div>
       {project !== null && (
         <form
@@ -176,13 +205,13 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
         </p>
       )}
       {brief && (
-        <div aria-label={t("Brief from earlier meetings")} className="mt-2 rounded-md border border-zinc-200 p-3">
+        <div aria-label={t("Brief from earlier meetings")} className="mt-2 rounded-xl border border-zinc-200 bg-surface p-4">
           <h3 className="text-sm font-semibold">{t("From earlier meetings")}</h3>
           <AnswerView answer={brief} />
         </div>
       )}
       {liveItems.length > 0 && (
-        <div aria-label={t("Action items so far")} className="mt-2 rounded-md border border-zinc-200 p-3 text-sm">
+        <div aria-label={t("Action items so far")} className="mt-2 rounded-xl border border-zinc-200 bg-surface p-4 text-sm">
           <h3 className="font-semibold">{t("Action items so far")}</h3>
           <ul className="mt-1 list-disc pl-5">
             {liveItems.map((item) => (
@@ -199,26 +228,12 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
           </ul>
         </div>
       )}
-      {lastSummary && (
-        <div role="status" className="mt-2 rounded-md bg-zinc-50 p-3 text-sm">
-          {lastSummary.error ? (
-            <p className="text-red-700">{t("The summary could not be made: {error}", { error: lastSummary.error })}</p>
-          ) : (
-            <pre className="whitespace-pre-wrap">{lastSummary.markdown}</pre>
-          )}
-          {lastSummary.queued > 0 && (
-            <p className="mt-1 text-zinc-700">
-              {t("{count} proposed action(s) are waiting for your approval below.", { count: lastSummary.queued })}
-            </p>
-          )}
-          {lastSummary.errors.map((error) => (
-            <p key={error} className="text-xs text-zinc-600">
-              {t("Not proposed: {error}", { error })}
-            </p>
-          ))}
-          {lastSummary.email && <FollowUp email={lastSummary.email} />}
-        </div>
+      {polishing && (
+        <p role="status" className="mt-2 text-sm text-zinc-600">
+          {t("Making the transcript accurate… The notes and summary follow in a few minutes.")}
+        </p>
       )}
+      {lastSummary && <LastSummary summary={lastSummary} />}
       {lastReport && (
         <pre aria-label={t("Hints from the last meeting")} className="mt-2 whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-sm">
           {lastReport}

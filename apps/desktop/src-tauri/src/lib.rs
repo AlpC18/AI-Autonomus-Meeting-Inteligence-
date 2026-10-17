@@ -60,12 +60,16 @@ pub fn run() {
             commands::google_connect,
             commands::check_connections,
             commands::diagnostics,
+            commands::engine_running,
+            commands::engine_start,
+            commands::engine_stop,
             actions::pending_actions,
             actions::decide_action,
             library::library_list,
             library::library_search,
             library::library_show,
-            library::library_summarize
+            library::library_summarize,
+            library::save_transcript
         ])
         .setup(|app| {
             if let Ok(dir) = app.path().app_config_dir() {

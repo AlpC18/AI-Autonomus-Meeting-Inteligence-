@@ -55,7 +55,9 @@ class Settings:
     ``jira:KEY``, ``github:owner/name``, ``gitlab:group/name``). ``idle_end_minutes`` ends a meeting
     after that long without speech; ``exit_when_idle`` then stops the engine
     (used by the app's auto-start). ``record_audio`` saves each meeting's
-    audio next to its notes. ``llm_hesitations`` has the AI model read the transcript at
+    audio next to its notes. ``final_model`` transcribes the meeting's audio
+    again after it ends, for accurate notes, memory and summary (kept only
+    while that runs unless ``record_audio`` is on); ``None`` keeps the live text. ``llm_hesitations`` has the AI model read the transcript at
     the end for doubts the phrase list missed. ``llm_fact_check`` also asks the AI model about
     contradictions that involve no numbers. ``live_action_items`` shows the
     action items said so far during the meeting (an AI call at most every
@@ -78,7 +80,7 @@ class Settings:
 
     sources: tuple[str, ...] = DEFAULT_SOURCES
     ws_port: int = 8765
-    whisper_model: str = "base"
+    whisper_model: str = "small"
     model_dir: Path | None = None
     hf_token: str | None = None
     scope: TenantScope | None = None
@@ -113,12 +115,17 @@ class Settings:
         """Where named voices are kept: next to the memory folder."""
         return self.memory_dir.parent / "voices.json"
 
+    final_model: str | None = "large-v3-turbo"
+    meeting_languages: tuple[str, ...] = ()
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
         """Read settings from ``env`` (normally ``os.environ``).
 
         Variables: ``RECALL_SOURCES`` (comma-separated, from ``mic`` and
-        ``system``), ``RECALL_WS_PORT``, ``RECALL_WHISPER_MODEL``,
+        ``system``), ``RECALL_WS_PORT``, ``RECALL_WHISPER_MODEL``, ``RECALL_FINAL_MODEL`` (the model that
+        transcribes the recording again after the meeting; ``off`` keeps the live text),
+        ``RECALL_MEETING_LANGUAGES`` (comma-separated codes such as ``en,tr,de,it,sq``: the after-meeting
+        transcript only chooses among them),
         ``RECALL_MODEL_DIR``, ``HF_TOKEN``, ``RECALL_TENANT_ID`` and
         ``RECALL_PROJECT_ID`` (set both or neither), ``RECALL_MEMORY_DIR``,
         ``RECALL_EMBEDDING_MODEL``, ``RECALL_NOTES_DIR``,
@@ -250,6 +257,8 @@ class Settings:
             sources=sources,
             ws_port=int(raw_port),
             whisper_model=env.get("RECALL_WHISPER_MODEL") or defaults.whisper_model,
+            final_model=_final_model(env.get("RECALL_FINAL_MODEL"), defaults.final_model),
+            meeting_languages=_language_codes(env.get("RECALL_MEETING_LANGUAGES", "")),
             model_dir=Path(model_dir) if model_dir else None,
             hf_token=env.get("HF_TOKEN") or None,
             scope=scope,
@@ -279,3 +288,24 @@ class Settings:
             screen_fact_check=_flag(env, "RECALL_SCREEN_FACT_CHECK"),
             meeting_template=meeting_template,
         )
+
+
+def _final_model(raw: str | None, default: str | None) -> str | None:
+    """The after-meeting model: unset means the default, ``off`` (or ``0``) means none."""
+    value = (raw or "").strip()
+    if not value:
+        return default
+    return None if value.lower() in {"off", "0", "none"} else value
+
+
+def _language_codes(raw: str) -> tuple[str, ...]:
+    """``"en, TR,sq"`` → ``("en", "tr", "sq")``.
+
+    Raises:
+        ValueError: on something that is not a two- or three-letter language code.
+    """
+    codes = tuple(code.strip().lower() for code in raw.split(",") if code.strip())
+    for code in codes:
+        if not (2 <= len(code) <= 3 and code.isalpha() and code.isascii()):
+            raise ValueError(f"RECALL_MEETING_LANGUAGES: {code!r} is not a language code like en, tr or sq")
+    return codes

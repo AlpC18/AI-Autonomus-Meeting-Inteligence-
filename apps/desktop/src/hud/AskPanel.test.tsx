@@ -81,28 +81,29 @@ describe("SpeakerNamer", () => {
     expect(nameProblem("Ana")).toBeNull();
   });
 
-  it("renames the chosen speaker and reports problems", () => {
+  it("names each person from their own box and reports problems", () => {
     const sent: EngineCommand[] = [];
     let connected = true;
     render(<SpeakerNamer segments={[seg("Speaker 1"), seg("Speaker 2")]} connected send={(message) => (sent.push(message), connected)} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save name for Person 1" }));
     expect(screen.getByRole("status").textContent).toBe("Type a name.");
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Speaker 2" } });
-    fireEvent.change(screen.getByPlaceholderText("e.g. Ana"), { target: { value: "  Ana   Lima " } });
-    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Name for Person 2" }), { target: { value: "  Ana   Lima " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name for Person 2" }));
     expect(sent).toEqual([{ type: "rename_speaker", from: "Speaker 2", to: "Ana Lima" }]);
-    expect(screen.getByRole("status").textContent).toBe("Speaker 2 will be shown as Ana Lima.");
+    expect(screen.getByRole("status").textContent).toBe("Person 2 will be shown as Ana Lima.");
 
     connected = false;
-    fireEvent.change(screen.getByPlaceholderText("e.g. Ana"), { target: { value: "Ben" } });
-    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Name for Person 1" }), { target: { value: "Ben" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name for Person 1" }));
     expect(screen.getByRole("status").textContent).toBe("The engine is not connected; try again in a moment.");
   });
 
-  it("is hidden until someone has spoken", () => {
-    const { container } = render(<SpeakerNamer segments={[seg("Note")]} connected send={() => true} />);
-    expect(container.innerHTML).toBe("");
+  it("waits for people to speak, and explains how to tell remote voices apart", () => {
+    const { rerender } = render(<SpeakerNamer segments={[seg("Note")]} connected send={() => true} />);
+    expect(screen.getByText("People appear here as they speak.")).toBeTruthy();
+    rerender(<SpeakerNamer segments={[seg("others"), seg("me")]} connected send={() => true} />);
+    expect(screen.getByText(/add a free Hugging Face token/)).toBeTruthy();
   });
 });

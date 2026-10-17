@@ -1,0 +1,1234 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/i18n.tr.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">src</a> i18n.tr.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>1/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>1/1</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a>
+<a name='L322'></a><a href='#L322'>322</a>
+<a name='L323'></a><a href='#L323'>323</a>
+<a name='L324'></a><a href='#L324'>324</a>
+<a name='L325'></a><a href='#L325'>325</a>
+<a name='L326'></a><a href='#L326'>326</a>
+<a name='L327'></a><a href='#L327'>327</a>
+<a name='L328'></a><a href='#L328'>328</a>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a>
+<a name='L383'></a><a href='#L383'>383</a>
+<a name='L384'></a><a href='#L384'>384</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
+&nbsp;
+/** Turkish text of the interface, keyed by the English original. */
+export const TR: Readonly&lt;Record&lt;string, string&gt;&gt; = {
+  // Shell and navigation
+  "Could not reach the desktop backend: {error}": "Masaüstü arka ucuna ulaşılamadı: {error}",
+  Views: "Görünümler",
+  "Get started": "Başlarken",
+  "Live meeting": "Canlı toplantı",
+  "Past meetings": "Geçmiş toplantılar",
+  Settings: "Ayarlar",
+  "Engine running": "Motor çalışıyor",
+  "Starting the engine…": "Motor başlatılıyor…",
+  "Engine stopped": "Motor durdu",
+  Appearance: "Görünüm",
+  "Start engine": "Motoru başlat",
+  "Stop engine": "Motoru durdur",
+  "Starting…": "Başlatılıyor…",
+  "Stopping…": "Durduruluyor…",
+  "Waiting for someone to speak…": "Birinin konuşması bekleniyor…",
+  "Person {n}": "Kişi {n}",
+  Others: "Diğerleri",
+  People: "Kişiler",
+  "People appear here as they speak.": "Kişiler konuştukça burada görünür.",
+  "Name for {person}": "{person} için ad",
+  "Save name for {person}": "{person} için adı kaydet",
+  "Everyone else is heard as one voice. To tell them apart as Person 1, Person 2, …, add a free Hugging Face token in Get started.":
+    "Diğer herkes tek bir ses olarak duyuluyor. Onları Kişi 1, Kişi 2, … olarak ayırmak için Başlarken bölümünde ücretsiz bir Hugging Face token ekleyin.",
+  Timeline: "Zaman çizelgesi",
+  "Topics appear here every two minutes of conversation.": "Konular, konuşmanın her iki dakikasında burada görünür.",
+  "Speech is written only in these languages.": "Konuşmalar yalnızca bu dillerde yazılır.",
+  "Any language. Pick the ones spoken here, so nothing is written in another alphabet.":
+    "Her dil. Burada konuşulanları seçin, böylece hiçbir şey başka bir alfabeyle yazılmaz.",
+  "Save languages": "Dilleri kaydet",
+  "Restarts the engine: set this before the meeting.": "Motoru yeniden başlatır: toplantıdan önce ayarlayın.",
+  "Saved. Live captions now stay in these languages.": "Kaydedildi. Canlı altyazılar artık bu dillerde kalır.",
+  You: "Siz",
+  "System appearance": "Sistem görünümü",
+  Light: "Açık",
+  Dark: "Koyu",
+  "Recall {version} is available.": "Recall {version} hazır.",
+  "Installing…": "Yükleniyor…",
+  "Install and restart": "Yükle ve yeniden başlat",
+  "The update failed: {error}": "Güncelleme başarısız oldu: {error}",
+&nbsp;
+  // Live meeting
+  "Live transcript": "Canlı döküm",
+  "Connecting to the engine…": "Motora bağlanılıyor…",
+  Listening: "Dinleniyor",
+  "Engine not running. Retrying…": "Motor çalışmıyor. Yeniden deneniyor…",
+  "Current meeting": "Mevcut toplantı",
+  "Ending…": "Bitiriliyor…",
+  "End meeting": "Toplantıyı bitir",
+  "Brief me": "Özet çıkar",
+  "Project: {project}": "Proje: {project}",
+  "Switch project": "Projeyi değiştir",
+  "another project": "başka bir proje",
+  Switch: "Değiştir",
+  "Company documents in memory are used by fact checks and answers.":
+    "Bellekteki şirket belgeleri doğruluk kontrollerinde ve yanıtlarda kullanılır.",
+  "Add documents…": "Belge ekle…",
+  "Add documents to this project's memory": "Bu projenin belleğine belge ekle",
+  Documents: "Belgeler",
+  "Document import": "Belge aktarımı",
+  "Added {name} ({count} passages)": "{name} eklendi ({count} bölüm)",
+  "Not added: {error}": "Eklenmedi: {error}",
+  "Could not switch project: {error}": "Proje değiştirilemedi: {error}",
+  "Brief from earlier meetings": "Önceki toplantılardan özet",
+  "From earlier meetings": "Önceki toplantılardan",
+  "Action items so far": "Şu ana kadarki yapılacaklar",
+  "due {date}": "son tarih {date}",
+  "The summary could not be made: {error}": "Özet çıkarılamadı: {error}",
+  "{count} proposed action(s) are waiting for your approval below.": "{count} önerilen eylem aşağıda onayınızı bekliyor.",
+  "Not proposed: {error}": "Önerilmedi: {error}",
+  "Hints from the last meeting": "Son toplantıdan ipuçları",
+  "Talk time in the last meeting": "Son toplantıdaki konuşma süreleri",
+  Speaker: "Konuşan",
+  "Talk time": "Konuşma süresi",
+  "Longest turn": "En uzun konuşma",
+  Interruptions: "Söz kesme",
+&nbsp;
+  // Speaker names
+  "Type a name.": "Bir ad yazın.",
+  "Use at most {count} characters.": "En fazla {count} karakter kullanın.",
+  "Leave out * ` _ [ ] &lt; &gt; | # and \\.": "* ` _ [ ] &lt; &gt; | # ve \\ karakterlerini kullanmayın.",
+  '"{name}" is reserved.': '"{name}" ayrılmış bir addır.',
+  "{from} will be shown as {to}.": "{from} artık {to} olarak gösterilecek.",
+  "The engine is not connected; try again in a moment.": "Motor bağlı değil; birazdan tekrar deneyin.",
+  "Name a speaker": "Konuşana ad ver",
+  "Real name": "Gerçek ad",
+  "e.g. Ana": "ör. Ayşe",
+  Rename: "Yeniden adlandır",
+&nbsp;
+  // Notes
+  "The engine is not connected; your note was kept here and not added yet.":
+    "Motor bağlı değil; notunuz burada saklandı, henüz eklenmedi.",
+  Notes: "Notlar",
+  "Write what matters to you. It is added to the transcript at this moment.":
+    "Sizin için önemli olanı yazın. Dökümde tam bu ana eklenir.",
+  "e.g. Push back on the December date": "ör. Aralık tarihine itiraz et",
+  "Add note": "Not ekle",
+  "Waiting for the engine…": "Motor bekleniyor…",
+&nbsp;
+  // Ask
+  "Ask your meetings": "Toplantılarınıza sorun",
+  Question: "Soru",
+  "e.g. What did we decide about the budget?": "ör. Bütçe hakkında ne karar verdik?",
+  Ask: "Sor",
+  "Looking through your meetings…": "Toplantılarınıza bakılıyor…",
+  disputed: "itiraz edildi",
+&nbsp;
+  // Overlay
+  earlier: "daha önce",
+  "Fact check": "Doğruluk kontrolü",
+  "Dismiss fact check": "Doğruluk kontrolünü kapat",
+  "Said now": "Şimdi söylenen",
+  "On record": "Kayıtlarda",
+  "Code context": "Kod bağlamı",
+  "Commitment risk": "Taahhüt riski",
+  Hesitation: "Tereddüt",
+  "Dismiss {what}": "Kapat: {what}",
+&nbsp;
+  // Proposed actions
+  "GitHub issue in {repo}": "{repo} deposunda GitHub kaydı",
+  "Labels: {labels}": "Etiketler: {labels}",
+  "Approve and create": "Onayla ve oluştur",
+  "GitLab issue in {project}": "{project} projesinde GitLab kaydı",
+  "Jira task in project {project}": "{project} projesinde Jira görevi",
+  "Slack message to your configured channel": "Ayarladığınız kanala Slack mesajı",
+  "Approve and send": "Onayla ve gönder",
+  "Google Calendar deadline": "Google Takvim son tarihi",
+  "Due: {date} (all day)": "Son tarih: {date} (tüm gün)",
+  "Approve and schedule": "Onayla ve takvime ekle",
+  "E-mail from your Gmail": "Gmail hesabınızdan e-posta",
+  "To: {to}": "Alıcı: {to}",
+  "Notion page under your configured parent page": "Ayarladığınız üst sayfanın altında Notion sayfası",
+  "Decision recorded.": "Karar kaydedildi.",
+  "Done: {result}": "Tamamlandı: {result}",
+  "Rejected. Nothing was sent.": "Reddedildi. Hiçbir şey gönderilmedi.",
+  "Failed: {result}": "Başarısız: {result}",
+  "no details given": "ayrıntı verilmedi",
+  "Could not load proposed actions: {error}": "Önerilen eylemler yüklenemedi: {error}",
+  "Could not complete that: {error}": "Bu işlem tamamlanamadı: {error}",
+  "Proposed actions": "Önerilen eylemler",
+  "Nothing is waiting for you.": "Bekleyen bir şey yok.",
+  Reject: "Reddet",
+  "Working…": "Çalışıyor…",
+&nbsp;
+  // Past meetings
+  "That meeting could not be read.": "Bu toplantı okunamadı.",
+  "The recording could not be played.": "Kayıt oynatılamadı.",
+  "Summarizing… the transcript is being sent to your configured AI provider.":
+    "Özetleniyor… döküm ayarladığınız yapay zekâ sağlayıcısına gönderiliyor.",
+  "Summary saved in the notes.": "Özet notlara kaydedildi.",
+  "Search all meetings": "Tüm toplantılarda ara",
+  Search: "Ara",
+  "Search results": "Arama sonuçları",
+  "No lines match.": "Eşleşen satır yok.",
+  Meetings: "Toplantılar",
+  "No meeting notes yet.": "Henüz toplantı notu yok.",
+  summarized: "özetlendi",
+  "Choose a meeting to read it.": "Okumak için bir toplantı seçin.",
+  "No recording is linked to this meeting.": "Bu toplantıya bağlı kayıt yok.",
+  "Filter this meeting": "Bu toplantıyı filtrele",
+  "Filter lines": "Satırları filtrele",
+  "Summarizing…": "Özetleniyor…",
+  "Summarize again": "Yeniden özetle",
+  "Summarize with AI": "Yapay zekâ ile özetle",
+  "Play from {time}": "{time} anından oynat",
+&nbsp;
+  // Settings screen
+  "Saving and restarting the engine…": "Kaydediliyor ve motor yeniden başlatılıyor…",
+  "Saved. The engine restarted with the new settings.": "Kaydedildi. Motor yeni ayarlarla yeniden başladı.",
+  "Finish signing in to Google in your browser…": "Google girişini tarayıcınızda tamamlayın…",
+  "Testing the saved connections…": "Kayıtlı bağlantılar test ediliyor…",
+  "Loading settings…": "Ayarlar yükleniyor…",
+  "Saved in Keychain — type to replace": "Anahtar Zinciri'nde kayıtlı — değiştirmek için yazın",
+  "Not set": "Ayarlanmadı",
+  Remove: "Kaldır",
+  None: "Yok",
+  "Save the Google client ID and secret first.": "Önce Google istemci kimliğini ve gizli anahtarını kaydedin.",
+  "Connect Google…": "Google'ı bağla…",
+  "Save and restart engine": "Kaydet ve motoru yeniden başlat",
+  "Signs in to each saved integration and asks the AI provider for a one-word reply.":
+    "Kayıtlı her entegrasyona giriş yapar ve yapay zekâ sağlayıcısından tek kelimelik bir yanıt ister.",
+  "Test connections": "Bağlantıları test et",
+&nbsp;
+  // First-run checklist
+  "Saving…": "Kaydediliyor…",
+  "(choose)": "(seçin)",
+  saved: "kayıtlı",
+  "Choose the notes folder": "Not klasörünü seçin",
+  "Choose…": "Seç…",
+  Save: "Kaydet",
+  Done: "Tamam",
+  "To do": "Yapılacak",
+  "Open {name} settings": "{name} ayarlarını aç",
+  "All settings": "Tüm ayarlar",
+  "Hide this checklist": "Bu listeyi gizle",
+  Microphone: "Mikrofon",
+  "Screen Recording": "Ekran Kaydı",
+  "Let Recall hear the meeting": "Recall'un toplantıyı duymasına izin verin",
+  "macOS asks for Microphone and Screen Recording (for the other people's audio). Allow both, then say something: this step is done when your words appear in the Live view.":
+    "macOS, Mikrofon ve Ekran Kaydı (diğer kişilerin sesi için) izni ister. İkisine de izin verin ve bir şey söyleyin: sözleriniz Canlı görünümde belirince bu adım tamamlanır.",
+  "Choose an AI provider": "Bir yapay zekâ sağlayıcısı seçin",
+  "Used for summaries, answers and briefs. Groq and Gemini have free keys; Ollama runs on this computer with no key.":
+    "Özetler, yanıtlar ve brifingler için kullanılır. Groq ve Gemini ücretsiz anahtar verir; Ollama bu bilgisayarda anahtarsız çalışır.",
+  "Name your workspace and project": "Çalışma alanınızı ve projenizi adlandırın",
+  "Meetings are remembered per workspace and project, so you can ask about them later.":
+    "Toplantılar çalışma alanı ve proje bazında hatırlanır; böylece sonradan onlar hakkında soru sorabilirsiniz.",
+  "Pick a notes folder": "Bir not klasörü seçin",
+  "Each meeting is also saved there as a Markdown file (an Obsidian vault folder works well).":
+    "Her toplantı oraya Markdown dosyası olarak da kaydedilir (bir Obsidian kasası klasörü iyi çalışır).",
+  "Tell speakers apart (optional)": "Konuşanları ayırt et (isteğe bağlı)",
+  "A free Hugging Face token lets Recall separate and recognise the other people in a call.":
+    "Ücretsiz bir Hugging Face anahtarı, Recall'un görüşmedeki diğer kişileri ayırıp tanımasını sağlar.",
+&nbsp;
+  // Settings fields: groups
+  Privacy: "Gizlilik",
+  AI: "Yapay zekâ",
+  Actions: "Eylemler",
+&nbsp;
+  // Settings fields: labels and help
+  Language: "Dil",
+  "en: English, tr: Türkçe. The app, notes, hints and AI summaries use it; people are transcribed in whatever language they speak.":
+    "en: English, tr: Türkçe. Uygulama, notlar, ipuçları ve yapay zekâ özetleri bu dili kullanır; konuşmalar hangi dilde yapılırsa o dilde dökülür.",
+  "Notes folder": "Not klasörü",
+  "Each meeting is saved here as Markdown (e.g. a folder in your Obsidian vault).":
+    "Her toplantı buraya Markdown olarak kaydedilir (ör. Obsidian kasanızdaki bir klasör).",
+  Workspace: "Çalışma alanı",
+  "Memory and notes are kept per workspace and project. Letters, digits, '_', '.', '-'.":
+    "Bellek ve notlar çalışma alanı ve proje bazında tutulur. Harf, rakam, '_', '.', '-'.",
+  Project: "Proje",
+  "Set both workspace and project to keep a searchable memory.":
+    "Aranabilir bir bellek için çalışma alanını ve projeyi birlikte ayarlayın.",
+  "Code folders": "Kod klasörleri",
+  "Comma-separated local checkouts. When a meeting names something in the code, the overlay lists the files. Nothing leaves this machine.":
+    "Virgülle ayrılmış yerel kod klasörleri. Toplantıda koddan bir şey geçtiğinde katman ilgili dosyaları listeler. Hiçbir şey bu bilgisayardan çıkmaz.",
+  "Listen to": "Dinlenecek kaynaklar",
+  "Your microphone, the other participants (system audio), or both.":
+    "Mikrofonunuz, diğer katılımcılar (sistem sesi) ya da ikisi birden.",
+  "Hear only meeting apps": "Yalnızca toplantı uygulamalarını dinle",
+  "Other participants are heard only from Zoom, Teams, Slack, Webex, FaceTime, Meet in a browser and similar apps, so music and videos stay out. macOS, Windows 10 (2004) or later, and Linux with PulseAudio or PipeWire.":
+    "Diğer katılımcılar yalnızca Zoom, Teams, Slack, Webex, FaceTime, tarayıcıda Meet ve benzeri uygulamalardan duyulur; müzik ve videolar dışarıda kalır. macOS, Windows 10 (2004) veya üstü ve PulseAudio ya da PipeWire kullanan Linux.",
+  "More meeting apps": "Diğer toplantı uygulamaları",
+  "Bundle IDs of other meeting apps to hear, comma-separated (find one with: osascript -e 'id of app \"AppName\"').":
+    "Dinlenecek diğer toplantı uygulamalarının paket kimlikleri, virgülle ayrılmış (bulmak için: osascript -e 'id of app \"UygulamaAdı\"').",
+  "Calls in the browser from the extension": "Tarayıcıdaki görüşmeler eklentiden",
+  "Install the Recall browser extension (apps/browser-extension; apps/browser-extension/firefox for Firefox) and click it on the meeting tab: only that call is heard, never your other tabs. Browsers are then left out of system audio.":
+    "Recall tarayıcı eklentisini (apps/browser-extension; Firefox için apps/browser-extension/firefox) kurun ve toplantı sekmesinde tıklayın: yalnızca o görüşme duyulur, diğer sekmeleriniz asla. Tarayıcılar böylece sistem sesinin dışında kalır.",
+  "Extension ID": "Eklenti kimliği",
+  "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Recall extension, so no other extension can send audio.":
+    "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Recall eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
+  "Speech model": "Konuşma modeli",
+  "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.":
+    "Canlı altyazı için. Büyük model daha doğru ama daha yavaştır; small her yeni bilgisayarda yetişir.",
+  "Accurate transcript after the meeting": "Toplantıdan sonra doğru döküm",
+  "Meeting languages": "Toplantı dilleri",
+  "Codes of the languages spoken in your meetings, e.g. en,tr,de,it,sq. The accurate transcript then picks among them, so a less common language such as Albanian is not mistaken for another. Empty: any language.":
+    "Toplantılarınızda konuşulan dillerin kodları, ör. en,tr,de,it,sq. Doğru döküm bu diller arasından seçer; böylece Arnavutça gibi daha az yaygın bir dil başka bir dille karıştırılmaz. Boş: her dil.",
+  "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.":
+    "Toplantı bitince ses bu bilgisayarda bu modelle yeniden yazıya dökülür; notlar, hafıza ve özet bu metni kullanır. Toplantının her saati için yaklaşık 10 dakika sürer. “Toplantı sesini kaydet” kapalıysa ses hemen ardından silinir.",
+  "Making the transcript accurate… The notes and summary follow in a few minutes.":
+    "Döküm düzeltiliyor… Notlar ve özet birkaç dakika içinde gelecek.",
+  "Speech engine": "Konuşma motoru",
+  "Live captions. auto uses the Apple Silicon GPU when available. groq sends each sentence's audio to Groq (large-v3-turbo, about 1 s): for languages the local models cannot follow live, such as Albanian. Needs the Groq key; the transcript after the meeting stays on this computer.":
+    "Canlı altyazı. auto, varsa Apple Silicon GPU'yu kullanır. groq her cümlenin sesini Groq'a gönderir (large-v3-turbo, yaklaşık 1 sn): Arnavutça gibi yerel modellerin canlı takip edemediği diller için. Groq anahtarı gerekir; toplantı sonrası döküm bu bilgisayarda kalır.",
+  "Groq key for cloud speech": "Bulut konuşma tanıma için Groq anahtarı",
+  "Free at console.groq.com. Only used when the speech engine is groq (or the AI provider is Groq).":
+    "console.groq.com'da ücretsiz. Yalnızca konuşma motoru groq olduğunda (veya yapay zeka sağlayıcısı Groq olduğunda) kullanılır.",
+  "Hugging Face token": "Hugging Face anahtarı",
+  "Enables telling speakers apart (pyannote).": "Konuşanları ayırt etmeyi sağlar (pyannote).",
+  "Recognise people you named": "Adlandırdığınız kişileri tanı",
+  "Keeps the voices of speakers you name (on this computer only), so later meetings show their names.":
+    "Adlandırdığınız konuşanların seslerini (yalnızca bu bilgisayarda) saklar; sonraki toplantılarda adları görünür.",
+  "Hide personal data in saved notes": "Kaydedilen notlarda kişisel verileri gizle",
+  "E-mails, phone and card numbers, IBANs, keys and passwords are replaced before saving.":
+    "E-postalar, telefon ve kart numaraları, IBAN'lar, anahtarlar ve parolalar kaydetmeden önce gizlenir.",
+  "Forget memories after (days)": "Belleği şu kadar gün sonra unut",
+  "Empty keeps everything.": "Boş bırakılırsa her şey saklanır.",
+  "Require disk encryption": "Disk şifrelemesi zorunlu olsun",
+  "Store nothing unless FileVault is on. The live transcript still works.":
+    "FileVault açık değilse hiçbir şey saklanmaz. Canlı döküm yine çalışır.",
+  "Start when a call begins": "Görüşme başlayınca başla",
+  "Listen only while another app (Zoom, Meet, Teams, ...) uses the microphone.":
+    "Yalnızca başka bir uygulama (Zoom, Meet, Teams, ...) mikrofonu kullanırken dinle.",
+  "End a meeting after silence (minutes)": "Sessizlikten sonra toplantıyı bitir (dakika)",
+  "The meeting is summarised and a new one starts. Empty never ends it automatically.":
+    "Toplantı özetlenir ve yenisi başlar. Boş bırakılırsa otomatik olarak bitmez.",
+  "Record meeting audio": "Toplantı sesini kaydet",
+  "Saves the audio next to the notes for playback. Recordings are not redacted.":
+    "Sesi tekrar dinlemek için notların yanına kaydeder. Kayıtlarda kişisel veriler gizlenmez.",
+  "AI provider": "Yapay zekâ sağlayıcısı",
+  "Free: groq, gemini, openrouter, mistral. Local: ollama, lmstudio. Transcripts are sent to the provider you pick.":
+    "Ücretsiz: groq, gemini, openrouter, mistral. Yerel: ollama, lmstudio. Dökümler seçtiğiniz sağlayıcıya gönderilir.",
+  "AI model": "Yapay zekâ modeli",
+  "Empty uses the provider's default (required for openrouter, lmstudio and custom).":
+    "Boş bırakılırsa sağlayıcının varsayılanı kullanılır (openrouter, lmstudio ve custom için gereklidir).",
+  "AI server URL": "Yapay zekâ sunucu adresi",
+  "Only for custom, OpenAI-compatible servers.": "Yalnızca OpenAI uyumlu özel sunucular için.",
+  "AI API key": "Yapay zekâ API anahtarı",
+  "Not needed for ollama or lmstudio.": "ollama veya lmstudio için gerekmez.",
+  "AI hesitation finder": "Yapay zekâ tereddüt bulucu",
+  "When a meeting ends, also list doubts the phrase list missed. Sends the transcript to your AI provider.":
+    "Toplantı bitince ifade listesinin kaçırdığı tereddütleri de listeler. Dökümü yapay zekâ sağlayıcınıza gönderir.",
+  "AI fact check": "Yapay zekâ doğruluk kontrolü",
+  "Also catch contradictions without numbers. Sends statements to your AI provider.":
+    "Sayı içermeyen çelişkileri de yakalar. İfadeleri yapay zekâ sağlayıcınıza gönderir.",
+  "Live action items": "Canlı yapılacaklar",
+  "Show tasks as they are said. Sends the transcript to your AI provider at most every 3 minutes.":
+    "Görevleri söylendikçe gösterir. Dökümü yapay zekâ sağlayıcınıza en fazla 3 dakikada bir gönderir.",
+  "Commitments and hesitations": "Taahhütler ve tereddütler",
+  "Lists promised dates and moments of doubt in the notes. Runs on this computer.":
+    "Verilen tarihleri ve tereddüt anlarını notlarda listeler. Bu bilgisayarda çalışır.",
+  "Check promised dates against Jira, GitHub and GitLab": "Verilen tarihleri Jira, GitHub ve GitLab ile karşılaştır",
+  "Warns when someone promises a date while holding many open Jira, GitHub or GitLab issues, or a full sprint. Sends their name to those services.":
+    "Birisi çok sayıda açık Jira, GitHub veya GitLab işi ya da dolu bir sprint varken tarih verirse uyarır. Kişinin adını bu servislere gönderir.",
+  "Propose after each meeting": "Her toplantıdan sonra öner",
+  "Comma-separated: calendar, slack, email (recap to the calendar attendees), notion, jira:PROJECT, github:owner/name, gitlab:group/name. Each still needs your approval.":
+    "Virgülle ayrılmış: calendar, slack, email (takvim katılımcılarına özet), notion, jira:PROJE, github:sahip/ad, gitlab:grup/ad. Her biri yine de onayınızı gerektirir.",
+  "GitHub repositories": "GitHub depoları",
+  "Comma-separated owner/name; issues can only be proposed for these.": "Virgülle ayrılmış sahip/ad; kayıtlar yalnızca bunlar için önerilebilir.",
+  "GitHub token": "GitHub anahtarı",
+  "Fine-grained token with Issues: read and write.": "Issues için okuma ve yazma izni olan ayrıntılı anahtar.",
+  "GitLab projects": "GitLab projeleri",
+  "Comma-separated group/name; issues can only be proposed for these.": "Virgülle ayrılmış grup/ad; kayıtlar yalnızca bunlar için önerilebilir.",
+  "GitLab address": "GitLab adresi",
+  "Leave empty for gitlab.com; https://… for a self-managed GitLab.": "gitlab.com için boş bırakın; kendi GitLab sunucunuz için https://…",
+  "GitLab token": "GitLab anahtarı",
+  "Personal or project access token with the api scope.": "api kapsamına sahip kişisel veya proje erişim anahtarı.",
+  "Slack webhook URL": "Slack webhook adresi",
+  "Incoming-webhook URL of the one channel messages may go to.": "Mesajların gidebileceği tek kanalın gelen webhook adresi.",
+  "Jira site": "Jira sitesi",
+  "Jira account e-mail": "Jira hesap e-postası",
+  "Jira API token": "Jira API anahtarı",
+  "From id.atlassian.com &gt; Security &gt; API tokens.": "id.atlassian.com &gt; Security &gt; API tokens bölümünden.",
+  "Jira projects": "Jira projeleri",
+  "Comma-separated project keys, e.g. WEB,OPS.": "Virgülle ayrılmış proje anahtarları, ör. WEB,OPS.",
+  "Notion integration token": "Notion entegrasyon anahtarı",
+  "From notion.so/profile/integrations. Share the parent page with the integration.":
+    "notion.so/profile/integrations adresinden. Üst sayfayı entegrasyonla paylaşın.",
+  "Notion parent page": "Notion üst sayfası",
+  "Link or id of the page meeting summaries go under.": "Toplantı özetlerinin altına ekleneceği sayfanın bağlantısı veya kimliği.",
+  "Google client ID": "Google istemci kimliği",
+  "For calendar, meeting titles and recap e-mails: an OAuth client of type 'Desktop app' in Google Cloud.":
+    "Takvim, toplantı başlıkları ve özet e-postaları için: Google Cloud'da 'Desktop app' türünde bir OAuth istemcisi.",
+  "Google client secret": "Google gizli anahtarı",
+  "Google refresh token": "Google yenileme anahtarı",
+  "Save the client ID and secret, then use Connect Google to fill this in.":
+    "İstemci kimliğini ve gizli anahtarı kaydedin, ardından bunu doldurmak için Google'ı bağla'yı kullanın.",
+  "Google calendar": "Google takvimi",
+  "Empty uses your primary calendar.": "Boş bırakılırsa birincil takviminiz kullanılır.",
+  Translation: "Çeviri",
+  "Meeting template": "Toplantı şablonu",
+  "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.":
+    "Yapay zekâ özetine toplantı türüne göre bölümler ekler: standup (yapılanlar, sıradakiler, engeller), one_on_one, sales, interview, retro. auto, türü takvim başlığından seçer.",
+  "Copy follow-up email": "Toplantı sonrası e-postayı kopyala",
+  "Open in mail app": "E-posta uygulamasında aç",
+  "Copied.": "Kopyalandı.",
+  "Could not copy; use Open in mail app.": "Kopyalanamadı; E-posta uygulamasında aç'ı kullanın.",
+  "No mail app answered.": "Hiçbir e-posta uygulaması yanıt vermedi.",
+  "Copy diagnostics": "Tanılama bilgilerini kopyala",
+  Diagnostics: "Tanılama bilgileri",
+  "Versions, settings without secrets, problems and recent engine log lines, for a bug report.":
+    "Hata bildirimi için sürümler, gizli bilgiler olmadan ayarlar, sorunlar ve son motor günlüğü satırları.",
+  "Diagnostics copied. Paste them into your bug report; secrets and personal data are left out.":
+    "Tanılama bilgileri kopyalandı. Hata bildiriminize yapıştırın; gizli bilgiler ve kişisel veriler dahil değildir.",
+  "Copy the diagnostics below into your bug report.": "Aşağıdaki tanılama bilgilerini hata bildiriminize kopyalayın.",
+  "Fact-check shared slides": "Paylaşılan slaytları doğrula",
+  "Every 10 s, reads the meeting window (never other windows) with on-device text recognition and checks the figures on shared slides against memory. macOS; needs Screen Recording.":
+    "10 saniyede bir toplantı penceresini (asla başka pencereleri değil) cihaz üzerindeki metin tanıma ile okur ve paylaşılan slaytlardaki rakamları bellekle karşılaştırır. macOS; Ekran Kaydı izni gerekir.",
+  "Live translation": "Canlı çeviri",
+  "Shows each line translated into this language under the transcript. Sends every line to your AI provider.":
+    "Her satırın bu dile çevirisini dökümün altında gösterir. Her satırı yapay zekâ sağlayıcınıza gönderir.",
+  Summary: "Özet",
+  Conversation: "Konuşma",
+  "Save conversation": "Konuşmayı kaydet",
+  "Saved.": "Kaydedildi.",
+  "Back to the live meeting": "Canlı toplantıya dön",
+  "No summary yet. End the meeting and the AI summary appears here.": "Henüz özet yok. Toplantıyı bitirin, yapay zekâ özeti burada görünür.",
+  "End meeting and summarize": "Toplantıyı bitir ve özetle",
+};
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-17T22:39:56.350Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

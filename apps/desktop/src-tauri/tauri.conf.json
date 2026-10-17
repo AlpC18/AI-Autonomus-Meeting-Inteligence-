@@ -14,8 +14,10 @@
     "windows": [
       {
         "title": "Recall",
-        "width": 800,
-        "height": 600,
+        "width": 1080,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 520,
         "label": "main"
       },
       {

@@ -51,7 +51,7 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
         const value = drafts[field.key] ?? (field.kind === "secret" ? "" : (settings.values[field.key] ?? ""));
         return (
           <label key={field.key} className="flex items-center gap-2 text-sm">
-            <span className="w-32 text-zinc-700">{t(field.label)}</span>
+            <span className="w-40 shrink-0 text-zinc-700">{t(field.label)}</span>
             {field.kind === "choice" ? (
               <select value={value} onChange={(event) => set(field.key, event.target.value)} className={INPUT}>
                 {field.options.map((option) => (
@@ -107,9 +107,9 @@ export function SetupChecklist({ steps, settings, saved, openSettings, dismiss }
       <h2 className="text-lg font-semibold">{t("Get started")}</h2>
       <ol className="mt-2 flex flex-col gap-3">
         {steps.map((step) => (
-          <li key={step.id} className="rounded-md border border-zinc-200 p-3">
+          <li key={step.id} className="rounded-xl border border-zinc-200 bg-surface p-5">
             <p className="font-medium">
-              <span aria-label={step.done ? t("Done") : t("To do")}>{step.done ? "✓" : "○"}</span> {t(step.title)}
+              <span aria-label={step.done ? t("Done") : t("To do")} className={step.done ? "text-accent" : "text-zinc-500"}>{step.done ? "✓" : "○"}</span> {t(step.title)}
             </p>
             <p className="mt-1 text-sm text-zinc-700">{t(step.help)}</p>
             {step.id === "permissions" ? (

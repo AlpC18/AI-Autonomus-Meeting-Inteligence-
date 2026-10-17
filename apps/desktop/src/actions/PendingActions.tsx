@@ -179,7 +179,7 @@ export function PendingActions() {
       {actions.length === 0 && <p className="mt-2 text-sm text-zinc-600">{t("Nothing is waiting for you.")}</p>}
       <ul className="mt-2 flex flex-col gap-3">
         {actions.map((action) => (
-          <li key={action.id} className="rounded-lg border border-zinc-300 p-3">
+          <li key={action.id} className="rounded-xl border border-zinc-200 bg-surface p-4">
             <p className="text-xs text-zinc-600">{action.heading}</p>
             {action.title && <h3 className="font-semibold">{action.title}</h3>}
             {action.detail && <p className="text-xs text-zinc-600">{action.detail}</p>}
@@ -191,7 +191,7 @@ export function PendingActions() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => decide(action.id, true)}
-                className="cursor-pointer rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy === action.id ? t("Working…") : action.approveLabel}
               </button>
@@ -199,7 +199,7 @@ export function PendingActions() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => decide(action.id, false)}
-                className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("Reject")}
               </button>

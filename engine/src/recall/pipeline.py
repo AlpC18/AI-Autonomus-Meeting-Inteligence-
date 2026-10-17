@@ -11,12 +11,14 @@ import asyncio
 import contextlib
 import functools
 import logging
+import multiprocessing
 import os
 import signal
 import sys
 import threading
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import numpy as np
 
@@ -45,6 +47,7 @@ from recall.llm import Llm, LlmSettings, connect
 from recall.memory.embedder import DEFAULT_MODEL, load_embedder
 from recall.memory.scope import TenantScope
 from recall.memory.store import MemoryHit, MemoryStore, ScopedMemory
+from recall.polish import in_own_process, polish_recording
 from recall.privacy import storage_settings, warn_if_disk_unencrypted
 from recall.session import MeetingSession, Watcher, queue_configured_proposals
 from recall.transcript import Segment
@@ -144,8 +147,11 @@ class Engine:
         check: Callable[[Segment], FactCheckAlert | None] | None = None,
         publish_alert: Callable[[FactCheckAlert], None] | None = None,
         relabel: Callable[[Segment], Segment] | None = None,
+        live_idle: Any = None,
     ) -> None:
         self._transcriber = transcriber
+        # Cleared while transcribing, so the after-meeting redo gives way (recall.polish).
+        self._live_idle = live_idle
         self._publish = publish
         self._diarizer = diarizer
         self._remember = remember
@@ -168,7 +174,13 @@ class Engine:
         in either step is logged and does not interrupt the live transcript.
         """
         async with self._model_lock:
-            segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
+            if self._live_idle is not None:
+                self._live_idle.clear()
+            try:
+                segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
+            finally:
+                if self._live_idle is not None:
+                    self._live_idle.set()
             if segments and self._diarizer is not None and source != "mic":
                 turns = await asyncio.to_thread(self._diarizer.diarize, utterance)
                 segments = [label_segment(segment, turns) for segment in segments]
@@ -270,7 +282,14 @@ async def run(settings: Settings) -> int:
     logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     try:
         transcriber = await asyncio.to_thread(
-            load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
+            functools.partial(
+                load_transcriber,
+                settings.asr_backend,
+                settings.whisper_model,
+                settings.model_dir,
+                languages=settings.meeting_languages,
+                api_key=_speech_key(),
+            )
         )
     except OSError as error:
         # Model downloads fail as OSError subclasses (no connection, TLS errors).
@@ -319,6 +338,8 @@ async def run(settings: Settings) -> int:
 
         main_task = asyncio.current_task()
         assert main_task is not None
+        live_idle = multiprocessing.get_context("spawn").Event()
+        live_idle.set()
         session = MeetingSession(
             settings,
             memory=memory,
@@ -329,6 +350,21 @@ async def run(settings: Settings) -> int:
             stop=main_task.cancel,
             open_scope=open_scope,
             watchers=await _watchers(settings, stack, llm),
+            polish=(
+                in_own_process(
+                    functools.partial(
+                        polish_recording,
+                        # The after-meeting transcript always stays on this computer.
+                        backend="auto" if settings.asr_backend == "groq" else settings.asr_backend,
+                        model_size=settings.final_model,
+                        model_dir=settings.model_dir,
+                        languages=settings.meeting_languages,
+                    ),
+                    live_idle,
+                )
+                if settings.final_model
+                else None
+            ),
         )
         check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
@@ -342,6 +378,7 @@ async def run(settings: Settings) -> int:
                 check,
                 server.publish_alert,
                 session.relabel,
+                live_idle,
             )
             idle = asyncio.create_task(session.watch_idle())
             slides = _watch_slides(settings, engine) if check is not None else None
@@ -482,3 +519,12 @@ def main() -> None:
         sys.exit(str(error))
     except KeyboardInterrupt:
         sys.exit(0)
+
+
+def _speech_key() -> str | None:
+    """The Groq key for cloud speech: its own, or the AI provider's when that is Groq."""
+    if os.environ.get("GROQ_API_KEY"):
+        return os.environ["GROQ_API_KEY"]
+    if os.environ.get("RECALL_LLM_PROVIDER", "").strip().lower() == "groq":
+        return os.environ.get("RECALL_LLM_API_KEY") or None
+    return None
