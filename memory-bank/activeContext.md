@@ -1,14 +1,10 @@
 # Active Context
 
-_Last updated: 2026-10-15_
+_Last updated: 2026-10-17_
 
 ## Current focus
 
-Phase 6 (integration) is on branch `feat/phase-6-integration`, open as PR #5 stacked on PR #4: per-speaker transcript lines, Slack, Google Calendar and Jira connectors, notes export, and a live end-to-end run. On 2026-10-14 eight features modelled on Meetily, Buzz, Screenpipe and Anarlog were added on branch `feat/phase-7-competitor-features` (PR #6, stacked on #5): AI summaries with any provider, mlx speech backend, live notepad, speaker renaming, redaction + retention, VTT + watch folder, recording import into memory, and the past-meetings viewer. Phase 5 is PR #4, stacked on PR #2 (`feat/phase-4-fact-check-hud`), which is stacked on PR #1 (`feat/phase-3-memory-sidecar`). `main` holds Phases 1 and 2.
-
-Phase 8 (product completion) is on `feat/phase-8-product`, PR #7 stacked on #6: CI, in-app settings with Keychain secrets, packaged release app, meeting lifecycle (end meeting → summary, proposals, next meeting; idle end), ask your meetings, AI fact check, recording, duplicate-speaker merge, calendar titles, auto-start on calls, Windows/Linux loopback.
-
-Phase 9 (experience) is on `feat/phase-9-experience`, stacked on #7: voices across meetings, pre-meeting brief, first-run checklist, recap e-mail, Obsidian/Notion export, live action items, talk time, required disk encryption, auto-update + release workflow, Windows/Linux call detection, UI tests + coverage floors. Merging the stacked PRs into `main` is still the owner's step.
+All phase PRs (#1-#12) are merged into `main` and tagged v0.1.0 (macOS arm64 build, draft release, unsigned until the Apple secrets exist). Phase 13 (`feat/phase-13-suggestions`): spoken Turkish numbers in fact checks, housekeeping, and these notes brought up to date.
 
 ## What works end to end
 
@@ -24,8 +20,7 @@ Phase 9 (experience) is on `feat/phase-9-experience`, stacked on #7: voices acro
 
 ## Waiting on the owner
 
-- **Add GitHub secret `TAURI_SIGNING_PRIVATE_KEY`** (contents of `~/.tauri/continuum-updater.key`; back that file up, losing it means installed apps can't update). Apple signing secrets are optional.
-- **Merge PRs #1-#8** in order (blocked for the assistant by the permission check).
+- **Apple signing secrets** (`APPLE_CERTIFICATE`, ...) for a signed, notarised app; then publish the v0.1.0 draft release. Back up `~/.tauri/continuum-updater.key`: losing it means installed apps can't update.
 
 - **Revoke the first Hugging Face token** that was shared and then withdrawn.
 - **`engine/.env` still lacks** `CONTINUUM_TENANT_ID` + `CONTINUUM_PROJECT_ID` (memory and fact checking are off without them), `CONTINUUM_GITHUB_REPOS` and `GITHUB_TOKEN`, `CONTINUUM_SLACK_WEBHOOK_URL`, the three `GOOGLE_*` values, and `CONTINUUM_JIRA_SITE` + `JIRA_EMAIL` + `JIRA_API_TOKEN` + `CONTINUUM_JIRA_PROJECTS` (actions).
@@ -35,17 +30,15 @@ Phase 9 (experience) is on `feat/phase-9-experience`, stacked on #7: voices acro
 
 ## Next up
 
-- Speaker names in a real multi-person meeting (so far verified on a recording, not live capture); short utterances with two voices get one name.
-- Run a summary against a real provider; consider an automatic summary when a meeting ends.
-- Optional recording of live meetings for playback (off by design today; only imported recordings play).
-- An in-app Google consent flow.
+- Speaker names in a real multi-person call (so far verified on a recording, not live capture); short utterances with two voices get one name.
+- Run a summary against a cloud provider (only a local model so far).
+- Release builds for Windows and Linux (the release workflow builds macOS arm64 only).
+
+Already done (older notes listed them as open): in-app Google consent (Settings → Connect Google), live recording with playback in the Library (`CONTINUUM_RECORD_AUDIO`), picking or switching the project from the app (Settings and the meeting bar), the engine bundled in release builds (verified 2026-10-17: the v0.1.0 app installs its locked environment from a clean state and imports the engine), and a summary when a meeting ends.
 
 ## Open questions
 
-- System audio also captures unrelated media playing on the machine; limit capture to the meeting app?
-- How the user picks tenant/project per meeting (today: environment variables).
-- Bundling the engine for release builds.
-- Windows and Linux system audio and overlay behaviour.
+- Encrypt memory at the application level? Not done: notes, recordings and voices are plain files by design, so encrypting only the vector store would add little. The "only store on an encrypted disk" setting covers it.
 
 ## Recent decisions
 

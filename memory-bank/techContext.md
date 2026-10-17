@@ -54,5 +54,5 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MO
 - System audio captures everything the machine plays, so unrelated media is transcribed and stored too.
 - Only one process can open the memory database at a time, so search from another process needs the engine stopped.
 - Memory is stored unencrypted in `~/.continuum/memory` (folder readable by the user only).
-- The engine is not bundled into release builds; the app needs `uv` on its PATH and the repo's `engine/` folder.
+- Release builds bundle the engine sources, `uv.lock` and a `uv` binary (`tauri.bundle.conf.json`); the first start installs Python 3.12 and the locked environment into the app's data folder, which needs an internet connection once. Dev builds use `uv` from the PATH and the repo's `engine/` folder.
 - The spec links Buzz as `chime-vc/buzz`; verify the correct upstream before using it.
