@@ -66,7 +66,7 @@ function installedVersion(path) {
 
 async function fetchUv(target) {
   const windows = target.includes("windows");
-  const out = join(desktop, "src-tauri", "binaries", `uv-${target}${windows ? ".exe" : ""}`);
+  const out = join(desktop, "src-tauri", "binaries", `recall-uv-${target}${windows ? ".exe" : ""}`);
   // A binary for another platform cannot be run to check its version, so it is fetched again.
   if (target === hostTarget() && installedVersion(out).includes(` ${UV_VERSION}`)) {
     console.log(`uv ${UV_VERSION} for ${target} already present`);

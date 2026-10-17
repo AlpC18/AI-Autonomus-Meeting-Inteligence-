@@ -13,9 +13,21 @@
 
 name: Release
 
+# On pull requests that touch packaging (and by hand), the same builds run
+# without publishing, and each installer is installed on a fresh machine and
+# its bundled engine started.
+
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - apps/desktop/src-tauri/**
+      - apps/desktop/scripts/**
+      - engine/pyproject.toml
+      - engine/uv.lock
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -23,6 +35,7 @@ permissions:
 jobs:
   release:
     name: Draft release
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       id: ${{ steps.create.outputs.result }}
@@ -49,6 +62,8 @@ jobs:
   build:
     name: ${{ matrix.name }}
     needs: release
+    # Also runs when the release job is skipped (pull requests).
+    if: ${{ !cancelled() && needs.release.result != 'failure' }}
     strategy:
       fail-fast: false
       matrix:
@@ -121,4 +136,39 @@ jobs:
           projectPath: apps/desktop
           releaseId: ${{ needs.release.outputs.id }}
           includeUpdaterJson: true
-          args: --target ${{ matrix.target }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json
+          args: >-
+            --target ${{ matrix.target }} --config src-tauri/tauri.bundle.conf.json
+            ${{ github.event_name == 'push' && '--config src-tauri/tauri.release.conf.json' || '' }}
+
+      # Install what users download and start its engine as the app does.
+      - name: Rosetta, to run the Intel build on an Apple Silicon runner
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+      - name: Install and start the engine (macOS)
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        run: |
+          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Recall.app/Contents"
+          node scripts/smoke-bundle.mjs "$app/Resources/engine" "$app/MacOS/recall-uv"
+      - name: Install and start the engine (Linux)
+        if: runner.os == 'Linux'
+        working-directory: apps/desktop
+        run: |
+          deb=$(ls src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb)
+          sudo apt-get install -y "./$deb"
+          files=$(dpkg -L "$(dpkg-deb -f "$deb" Package)")
+          engine=$(dirname "$(echo "$files" | grep '/engine/pyproject.toml$')")
+          uv=$(echo "$files" | grep '/recall-uv$')
+          node scripts/smoke-bundle.mjs "$engine" "$uv"
+      - name: Install and start the engine (Windows)
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem "src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe" | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait
+          $dir = Join-Path $env:LOCALAPPDATA "Recall"
+          $engine = (Get-ChildItem $dir -Recurse -Filter pyproject.toml | Where-Object { $_.Directory.Name -eq "engine" } | Select-Object -First 1).DirectoryName
+          $uv = (Get-ChildItem $dir -Recurse -Filter recall-uv.exe | Select-Object -First 1).FullName
+          node scripts/smoke-bundle.mjs $engine $uv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

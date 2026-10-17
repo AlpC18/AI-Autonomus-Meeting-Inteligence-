@@ -5,7 +5,7 @@
   },
   "bundle": {
     "externalBin": [
-      "binaries/uv"
+      "binaries/recall-uv"
     ],
     "resources": {
       "../../../engine/src/recall/": "engine/src/recall/",

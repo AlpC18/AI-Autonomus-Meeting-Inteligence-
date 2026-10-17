@@ -210,7 +210,7 @@ pub fn use_bundle(resource_dir: &Path, data_dir: &Path, cache_dir: &Path) -> boo
     let engine_dir = resource_dir.join("engine");
     let uv = std::env::current_exe().ok().and_then(|exe| {
         exe.parent()
-            .map(|dir| dir.join(if cfg!(windows) { "uv.exe" } else { "uv" }))
+            .map(|dir| dir.join(if cfg!(windows) { "recall-uv.exe" } else { "recall-uv" }))
     });
     let (Some(uv), true) = (uv, engine_dir.join("pyproject.toml").is_file()) else {
         return false;
@@ -330,7 +330,7 @@ mod tests {
     fn bundled_engine_never_writes_inside_the_app() {
         let bundle = Bundle {
             engine_dir: PathBuf::from("/App.app/Contents/Resources/engine"),
-            uv: PathBuf::from("/App.app/Contents/MacOS/uv"),
+            uv: PathBuf::from("/App.app/Contents/MacOS/recall-uv"),
             data_dir: PathBuf::from("/data"),
             cache_dir: PathBuf::from("/cache"),
         };
