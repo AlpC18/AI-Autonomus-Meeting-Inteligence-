@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-//! Desktop shell for Project Continuum.
+//! Desktop shell for Project Recall.
 //!
 //! Builds the Tauri application, registers frontend-callable commands, and
 //! runs the Python engine for as long as the app is open. All behaviour lives
@@ -30,12 +30,12 @@ fn start_engine(app: &tauri::App) {
         return;
     }
     let Some(dir) = engine::engine_dir() else {
-        eprintln!("Continuum engine not started: set CONTINUUM_ENGINE_DIR to its folder.");
+        eprintln!("Recall engine not started: set RECALL_ENGINE_DIR to its folder.");
         return;
     };
     if let Err(error) = app.state::<EngineSlot>().restart(&dir) {
         eprintln!(
-            "Continuum engine could not be started from {}: {error}",
+            "Recall engine could not be started from {}: {error}",
             dir.display()
         );
     }

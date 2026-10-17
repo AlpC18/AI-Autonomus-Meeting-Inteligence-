@@ -12,12 +12,12 @@ import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from continuum.actions import jira
-from continuum.actions.approval import approve
-from continuum.actions.jira import JiraAccess, JiraIssue
-from continuum.actions.server import mcp
-from continuum.actions.settings import ActionSettings
-from continuum.actions.store import ActionStore
+from recall.actions import jira
+from recall.actions.approval import approve
+from recall.actions.jira import JiraAccess, JiraIssue
+from recall.actions.server import mcp
+from recall.actions.settings import ActionSettings
+from recall.actions.store import ActionStore
 
 SITE = "https://acme.atlassian.net"
 ACCESS = JiraAccess(SITE, "pm@acme.test", "api-token-123")
@@ -157,11 +157,11 @@ def test_malformed_issues_and_sites_are_rejected(build) -> None:
 
 
 def test_settings_need_site_email_and_token() -> None:
-    partial = {"CONTINUUM_JIRA_SITE": SITE + "/", "JIRA_EMAIL": "pm@acme.test"}
+    partial = {"RECALL_JIRA_SITE": SITE + "/", "JIRA_EMAIL": "pm@acme.test"}
 
     assert ActionSettings.from_env(partial).jira is None
     configured = ActionSettings.from_env(
-        {**partial, "JIRA_API_TOKEN": "t", "CONTINUUM_JIRA_PROJECTS": "WEB, ops ,"}
+        {**partial, "JIRA_API_TOKEN": "t", "RECALL_JIRA_PROJECTS": "WEB, ops ,"}
     )
     assert configured.jira is not None and configured.jira.site == SITE
     assert configured.jira_projects == frozenset({"WEB", "OPS"})
@@ -170,21 +170,21 @@ def test_settings_need_site_email_and_token() -> None:
 async def test_tool_queues_allowed_issues_and_refuses_others(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_JIRA_SITE", SITE)
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_JIRA_SITE", SITE)
     monkeypatch.setenv("JIRA_EMAIL", "pm@acme.test")
     monkeypatch.setenv("JIRA_API_TOKEN", "t")
-    monkeypatch.setenv("CONTINUUM_JIRA_PROJECTS", "WEB")
+    monkeypatch.setenv("RECALL_JIRA_PROJECTS", "WEB")
 
     async with Client(mcp) as client:
         await client.call_tool(
-            "continuum_propose_jira_issue", {"project": "WEB", "summary": "Refactor payment API"}
+            "recall_propose_jira_issue", {"project": "WEB", "summary": "Refactor payment API"}
         )
         with pytest.raises(ToolError, match="not allowed"):
-            await client.call_tool("continuum_propose_jira_issue", {"project": "HR", "summary": "x"})
+            await client.call_tool("recall_propose_jira_issue", {"project": "HR", "summary": "x"})
         monkeypatch.delenv("JIRA_API_TOKEN")
         with pytest.raises(ToolError, match="Jira is not configured"):
-            await client.call_tool("continuum_propose_jira_issue", {"project": "WEB", "summary": "x"})
+            await client.call_tool("recall_propose_jira_issue", {"project": "WEB", "summary": "x"})
 
     pending = ActionStore(tmp_path / "actions.db").pending()
     assert [(action.kind, action.payload["project"]) for action in pending] == [(jira.KIND, "WEB")]
@@ -193,11 +193,11 @@ async def test_tool_queues_allowed_issues_and_refuses_others(
 async def test_tool_explains_a_misconfigured_site(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_JIRA_SITE", "https://jira.evil.example")
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_JIRA_SITE", "https://jira.evil.example")
     monkeypatch.setenv("JIRA_EMAIL", "pm@acme.test")
     monkeypatch.setenv("JIRA_API_TOKEN", "t")
 
     async with Client(mcp) as client:
         with pytest.raises(ToolError, match="atlassian.net"):
-            await client.call_tool("continuum_propose_jira_issue", {"project": "WEB", "summary": "x"})
+            await client.call_tool("recall_propose_jira_issue", {"project": "WEB", "summary": "x"})

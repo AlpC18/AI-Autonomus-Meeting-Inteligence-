@@ -32,17 +32,17 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
 cd engine && uv sync --all-extras          # --all-extras adds pyannote + torch
 uv run pytest                             # downloads Whisper "tiny" once
 cp .env.example .env                      # then fill in HF_TOKEN etc.
-uv run --env-file .env continuum-engine   # run the engine alone (the desktop app normally starts it)
-uv run --env-file .env continuum-memory-search "what was the budget"   # engine must be stopped
-uv run continuum-actions                  # MCP server over stdio
-uv run --env-file .env continuum-actions-review list            # or: approve ID / reject ID
+uv run --env-file .env recall-engine   # run the engine alone (the desktop app normally starts it)
+uv run --env-file .env recall-memory-search "what was the budget"   # engine must be stopped
+uv run recall-actions                  # MCP server over stdio
+uv run --env-file .env recall-actions-review list            # or: approve ID / reject ID
 ```
 
 ## Configuration
 
-Environment variables, documented in `engine/.env.example`: `HF_TOKEN`, `CONTINUUM_SOURCES`, `CONTINUUM_WHISPER_MODEL`, `CONTINUUM_MODEL_DIR`, `CONTINUUM_WS_PORT`, `CONTINUUM_TENANT_ID`, `CONTINUUM_PROJECT_ID`, `CONTINUUM_MEMORY_DIR`, `CONTINUUM_GITHUB_REPOS`, `GITHUB_TOKEN`, `CONTINUUM_ACTIONS_DB`. The desktop app reads `CONTINUUM_ENGINE_DIR` to locate the engine.
+Environment variables, documented in `engine/.env.example`: `HF_TOKEN`, `RECALL_SOURCES`, `RECALL_WHISPER_MODEL`, `RECALL_MODEL_DIR`, `RECALL_WS_PORT`, `RECALL_TENANT_ID`, `RECALL_PROJECT_ID`, `RECALL_MEMORY_DIR`, `RECALL_GITHUB_REPOS`, `GITHUB_TOKEN`, `RECALL_ACTIONS_DB`. The desktop app reads `RECALL_ENGINE_DIR` to locate the engine.
 
-Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MODEL_DIR` elsewhere and make `engine/.venv` a symlink.
+Heavy files can live off the system disk: point `UV_CACHE_DIR` and `RECALL_MODEL_DIR` elsewhere and make `engine/.venv` a symlink.
 
 ## Known constraints
 
@@ -53,6 +53,6 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MO
 - Fact checking compares figures with a known unit or currency (digits, spelled-out English and Turkish numbers, dates with a month name). Contradictions without numbers need the opt-in AI check (`factcheck/semantic.py`) and a configured provider. Turkish number words with suffixes ("dolarlık") are not read.
 - System audio captures everything the machine plays, so unrelated media is transcribed and stored too.
 - Only one process can open the memory database at a time, so search from another process needs the engine stopped.
-- Memory is stored unencrypted in `~/.continuum/memory` (folder readable by the user only).
+- Memory is stored unencrypted in `~/.recall/memory` (folder readable by the user only).
 - Release builds bundle the engine sources, `uv.lock` and a `uv` binary (`tauri.bundle.conf.json`); the first start installs Python 3.12 and the locked environment into the app's data folder, which needs an internet connection once. Dev builds use `uv` from the PATH and the repo's `engine/` folder.
 - The spec links Buzz as `chime-vc/buzz`; verify the correct upstream before using it.

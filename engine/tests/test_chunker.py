@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from continuum.audio.chunker import UtteranceChunker
+from recall.audio.chunker import UtteranceChunker
 
 RATE = 16_000
 BLOCK = RATE // 10  # 100 ms

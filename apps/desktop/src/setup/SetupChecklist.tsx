@@ -70,7 +70,7 @@ function StepForm({ step, settings, saved }: { step: SetupStep; settings: Settin
                 className={`${INPUT} flex-1`}
               />
             )}
-            {field.key === "CONTINUUM_NOTES_DIR" && (
+            {field.key === "RECALL_NOTES_DIR" && (
               <button
                 type="button"
                 className={BUTTON}

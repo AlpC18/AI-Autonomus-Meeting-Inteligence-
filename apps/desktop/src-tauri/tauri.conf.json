@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Continuum",
+  "productName": "Recall",
   "version": "0.1.0",
-  "identifier": "com.continuum.desktop",
+  "identifier": "com.recall.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,14 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "Continuum",
+        "title": "Recall",
         "width": 800,
         "height": 600,
         "label": "main"
       },
       {
         "label": "hud",
-        "title": "Continuum fact check",
+        "title": "Recall fact check",
         "url": "index.html",
         "width": 1,
         "height": 1,

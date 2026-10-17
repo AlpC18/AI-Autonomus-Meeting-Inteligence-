@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
-from continuum.actions.google_login import SCOPES, authorize
+from recall.actions.google_login import SCOPES, authorize
 
 
 def browser(code: str | None = "the-code", state: str | None = None, error: str | None = None):

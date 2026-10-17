@@ -12,8 +12,8 @@ import sys
 
 import numpy as np
 
-from continuum.audio.blocks import SAMPLE_RATE
-from continuum.audio.pulse_apps import (
+from recall.audio.blocks import SAMPLE_RATE
+from recall.audio.pulse_apps import (
     BROWSER_BINARIES,
     NATIVE_MEETING_BINARIES,
     pulse_app_blocks,

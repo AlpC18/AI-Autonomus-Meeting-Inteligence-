@@ -42,7 +42,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         # Tests that need macOS `say` or Apple Silicon skip themselves here,
         # so the floor sits below the 78% measured on a Mac. Raise, never lower.
-        run: uv run --with pytest-cov pytest -q --cov=continuum --cov-report=term --cov-fail-under=70
+        run: uv run --with pytest-cov pytest -q --cov=recall --cov-report=term --cov-fail-under=70
       - name: Test
         if: matrix.os != 'ubuntu-latest'
         timeout-minutes: 15

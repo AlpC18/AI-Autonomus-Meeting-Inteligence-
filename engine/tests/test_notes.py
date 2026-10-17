@@ -12,9 +12,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from continuum.notes import MeetingNotes, clock, markdown_lines, speaker_runs, srt
-from continuum.transcribe_cli import decode_audio, render
-from continuum.transcript import Segment, Word
+from recall.notes import MeetingNotes, clock, markdown_lines, speaker_runs, srt
+from recall.transcribe_cli import decode_audio, render
+from recall.transcript import Segment, Word
 
 SOLO = Segment("mic", 3725.0, 3727.5, "The budget is  $35,000.", (), "me")
 DUET = Segment(

@@ -6,7 +6,7 @@
 
 - Git repository initialised (no commits yet), MIT `LICENSE`, root `.gitignore`, `README.md`.
 - `apps/desktop`: Tauri 2 + React/TS shell. One Rust command (`app_info`) displayed by the window. `hud/` module placeholder.
-- `engine`: Python project with `audio`, `diarization`, `memory`, `actions` packages. FastMCP server with one tool (`continuum_health`) and a `continuum-actions` console script.
+- `engine`: Python project with `audio`, `diarization`, `memory`, `actions` packages. FastMCP server with one tool (`recall_health`) and a `recall-actions` console script.
 - `memory-bank/` (6 files) and `knowledge/history/` (2 logs) created.
 - Verified: `cargo check` and `cargo clippy -- -D warnings` clean, `pnpm typecheck` clean, `uv run pytest` 1 passed, `pnpm tauri dev` window shows `desktop v0.1.0`, no `unsafe`, SPDX header on every source file.
 
@@ -16,7 +16,7 @@
 - `audio`: microphone capture (sounddevice), system audio capture (ScreenCaptureKit), utterance chunker, faster-whisper transcriber with word timestamps.
 - `diarization`: source-based speaker labels; pyannote adapter and word-to-turn assignment.
 - `transport`: loopback WebSocket server with Origin allowlist.
-- `pipeline`: `continuum-engine` entry point; settings from environment (`engine/.env.example`).
+- `pipeline`: `recall-engine` entry point; settings from environment (`engine/.env.example`).
 - `hud`: live transcript feed in the desktop window with auto-reconnect.
 - Verified: `uv run pytest` 21 passed (includes a real Whisper transcription of synthesised speech), `pnpm typecheck` clean, `cargo clippy -- -D warnings` clean, live run on macOS showed a spoken sentence in the app window.
 - Not verified: pyannote against the real model (no token yet); a real multi-person meeting; long-running sessions.
@@ -62,10 +62,10 @@
 
 ### Phase 7 (part) — Competitor features (2026-10-14, branch `feat/phase-7-competitor-features`, PR #6)
 
-- `llm` + `summary` + `continuum-summarize`: summary, decisions and action items from any OpenAI-compatible provider (Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI, custom) or Claude via the Anthropic SDK (`claude` extra); replies parsed as untrusted data; `--propose` queues through `actions/proposals.py`, the same validation the MCP tools use.
-- `audio/transcriber`: `CONTINUUM_ASR_BACKEND` with an mlx-whisper backend (`apple` extra). Parakeet was measured (1.00 s per 8 s piece, no Turkish) and dropped.
+- `llm` + `summary` + `recall-summarize`: summary, decisions and action items from any OpenAI-compatible provider (Groq, Gemini, OpenRouter, Mistral, Ollama, LM Studio, OpenAI, custom) or Claude via the Anthropic SDK (`claude` extra); replies parsed as untrusted data; `--propose` queues through `actions/proposals.py`, the same validation the MCP tools use.
+- `audio/transcriber`: `RECALL_ASR_BACKEND` with an mlx-whisper backend (`apple` extra). Parakeet was measured (1.00 s per 8 s piece, no Turkish) and dropped.
 - `live_controls` + transport: typed notes and speaker renames from the desktop app; notes are "Note" lines in the transcript, notes file and memory.
-- `privacy`: redaction of e-mails, phones, cards, IBANs, keys and spoken passwords before memory and notes; `CONTINUUM_RETENTION_DAYS`; FileVault warning.
+- `privacy`: redaction of e-mails, phones, cards, IBANs, keys and spoken passwords before memory and notes; `RECALL_RETENTION_DAYS`; FileVault warning.
 - `transcribe_cli`: VTT, `--watch`, `--remember` (content-hash meeting ids, so re-imports replace), creates missing output folders.
 - `library` + desktop "Past meetings" view: search across meetings, per-meeting filter, click-to-play for linked recordings (asset protocol scoped per file), "Summarize with AI".
 - Desktop tests now run with vitest (`pnpm test`).
@@ -73,11 +73,11 @@
 ### Phase 8 — Product completion (2026-10-15, branch `feat/phase-8-product`, PR #7)
 
 - CI (GitHub Actions): ruff 0.17.0 + locked uv sync + pytest on Linux; pnpm typecheck/vitest/build; clippy -D warnings + cargo test on macOS. It caught a real bug (Claude client imported the SDK even when injected).
-- Settings screen: schema in `settings.rs`, values in a 0600 JSON file, secrets in the Keychain (never returned to the webview), checked by `continuum-check-config`, engine restarted on save.
+- Settings screen: schema in `settings.rs`, values in a 0600 JSON file, secrets in the Keychain (never returned to the webview), checked by `recall-check-config`, engine restarted on save.
 - Packaging: `pnpm bundle` ships engine sources + uv.lock + checksum-verified uv; first launch installs managed Python 3.12 into the app data folder.
 - `session.py`: meeting lifecycle. End (user or idle) → merge duplicate speakers → summary into notes → auto-proposals → next meeting. Ask over WebSocket. Recording (mixed WAV). Calendar titles.
 - AI fact check (`factcheck/semantic.py`), opt-in, cooldown-limited.
-- Auto-start: `continuum-detect-call` (CoreAudio via PyObjC, no Rust `unsafe`) + Rust supervisor.
+- Auto-start: `recall-detect-call` (CoreAudio via PyObjC, no Rust `unsafe`) + Rust supervisor.
 - Windows/Linux system audio via `soundcard` loopback (fake-tested only).
 
 ### Phase 9 — Experience (2026-10-15, branch `feat/phase-9-experience`, stacked on #7)
@@ -85,24 +85,24 @@
 - Voices remembered across meetings; brief from earlier meetings when a calendar meeting starts; first-run checklist; recap e-mail to attendees (Gmail, approval-gated).
 - Notes start with YAML properties (Obsidian); `notion` target creates a summary page under one configured parent page after approval.
 - Live action items (opt-in, an AI call at most every 3 min); talk time / longest turn / interruptions per speaker in the notes and the app.
-- `CONTINUUM_REQUIRE_DISK_ENCRYPTION`: nothing stored unless FileVault is on.
+- `RECALL_REQUIRE_DISK_ENCRYPTION`: nothing stored unless FileVault is on.
 - Auto-update (Tauri updater, key in `~/.tauri/continuum-updater.key`) and `release.yml` on `v*` tags; call detection on Windows (registry) and Linux (`pactl`).
 - Component click tests (jsdom + mocked IPC); CI coverage floors 70% engine / 50% desktop lines (measured 78% / 54%).
 - Verified: 325 pytest, 24 vitest, 16 cargo, clippy, ruff; signed release build produced the updater archive + signature. Not verified: Notion/Gmail against real services, Windows/Linux call detection on real machines, an update served from a real GitHub release.
 
 ## Phase 10 (spec complete, `feat/phase-10-spec-complete`)
 
-- Project picker in the meeting bar; code context hints (`CONTINUUM_CODE_DIRS`); commitments and hesitations in the notes, with an optional workload check against Jira (and its open sprint), GitHub and GitLab issues; optional AI hesitation pass (`CONTINUUM_LLM_HESITATIONS`).
-- Google connected from Settings (PKCE); system audio optionally limited to meeting apps (`CONTINUUM_MEETING_APPS_ONLY`, macOS).
-- `continuum-transcribe --summarize`; `continuum-import-docs` puts Markdown/text/PDF documents in project memory so fact checks cite them.
+- Project picker in the meeting bar; code context hints (`RECALL_CODE_DIRS`); commitments and hesitations in the notes, with an optional workload check against Jira (and its open sprint), GitHub and GitLab issues; optional AI hesitation pass (`RECALL_LLM_HESITATIONS`).
+- Google connected from Settings (PKCE); system audio optionally limited to meeting apps (`RECALL_MEETING_APPS_ONLY`, macOS).
+- `recall-transcribe --summarize`; `recall-import-docs` puts Markdown/text/PDF documents in project memory so fact checks cite them.
 - Fact checks read spelled-out numbers and dates with a month name; turns pyannote gives one speaker are re-split against known voices.
 - GitLab issues as approval-gated actions; long utterances cut at a quiet moment; Info.plist and audio-input entitlement for the notarised app.
 - Verified: 398 pytest, desktop action tests, 17 cargo, ruff; ad-hoc signed `.app` with hardened runtime. Not verified: the AI hesitation pass against a real model, GitLab/GitHub workload against real services, notarisation (needs Apple secrets).
 
 ## Phase 11 (polish, `feat/phase-11-polish`, stacked on phase 10)
 
-- Outside services retried on 429 (Retry-After) and, for reads, 502-504 (`continuum.net`); a change is never repeated after a server error.
-- `continuum-check-connections` and the Settings **Test connections** button: read-only sign-in to GitHub, GitLab, Jira, Notion, Google, Hugging Face (plus each allowed repo/project) and a one-word AI reply.
+- Outside services retried on 429 (Retry-After) and, for reads, 502-504 (`recall.net`); a change is never repeated after a server error.
+- `recall-check-connections` and the Settings **Test connections** button: read-only sign-in to GitHub, GitLab, Jira, Notion, Google, Hugging Face (plus each allowed repo/project) and a one-word AI reply.
 - **Add documents…** in the meeting bar imports through the running engine (live command `import_documents`).
 - First-run checklist steps are filled in and saved in place (folder picker for notes; no key for local AI).
 - CI runs the engine tests on Ubuntu, macOS and Windows.
@@ -111,10 +111,10 @@
 
 ## Phase 12 (toward 10/10, `feat/phase-12-ten`, stacked on phase 11)
 
-- Turkish: `CONTINUUM_LANGUAGE` (en/tr) for the app, notes, hints, AI replies; Turkish promises/doubts/dates; a test fails on any untranslated UI or settings text.
-- Live translation captions (`CONTINUUM_TRANSLATE_TO`); follow-up e-mail (plain text, copy or mailto, Gmail proposal); meeting templates (`CONTINUUM_MEETING_TEMPLATE`, auto from title).
+- Turkish: `RECALL_LANGUAGE` (en/tr) for the app, notes, hints, AI replies; Turkish promises/doubts/dates; a test fails on any untranslated UI or settings text.
+- Live translation captions (`RECALL_TRANSLATE_TO`); follow-up e-mail (plain text, copy or mailto, Gmail proposal); meeting templates (`RECALL_MEETING_TEMPLATE`, auto from title).
 - Hear only the meeting app on Windows (WASAPI process loopback via comtypes) and Linux (`parec --monitor-stream`), both falling back to all system audio; shared `audio/follow.py` loop.
-- Shared-slide fact checks (`CONTINUUM_SCREEN_FACT_CHECK`, macOS Vision OCR of meeting windows only); Firefox extension (WebRTC track tap on meeting sites, web-ext lint clean); diagnostics report and file log (`~/.continuum/logs/engine.log`).
+- Shared-slide fact checks (`RECALL_SCREEN_FACT_CHECK`, macOS Vision OCR of meeting windows only); Firefox extension (WebRTC track tap on meeting sites, web-ext lint clean); diagnostics report and file log (`~/.recall/logs/engine.log`).
 - Verified: 456 pytest, 46 vitest, extension node tests, 17 cargo, clippy, ruff; real slide OCR of a "Google Meet" Safari window (Gmail in another browser window correctly ignored); comtypes API names checked against 1.4.17 source. Not verified: Windows process loopback and Linux parec on real machines, Firefox extension in a real call, captions/templates/e-mail against a real AI provider.
 
 ## Release v0.1.0 (proving it, merged to main)
@@ -134,5 +134,5 @@
 
 ## Known issues
 
-- With "Hear only meeting apps" off, system capture transcribes any other audio playing. A browser's other tabs are kept out only with the browser extension (`CONTINUUM_BROWSER_TAB_AUDIO`); Firefox and Safari have no tab-capture API for it.
+- With "Hear only meeting apps" off, system capture transcribes any other audio playing. A browser's other tabs are kept out only with the browser extension (`RECALL_BROWSER_TAB_AUDIO`); Firefox and Safari have no tab-capture API for it.
 - Open questions are tracked in `activeContext.md`.

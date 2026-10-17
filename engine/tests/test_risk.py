@@ -8,10 +8,10 @@ from datetime import date
 import httpx
 import pytest
 
-from continuum.actions.jira import JiraAccess
-from continuum.context.risk import RiskTracker, Workload, due_date
-from continuum.context.workload import GitHubWorkload, JiraWorkload, combined
-from continuum.transcript import Segment
+from recall.actions.jira import JiraAccess
+from recall.context.risk import RiskTracker, Workload, due_date
+from recall.context.workload import GitHubWorkload, JiraWorkload, combined
+from recall.transcript import Segment
 
 WEDNESDAY = date(2026, 10, 14)
 
@@ -212,7 +212,7 @@ def test_a_failed_ai_pass_keeps_the_phrase_list_report() -> None:
 
 
 def test_workload_reads_every_page_of_a_large_backlog(monkeypatch: pytest.MonkeyPatch) -> None:
-    from continuum.context import workload as module
+    from recall.context import workload as module
 
     seen: list[str] = []
 

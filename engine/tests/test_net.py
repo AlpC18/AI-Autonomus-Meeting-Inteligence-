@@ -5,7 +5,7 @@
 
 import httpx
 
-from continuum.net import RetryTransport
+from recall.net import RetryTransport
 
 
 def run(method: str, statuses: list[int], headers: dict[str, str] | None = None) -> tuple[int, int, list[float]]:

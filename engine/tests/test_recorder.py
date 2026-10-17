@@ -8,7 +8,7 @@ import wave
 
 import numpy as np
 
-from continuum.audio.recorder import MAX_LAG_S, MixRecorder
+from recall.audio.recorder import MAX_LAG_S, MixRecorder
 
 RATE = 16_000
 

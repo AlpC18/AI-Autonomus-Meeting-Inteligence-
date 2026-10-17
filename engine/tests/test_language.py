@@ -7,14 +7,14 @@ from datetime import date
 
 import pytest
 
-from continuum import language
-from continuum.context.risk import RiskTracker, Workload, due_date
-from continuum.library import summary_of
-from continuum.stats import SpeakerStats
-from continuum.stats import to_markdown as stats_markdown
-from continuum.summarize_cli import split_summary
-from continuum.summary import ActionItem, MeetingSummary, follow_up_email, to_markdown
-from continuum.transcript import Segment
+from recall import language
+from recall.context.risk import RiskTracker, Workload, due_date
+from recall.library import summary_of
+from recall.stats import SpeakerStats
+from recall.stats import to_markdown as stats_markdown
+from recall.summarize_cli import split_summary
+from recall.summary import ActionItem, MeetingSummary, follow_up_email, to_markdown
+from recall.transcript import Segment
 
 THURSDAY = date(2026, 10, 15)
 

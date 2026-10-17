@@ -11,7 +11,7 @@ import pytest
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 
-from continuum.live_controls import (
+from recall.live_controls import (
     NOTE_SPEAKER,
     Note,
     Rename,
@@ -20,9 +20,9 @@ from continuum.live_controls import (
     note_segment,
     parse,
 )
-from continuum.notes import markdown_lines
-from continuum.transcript import Segment, Word
-from continuum.transport.server import MAX_CLIENT_MESSAGE, TranscriptServer
+from recall.notes import markdown_lines
+from recall.transcript import Segment, Word
+from recall.transport.server import MAX_CLIENT_MESSAGE, TranscriptServer
 
 ORIGIN = "http://localhost:1420"
 
@@ -127,7 +127,7 @@ async def test_handler_errors_do_not_drop_the_connection() -> None:
 
 
 def test_switch_project_is_parsed_and_checked() -> None:
-    from continuum.live_controls import SwitchProject, parse
+    from recall.live_controls import SwitchProject, parse
 
     assert parse('{"type": "switch_project", "project": " mobile "}') == SwitchProject("mobile")
     assert parse('{"type": "switch_project", "project": 3}') is None
@@ -135,7 +135,7 @@ def test_switch_project_is_parsed_and_checked() -> None:
 
 
 def test_import_documents_is_parsed_and_checked() -> None:
-    from continuum.live_controls import ImportDocuments, parse
+    from recall.live_controls import ImportDocuments, parse
 
     pdf, md = str(Path("/a/b.pdf").resolve()), str(Path("/c.md").resolve())  # absolute on every OS
     assert parse(json.dumps({"type": "import_documents", "paths": [pdf, f" {md} "]})) == ImportDocuments((pdf, md))

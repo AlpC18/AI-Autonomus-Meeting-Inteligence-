@@ -5,8 +5,8 @@
 
 from pathlib import Path
 
-from continuum.context.code import CodeContext, CodeIndex
-from continuum.transcript import Segment
+from recall.context.code import CodeContext, CodeIndex
+from recall.transcript import Segment
 
 
 def said(text: str) -> Segment:

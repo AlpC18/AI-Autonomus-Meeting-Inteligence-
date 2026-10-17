@@ -16,7 +16,7 @@ describe("SettingsPanel", () => {
   it("shows the diagnostics report to copy when the clipboard is unavailable", async () => {
     mockIPC((cmd) => {
       if (cmd === "get_settings") return { fields: [], values: {}, secretsSet: [] };
-      if (cmd === "diagnostics") return "Continuum desktop 0.1.0 (macos aarch64)\n\n# Continuum diagnostics";
+      if (cmd === "diagnostics") return "Recall desktop 0.1.0 (macos aarch64)\n\n# Recall diagnostics";
       throw new Error(`unexpected command ${cmd}`);
     });
     render(<SettingsPanel />);
@@ -24,22 +24,22 @@ describe("SettingsPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Copy diagnostics" }));
 
     const report = (await screen.findByLabelText("Diagnostics")) as HTMLTextAreaElement;
-    expect(report.value).toContain("# Continuum diagnostics");
+    expect(report.value).toContain("# Recall diagnostics");
     expect(screen.getByRole("status").textContent).toContain("Copy the diagnostics below");
   });
 
   const field = (key: string, label: string, kind: string, options: string[] = []) => ({ key, label, group: "General", kind, options, help: "" });
   const view = {
     fields: [
-      field("CONTINUUM_WHISPER_MODEL", "Speech model", "text"),
-      field("CONTINUUM_WS_PORT", "Port", "number"),
-      field("CONTINUUM_LANGUAGE", "Language", "choice", ["en", "tr"]),
-      field("CONTINUUM_SCREEN_FACT_CHECK", "Fact-check shared slides", "toggle", ["0"]),
+      field("RECALL_WHISPER_MODEL", "Speech model", "text"),
+      field("RECALL_WS_PORT", "Port", "number"),
+      field("RECALL_LANGUAGE", "Language", "choice", ["en", "tr"]),
+      field("RECALL_SCREEN_FACT_CHECK", "Fact-check shared slides", "toggle", ["0"]),
       field("GROQ_API_KEY", "Groq key", "secret"),
       field("GITHUB_TOKEN", "GitHub token", "secret"),
       field("GOOGLE_REFRESH_TOKEN", "Google", "secret"),
     ],
-    values: { CONTINUUM_WHISPER_MODEL: "small", CONTINUUM_LANGUAGE: "en" },
+    values: { RECALL_WHISPER_MODEL: "small", RECALL_LANGUAGE: "en" },
     secretsSet: ["GITHUB_TOKEN"],
   };
 
@@ -67,7 +67,7 @@ describe("SettingsPanel", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Saved. The engine restarted"));
     const [, saved] = calls.find(([cmd]) => cmd === "save_settings")!;
     expect(saved).toEqual({
-      values: { CONTINUUM_WHISPER_MODEL: "large-v3", CONTINUUM_LANGUAGE: "tr", CONTINUUM_SCREEN_FACT_CHECK: "1" },
+      values: { RECALL_WHISPER_MODEL: "large-v3", RECALL_LANGUAGE: "tr", RECALL_SCREEN_FACT_CHECK: "1" },
       secrets: { GROQ_API_KEY: "gsk_new", GITHUB_TOKEN: "" },
     });
   });
@@ -75,7 +75,7 @@ describe("SettingsPanel", () => {
   it("lists configuration problems and connection results", async () => {
     mockIPC((cmd) => {
       if (cmd === "get_settings") return view;
-      if (cmd === "save_settings") return ["GROQ_API_KEY is set but CONTINUUM_LLM is not"];
+      if (cmd === "save_settings") return ["GROQ_API_KEY is set but RECALL_LLM is not"];
       if (cmd === "check_connections") return [{ service: "GitHub", ok: true, detail: "signed in as ana" }, { service: "Groq", ok: false, detail: "401" }];
       throw new Error(`unexpected command ${cmd}`);
     });
@@ -85,7 +85,7 @@ describe("SettingsPanel", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("✓ GitHub: signed in as ana✗ Groq: 401"));
 
     fireEvent.click(screen.getByRole("button", { name: "Save and restart engine" }));
-    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("GROQ_API_KEY is set but CONTINUUM_LLM is not"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("GROQ_API_KEY is set but RECALL_LLM is not"));
   });
 
   it("shows why settings could not be loaded", async () => {

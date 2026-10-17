@@ -6,8 +6,8 @@
 import asyncio
 from types import SimpleNamespace
 
-from continuum.screen import NewLines, meeting_windows, watch_slides
-from continuum.transcript import Segment
+from recall.screen import NewLines, meeting_windows, watch_slides
+from recall.transcript import Segment
 
 
 def window(bundle: str, title: str, width: float = 1200, height: float = 800, on_screen: bool = True):

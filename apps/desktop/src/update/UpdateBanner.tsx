@@ -39,7 +39,7 @@ export function UpdateBanner() {
 
   return (
     <div role="status" className="mt-2 flex items-center gap-3 rounded-md bg-sky-50 p-2 text-sm">
-      <span>{t("Continuum {version} is available.", { version: update.version })}</span>
+      <span>{t("Recall {version} is available.", { version: update.version })}</span>
       <button
         type="button"
         disabled={installing}

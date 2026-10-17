@@ -11,16 +11,16 @@ import httpx
 import pytest
 from fastmcp import Client
 
-from continuum.actions import gitlab
-from continuum.actions.approval import approve
-from continuum.actions.gitlab import GitLabAccess, GitLabIssue
-from continuum.actions.server import mcp
-from continuum.actions.settings import ActionSettings
-from continuum.actions.store import ActionStore
-from continuum.context.risk import Workload
-from continuum.context.workload import GitLabWorkload
-from continuum.summarize_cli import build_proposals
-from continuum.summary import ActionItem, MeetingSummary
+from recall.actions import gitlab
+from recall.actions.approval import approve
+from recall.actions.gitlab import GitLabAccess, GitLabIssue
+from recall.actions.server import mcp
+from recall.actions.settings import ActionSettings
+from recall.actions.store import ActionStore
+from recall.context.risk import Workload
+from recall.context.workload import GitLabWorkload
+from recall.summarize_cli import build_proposals
+from recall.summary import ActionItem, MeetingSummary
 
 PROJECT = "acme/platform/web"
 ACCESS = GitLabAccess("https://gitlab.example.com", "glpat-secret")
@@ -96,19 +96,19 @@ def test_only_https_instances_are_accepted(url: str) -> None:
 
 
 def test_settings_default_to_gitlab_com() -> None:
-    read = ActionSettings.from_env({"GITLAB_TOKEN": "t", "CONTINUUM_GITLAB_PROJECTS": "a/b, c/d/e"})
+    read = ActionSettings.from_env({"GITLAB_TOKEN": "t", "RECALL_GITLAB_PROJECTS": "a/b, c/d/e"})
     assert read.gitlab is not None and read.gitlab.url == "https://gitlab.com"
     assert read.gitlab_projects == {"a/b", "c/d/e"}
     assert ActionSettings.from_env({}).gitlab is None
 
 
 async def test_mcp_tool_proposes_without_contacting_gitlab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_GITLAB_PROJECTS", PROJECT)
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_GITLAB_PROJECTS", PROJECT)
     monkeypatch.setenv("GITLAB_TOKEN", "glpat-secret")
 
     async with Client(mcp) as client:
-        result = await client.call_tool("continuum_propose_gitlab_issue", {"project": PROJECT, "title": "Refactor"})
+        result = await client.call_tool("recall_propose_gitlab_issue", {"project": PROJECT, "title": "Refactor"})
 
     assert result.data["status"] == "pending"
     (stored,) = ActionStore(tmp_path / "actions.db").pending()

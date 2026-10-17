@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Continuum transcribes what you say in meetings. The audio stays on this Mac.</string>
+	<string>Recall transcribes what you say in meetings. The audio stays on this Mac.</string>
 </dict>
 </plist>

@@ -28,7 +28,7 @@ pub struct EngineProcess {
 }
 
 impl EngineProcess {
-    /// Starts the engine found in `engine_dir` with `uv run continuum-engine`.
+    /// Starts the engine found in `engine_dir` with `uv run recall-engine`.
     ///
     /// Settings are read from `engine_dir/.env` when that file exists. The
     /// engine's log output goes to the app's own standard output and error.
@@ -45,8 +45,8 @@ impl EngineProcess {
     /// # Errors
     /// Returns the I/O error if the engine cannot be started.
     pub fn spawn_with(engine_dir: &Path, extra: &[(&str, &str)]) -> io::Result<Self> {
-        let mut command = uv_run(engine_dir, "continuum-engine");
-        command.env("CONTINUUM_EXIT_ON_STDIN_EOF", "1");
+        let mut command = uv_run(engine_dir, "recall-engine");
+        command.env("RECALL_EXIT_ON_STDIN_EOF", "1");
         for (key, value) in extra {
             command.env(key, value);
         }
@@ -193,7 +193,7 @@ static BUNDLE: OnceLock<Bundle> = OnceLock::new();
 
 /// Uses the engine bundled in `resource_dir`, if the app has one.
 ///
-/// Returns whether a bundled engine was found. `CONTINUUM_ENGINE_DIR` still
+/// Returns whether a bundled engine was found. `RECALL_ENGINE_DIR` still
 /// takes precedence (see [`engine_dir`]).
 pub fn use_bundle(resource_dir: &Path, data_dir: &Path, cache_dir: &Path) -> bool {
     let engine_dir = resource_dir.join("engine");
@@ -266,11 +266,11 @@ pub fn settings_value(key: &str) -> Option<String> {
 
 /// Finds the engine directory to run, if any.
 ///
-/// `CONTINUUM_ENGINE_DIR` wins when set. Otherwise the engine bundled with a
+/// `RECALL_ENGINE_DIR` wins when set. Otherwise the engine bundled with a
 /// release build is used, and development builds use the `engine/` folder of
 /// the repository they were compiled from.
 pub fn engine_dir() -> Option<PathBuf> {
-    if let Some(dir) = std::env::var_os("CONTINUUM_ENGINE_DIR") {
+    if let Some(dir) = std::env::var_os("RECALL_ENGINE_DIR") {
         return Some(PathBuf::from(dir));
     }
     if let Some(bundle) = BUNDLE.get() {
@@ -338,6 +338,6 @@ mod tests {
 
     #[test]
     fn missing_program_is_reported_as_an_error() {
-        assert!(EngineProcess::spawn_command(Command::new("continuum-no-such-program")).is_err());
+        assert!(EngineProcess::spawn_command(Command::new("recall-no-such-program")).is_err());
     }
 }

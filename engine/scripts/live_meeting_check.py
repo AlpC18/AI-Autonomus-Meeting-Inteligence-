@@ -8,7 +8,7 @@ The real engine is started; spoken audio (macOS ``say``) is streamed into it
 the way the browser extension does, and someone says the budget is fifty
 thousand dollars. The check passes when the transcript arrives, the fact
 check flags $50,000 against $35,000, and ending the meeting writes notes.
-With an AI provider set (CONTINUUM_LLM_PROVIDER and friends) it also needs
+With an AI provider set (RECALL_LLM_PROVIDER and friends) it also needs
 Turkish captions, the summary with its follow-up e-mail, and an answer to a
 question about the meeting.
 
@@ -98,25 +98,25 @@ def main() -> int:
         folder = Path(tmp)
         env = {
             **os.environ,
-            "CONTINUUM_SOURCES": "tab",
-            "CONTINUUM_BROWSER_TAB_AUDIO": "1",
-            "CONTINUUM_WS_PORT": str(ENGINE_PORT),
-            "CONTINUUM_TENANT_ID": "check",
-            "CONTINUUM_PROJECT_ID": "website",
-            "CONTINUUM_MEMORY_DIR": str(folder / "memory"),
-            "CONTINUUM_NOTES_DIR": str(folder / "notes"),
-            "CONTINUUM_RECORD_AUDIO": "0",
+            "RECALL_SOURCES": "tab",
+            "RECALL_BROWSER_TAB_AUDIO": "1",
+            "RECALL_WS_PORT": str(ENGINE_PORT),
+            "RECALL_TENANT_ID": "check",
+            "RECALL_PROJECT_ID": "website",
+            "RECALL_MEMORY_DIR": str(folder / "memory"),
+            "RECALL_NOTES_DIR": str(folder / "notes"),
+            "RECALL_RECORD_AUDIO": "0",
         }
-        ai = bool(env.get("CONTINUUM_LLM_PROVIDER"))
+        ai = bool(env.get("RECALL_LLM_PROVIDER"))
         if ai:
-            env["CONTINUUM_TRANSLATE_TO"] = "tr"
+            env["RECALL_TRANSLATE_TO"] = "tr"
         (folder / "plan.md").write_text(DOCUMENT, encoding="utf-8")
-        subprocess.run(["continuum-import-docs", str(folder / "plan.md")], env=env, check=True)
+        subprocess.run(["recall-import-docs", str(folder / "plan.md")], env=env, check=True)
         audio = spoken(SPEECH, folder)
         print(f"speech: {len(audio) / RATE:.1f}s")
 
         log = (folder / "engine.log").open("w")
-        engine = subprocess.Popen(["continuum-engine"], env=env, stdout=log, stderr=subprocess.STDOUT)
+        engine = subprocess.Popen(["recall-engine"], env=env, stdout=log, stderr=subprocess.STDOUT)
         try:
             for _ in range(600):  # loading the speech model can take a while the first time
                 if engine.poll() is not None:

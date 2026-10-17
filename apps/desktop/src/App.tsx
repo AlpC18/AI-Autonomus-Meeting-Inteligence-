@@ -21,7 +21,7 @@ const VIEW_NAMES: Record<View, string> = {
   meetings: "Past meetings",
   settings: "Settings",
 };
-const SETUP_HIDDEN_KEY = "continuum.setupHidden";
+const SETUP_HIDDEN_KEY = "recall.setupHidden";
 
 function setupHidden(): boolean {
   try {
@@ -56,7 +56,7 @@ export default function App() {
   const [heardSpeech, setHeardSpeech] = useState(false);
   const [hidden, setHidden] = useState(setupHidden);
   if (!heardSpeech && stream.segments.some((segment) => segment.source !== "note")) setHeardSpeech(true);
-  if (settings) setLanguage(settings.values.CONTINUUM_LANGUAGE);
+  if (settings) setLanguage(settings.values.RECALL_LANGUAGE);
   const steps = settings ? setupSteps(settings, heardSpeech) : null;
   const showSetup = !hidden && steps !== null && !setupComplete(steps);
 
@@ -93,7 +93,7 @@ export default function App() {
 
   return (
     <main className="p-4">
-      <h1 className="text-2xl font-bold">Continuum</h1>
+      <h1 className="text-2xl font-bold">Recall</h1>
       {error && <p role="alert">{t("Could not reach the desktop backend: {error}", { error })}</p>}
       <UpdateBanner />
       {info && (

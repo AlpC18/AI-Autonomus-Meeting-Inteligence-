@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from continuum.library import Library, parse_lines
-from continuum.llm import LlmSettings
+from recall.library import Library, parse_lines
+from recall.llm import LlmSettings
 
 NOTES = """# Budget sync
 
-<!-- continuum:audio {audio} -->
+<!-- recall:audio {audio} -->
 
 - `00:00:04` **Speaker 1:** Last quarter we agreed on $50,000.
 - `01:02:05` **Note:** Push back on the December date
@@ -94,7 +94,7 @@ def test_summary_is_written_into_the_notes(folder: Path, monkeypatch: pytest.Mon
             assert "Budget agreed." not in user  # the old summary is not resent
             return json.dumps({"overview": "New summary.", "decisions": [], "action_items": []})
 
-    monkeypatch.setattr("continuum.library.connect", lambda settings: FakeLlm())
+    monkeypatch.setattr("recall.library.connect", lambda settings: FakeLlm())
     notes = folder / "acme" / "budget.md"
 
     meeting = Library(folder).summarize(str(notes), LlmSettings("ollama", "m", "http://localhost:1/v1"))
@@ -104,13 +104,13 @@ def test_summary_is_written_into_the_notes(folder: Path, monkeypatch: pytest.Mon
 
 
 def test_cli_prints_json_and_errors(folder: Path) -> None:
-    env = {**os.environ, "CONTINUUM_NOTES_DIR": str(folder), "CONTINUUM_TENANT_ID": "", "CONTINUUM_PROJECT_ID": ""}
+    env = {**os.environ, "RECALL_NOTES_DIR": str(folder), "RECALL_TENANT_ID": "", "RECALL_PROJECT_ID": ""}
     listed = subprocess.run(
-        [sys.executable, "-m", "continuum.library", "list"], env=env, capture_output=True, text=True, check=False
+        [sys.executable, "-m", "recall.library", "list"], env=env, capture_output=True, text=True, check=False
     )
     assert listed.returncode == 0 and len(json.loads(listed.stdout)) == 2
     refused = subprocess.run(
-        [sys.executable, "-m", "continuum.library", "show", "--", "/etc/passwd"],
+        [sys.executable, "-m", "recall.library", "show", "--", "/etc/passwd"],
         env=env,
         capture_output=True,
         text=True,

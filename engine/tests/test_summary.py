@@ -14,11 +14,11 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from continuum.actions.settings import ActionSettings
-from continuum.actions.store import ActionStore
-from continuum.llm import Claude, LlmSettings, OpenAiCompatible, connect
-from continuum.summarize_cli import build_proposals, split_summary
-from continuum.summary import (
+from recall.actions.settings import ActionSettings
+from recall.actions.store import ActionStore
+from recall.llm import Claude, LlmSettings, OpenAiCompatible, connect
+from recall.summarize_cli import build_proposals, split_summary
+from recall.summary import (
     ActionItem,
     MeetingSummary,
     parse_summary,
@@ -51,18 +51,18 @@ class FakeLlm:
 @pytest.mark.parametrize(
     ("env", "expected"),
     [
-        ({"CONTINUUM_LLM_PROVIDER": "groq", "GROQ_API_KEY": "k"}, ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b")),
-        ({"CONTINUUM_LLM_PROVIDER": "Gemini", "GEMINI_API_KEY": "k"}, ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash")),
-        ({"CONTINUUM_LLM_PROVIDER": "ollama"}, ("http://localhost:11434/v1", "llama3.2")),
+        ({"RECALL_LLM_PROVIDER": "groq", "GROQ_API_KEY": "k"}, ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b")),
+        ({"RECALL_LLM_PROVIDER": "Gemini", "GEMINI_API_KEY": "k"}, ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash")),
+        ({"RECALL_LLM_PROVIDER": "ollama"}, ("http://localhost:11434/v1", "llama3.2")),
         (
-            {"CONTINUUM_LLM_PROVIDER": "openrouter", "OPENROUTER_API_KEY": "k", "CONTINUUM_LLM_MODEL": "x/y:free"},
+            {"RECALL_LLM_PROVIDER": "openrouter", "OPENROUTER_API_KEY": "k", "RECALL_LLM_MODEL": "x/y:free"},
             ("https://openrouter.ai/api/v1", "x/y:free"),
         ),
         (
-            {"CONTINUUM_LLM_PROVIDER": "custom", "CONTINUUM_LLM_BASE_URL": "https://llm.example/v1/", "CONTINUUM_LLM_MODEL": "m"},
+            {"RECALL_LLM_PROVIDER": "custom", "RECALL_LLM_BASE_URL": "https://llm.example/v1/", "RECALL_LLM_MODEL": "m"},
             ("https://llm.example/v1", "m"),
         ),
-        ({"CONTINUUM_LLM_PROVIDER": "anthropic"}, (None, "claude-opus-5-5")),
+        ({"RECALL_LLM_PROVIDER": "anthropic"}, (None, "claude-opus-5-5")),
     ],
 )
 def test_presets_fill_in_endpoint_and_default_model(env: dict[str, str], expected: tuple) -> None:
@@ -74,15 +74,15 @@ def test_presets_fill_in_endpoint_and_default_model(env: dict[str, str], expecte
 @pytest.mark.parametrize(
     "env",
     [
-        {"CONTINUUM_LLM_PROVIDER": "nonsense"},
-        {"CONTINUUM_LLM_PROVIDER": "groq"},  # no key
-        {"CONTINUUM_LLM_PROVIDER": "openrouter", "OPENROUTER_API_KEY": "k"},  # no model
-        {"CONTINUUM_LLM_PROVIDER": "custom", "CONTINUUM_LLM_MODEL": "m"},  # no URL
+        {"RECALL_LLM_PROVIDER": "nonsense"},
+        {"RECALL_LLM_PROVIDER": "groq"},  # no key
+        {"RECALL_LLM_PROVIDER": "openrouter", "OPENROUTER_API_KEY": "k"},  # no model
+        {"RECALL_LLM_PROVIDER": "custom", "RECALL_LLM_MODEL": "m"},  # no URL
         {
-            "CONTINUUM_LLM_PROVIDER": "custom",
-            "CONTINUUM_LLM_BASE_URL": "http://llm.example/v1",
-            "CONTINUUM_LLM_MODEL": "m",
-            "CONTINUUM_LLM_API_KEY": "secret",
+            "RECALL_LLM_PROVIDER": "custom",
+            "RECALL_LLM_BASE_URL": "http://llm.example/v1",
+            "RECALL_LLM_MODEL": "m",
+            "RECALL_LLM_API_KEY": "secret",
         },  # key over plain http to another machine
     ],
 )
@@ -282,7 +282,7 @@ def test_cli_explains_missing_model(tmp_path: Path) -> None:
     notes = tmp_path / "m.md"
     notes.write_text("- `00:00:01` **Ana:** hi\n", encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "continuum.summarize_cli", str(notes)],
+        [sys.executable, "-m", "recall.summarize_cli", str(notes)],
         capture_output=True,
         text=True,
         # No provider settings, but a home folder: Windows finds it through USERPROFILE.
@@ -290,11 +290,11 @@ def test_cli_explains_missing_model(tmp_path: Path) -> None:
         cwd=tmp_path,
         check=False,
     )
-    assert result.returncode != 0 and "CONTINUUM_LLM_PROVIDER" in result.stderr
+    assert result.returncode != 0 and "RECALL_LLM_PROVIDER" in result.stderr
 
 
 def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
-    from continuum.actions.calendar import GoogleAccess
+    from recall.actions.calendar import GoogleAccess
 
     summary = parse_summary(REPLY)
     settings = ActionSettings(tmp_path / "actions.db", google=GoogleAccess("id", "secret", "refresh"))
@@ -313,7 +313,7 @@ def test_recap_email_goes_to_the_calendar_attendees(tmp_path: Path) -> None:
 
 
 def test_notion_target_proposes_one_page_titled_after_the_meeting(tmp_path: Path) -> None:
-    from continuum.actions.notion import NotionAccess
+    from recall.actions.notion import NotionAccess
 
     summary = parse_summary(REPLY)
     settings = ActionSettings(tmp_path / "actions.db", notion=NotionAccess("t", "0" * 32))

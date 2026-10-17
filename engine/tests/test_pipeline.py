@@ -18,10 +18,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from continuum.audio.transcriber import Transcriber
-from continuum.factcheck.checker import FactCheckAlert
-from continuum.pipeline import Engine
-from continuum.transcript import Segment
+from recall.audio.transcriber import Transcriber
+from recall.factcheck.checker import FactCheckAlert
+from recall.pipeline import Engine
+from recall.transcript import Segment
 
 pytestmark = pytest.mark.skipif(shutil.which("say") is None, reason="needs macOS say")
 
@@ -43,7 +43,7 @@ async def as_blocks(samples: np.ndarray) -> AsyncIterator[np.ndarray]:
 
 async def test_spoken_audio_is_published_as_timed_words(tmp_path: Path) -> None:
     samples = synthesise("The budget was revised to thirty five thousand.", tmp_path / "s.wav")
-    model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
+    model_dir = os.environ.get("RECALL_MODEL_DIR")
     published: list[Segment] = []
     remembered: list[Segment] = []
     engine = Engine(
@@ -64,7 +64,7 @@ async def test_spoken_audio_is_published_as_timed_words(tmp_path: Path) -> None:
 
 async def test_memory_failure_does_not_stop_the_live_transcript(tmp_path: Path) -> None:
     samples = synthesise("The budget was revised.", tmp_path / "s.wav")
-    model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
+    model_dir = os.environ.get("RECALL_MODEL_DIR")
     published: list[Segment] = []
 
     def failing_memory(_segment: Segment, _disputed: bool) -> None:
@@ -83,7 +83,7 @@ async def test_memory_failure_does_not_stop_the_live_transcript(tmp_path: Path) 
 
 async def test_statement_is_checked_before_it_is_stored(tmp_path: Path) -> None:
     samples = synthesise("The budget was revised.", tmp_path / "s.wav")
-    model_dir = os.environ.get("CONTINUUM_MODEL_DIR")
+    model_dir = os.environ.get("RECALL_MODEL_DIR")
     events: list[str] = []
     alerts: list[FactCheckAlert] = []
     alert = FactCheckAlert(

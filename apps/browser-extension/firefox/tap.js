@@ -8,7 +8,7 @@
 (() => {
   const TARGET_RATE = 16000;
   const BLOCK = TARGET_RATE / 10;
-  const TAG = "continuum-call-audio";
+  const TAG = "recall-call-audio";
 
   function downsampler(rate, emit) {
     let block = new Float32Array(BLOCK);

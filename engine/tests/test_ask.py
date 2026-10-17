@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from continuum.ask import NOTHING_FOUND, answer, brief
-from continuum.memory.store import MemoryHit
+from recall.ask import NOTHING_FOUND, answer, brief
+from recall.memory.store import MemoryHit
 
 
 def hit(text: str, speaker: str = "Ana", disputed: bool = False) -> MemoryHit:

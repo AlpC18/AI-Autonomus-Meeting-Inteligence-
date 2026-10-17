@@ -22,7 +22,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 import App from "./App";
 import { HudOverlay } from "./hud/HudOverlay";
 
-const settings = { fields: [], values: { CONTINUUM_LANGUAGE: "en" }, secretsSet: [] };
+const settings = { fields: [], values: { RECALL_LANGUAGE: "en" }, secretsSet: [] };
 
 beforeEach(() => {
   FakeSocket.all = [];
@@ -38,7 +38,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function backend(appInfo: () => unknown = () => ({ name: "continuum-desktop", version: "0.1.0" })) {
+function backend(appInfo: () => unknown = () => ({ name: "recall-desktop", version: "0.1.0" })) {
   mockIPC((cmd) => {
     if (cmd === "app_info") return appInfo();
     if (cmd === "get_settings") return settings;
@@ -53,7 +53,7 @@ describe("App", () => {
     backend();
     render(<App />);
 
-    expect(await screen.findByText("continuum-desktop v0.1.0")).toBeTruthy();
+    expect(await screen.findByText("recall-desktop v0.1.0")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Get started" }).getAttribute("aria-pressed")).toBe("true"));
 
     fireEvent.click(screen.getByRole("button", { name: "Past meetings" }));
@@ -64,10 +64,10 @@ describe("App", () => {
   });
 
   it("keeps the live transcript flowing from the engine", async () => {
-    window.localStorage.setItem("continuum.setupHidden", "1");
+    window.localStorage.setItem("recall.setupHidden", "1");
     backend();
     render(<App />);
-    await screen.findByText("continuum-desktop v0.1.0");
+    await screen.findByText("recall-desktop v0.1.0");
 
     const socket = FakeSocket.all[0];
     act(() => {

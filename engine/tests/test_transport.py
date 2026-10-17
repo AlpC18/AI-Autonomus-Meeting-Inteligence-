@@ -9,9 +9,9 @@ import pytest
 from websockets.asyncio.client import connect
 from websockets.exceptions import InvalidStatus
 
-from continuum.factcheck.checker import FactCheckAlert
-from continuum.transcript import Segment, Word
-from continuum.transport.server import TranscriptServer
+from recall.factcheck.checker import FactCheckAlert
+from recall.transcript import Segment, Word
+from recall.transport.server import TranscriptServer
 
 ORIGIN = "http://localhost:1420"
 SEGMENT = Segment(

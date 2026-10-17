@@ -36,7 +36,7 @@ export function downsampler(rate, emit) {
 }
 
 if (typeof AudioWorkletProcessor !== "undefined") {
-  class ContinuumBlocks extends AudioWorkletProcessor {
+  class RecallBlocks extends AudioWorkletProcessor {
     constructor() {
       super();
       this.feed = downsampler(sampleRate, (block) => this.port.postMessage(block.buffer, [block.buffer]));
@@ -51,5 +51,5 @@ if (typeof AudioWorkletProcessor !== "undefined") {
       return true;
     }
   }
-  registerProcessor("continuum-blocks", ContinuumBlocks);
+  registerProcessor("recall-blocks", RecallBlocks);
 }

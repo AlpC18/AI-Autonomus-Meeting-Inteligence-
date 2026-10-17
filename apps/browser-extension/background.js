@@ -8,10 +8,10 @@
 const OFFSCREEN = "offscreen.html";
 
 const BADGES = {
-  on: ["ON", "#15803d", "Continuum hears this tab. Click to stop."],
-  waiting: ["…", "#a16207", "Waiting for the Continuum app (is it running with browser tab audio on?)."],
-  busy: ["!", "#b91c1c", "Continuum is already capturing another tab."],
-  off: ["", "#000000", "Continuum: capture this tab's audio"],
+  on: ["ON", "#15803d", "Recall hears this tab. Click to stop."],
+  waiting: ["…", "#a16207", "Waiting for the Recall app (is it running with browser tab audio on?)."],
+  busy: ["!", "#b91c1c", "Recall is already capturing another tab."],
+  off: ["", "#000000", "Recall: capture this tab's audio"],
 };
 
 async function show(state) {
@@ -41,7 +41,7 @@ async function toggle(tab) {
   await chrome.offscreen.createDocument({
     url: OFFSCREEN,
     reasons: ["USER_MEDIA"],
-    justification: "Sends the meeting tab's audio to the Continuum app on this computer.",
+    justification: "Sends the meeting tab's audio to the Recall app on this computer.",
   });
   await show("waiting");
   await chrome.runtime.sendMessage({ target: "offscreen", type: "start", streamId });

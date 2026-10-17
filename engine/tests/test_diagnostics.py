@@ -6,7 +6,7 @@
 import logging
 from pathlib import Path
 
-from continuum.diagnostics import log_to_file, report
+from recall.diagnostics import log_to_file, report
 
 
 def test_the_report_names_settings_but_never_secret_values(tmp_path: Path) -> None:
@@ -17,18 +17,18 @@ def test_the_report_names_settings_but_never_secret_values(tmp_path: Path) -> No
         "2026-10-16 INFO Call Ana on +90 532 123 45 67\n"
     )
     env = {
-        "CONTINUUM_WHISPER_MODEL": "base",
-        "CONTINUUM_LANGUAGE": "tr",
+        "RECALL_WHISPER_MODEL": "base",
+        "RECALL_LANGUAGE": "tr",
         "GITHUB_TOKEN": "ghp-supersecret123",
-        "CONTINUUM_LLM_API_KEY": "gsk-abc123",
+        "RECALL_LLM_API_KEY": "gsk-abc123",
         "HOME": "/Users/ana",
-        "CONTINUUM_TENANT_ID": "acme",
-        "CONTINUUM_PROJECT_ID": "web",
+        "RECALL_TENANT_ID": "acme",
+        "RECALL_PROJECT_ID": "web",
     }
     text = report(env, log)
 
-    assert "`CONTINUUM_WHISPER_MODEL` = `base`" in text and "`GITHUB_TOKEN` is set" in text
-    assert "`CONTINUUM_LLM_API_KEY` is set" in text and "gsk-abc123" not in text
+    assert "`RECALL_WHISPER_MODEL` = `base`" in text and "`GITHUB_TOKEN` is set" in text
+    assert "`RECALL_LLM_API_KEY` is set" in text and "gsk-abc123" not in text
     assert "ghp-supersecret123" not in text and "[secret]" in text
     assert "ana@acme.com" not in text and "532 123" not in text
     assert "HOME" not in text  # unrelated environment variables are left out
@@ -42,7 +42,7 @@ def test_the_log_is_kept_in_a_private_file(tmp_path: Path) -> None:
     before = list(root.handlers)
     try:
         log_to_file(path)
-        logging.getLogger("continuum.test").warning("engine started")
+        logging.getLogger("recall.test").warning("engine started")
         for handler in root.handlers:
             handler.flush()
         assert "engine started" in path.read_text()

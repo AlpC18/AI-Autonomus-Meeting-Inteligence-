@@ -10,14 +10,14 @@ from pathlib import Path
 import pytest
 from test_pipeline import synthesise
 
-from continuum.audio.chunker import Utterance
-from continuum.audio.transcriber import (
+from recall.audio.chunker import Utterance
+from recall.audio.transcriber import (
     Transcriber,
     load_transcriber,
     mlx_available,
     mlx_repo,
 )
-from continuum.config import Settings
+from recall.config import Settings
 
 
 @pytest.mark.parametrize(
@@ -35,15 +35,15 @@ def test_model_sizes_map_to_mlx_repos(size: str, repo: str) -> None:
 
 def test_backend_setting_is_validated() -> None:
     assert Settings.from_env({}).asr_backend == "auto"
-    assert Settings.from_env({"CONTINUUM_ASR_BACKEND": "MLX"}).asr_backend == "mlx"
-    with pytest.raises(ValueError, match="CONTINUUM_ASR_BACKEND"):
-        Settings.from_env({"CONTINUUM_ASR_BACKEND": "parakeet"})
+    assert Settings.from_env({"RECALL_ASR_BACKEND": "MLX"}).asr_backend == "mlx"
+    with pytest.raises(ValueError, match="RECALL_ASR_BACKEND"):
+        Settings.from_env({"RECALL_ASR_BACKEND": "parakeet"})
     with pytest.raises(ValueError):
         load_transcriber("parakeet", "tiny", None)
 
 
 def _model_dir() -> Path | None:
-    value = os.environ.get("CONTINUUM_MODEL_DIR")
+    value = os.environ.get("RECALL_MODEL_DIR")
     return Path(value) if value else None
 
 

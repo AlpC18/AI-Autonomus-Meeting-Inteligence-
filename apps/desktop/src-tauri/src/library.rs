@@ -3,7 +3,7 @@
 
 //! Tauri commands for the meeting library: past meetings' notes and recordings.
 //!
-//! The work is done by the engine's `continuum-library` command, which only
+//! The work is done by the engine's `recall-library` command, which only
 //! reads notes inside the configured notes folder. A recording becomes
 //! playable in the webview only after that command named it for the meeting
 //! being shown; nothing else on disk is exposed.
@@ -26,11 +26,11 @@ pub fn is_notes_path(path: &str) -> bool {
     Path::new(path).is_absolute() && !path.contains('\0')
 }
 
-/// Runs `continuum-library <args>` and returns its JSON, turning `{"error"}` into `Err`.
+/// Runs `recall-library <args>` and returns its JSON, turning `{"error"}` into `Err`.
 fn library(args: &[&str]) -> Result<Value, String> {
     let dir =
         engine::engine_dir().ok_or_else(|| String::from("The engine folder is not configured."))?;
-    let output = engine::uv_run(&dir, "continuum-library")
+    let output = engine::uv_run(&dir, "recall-library")
         .args(args)
         .output()
         .map_err(|error| format!("Could not run the library command: {error}"))?;

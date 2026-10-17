@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from continuum.diarization.tracker import SpeakerTracker
+from recall.diarization.tracker import SpeakerTracker
 
 ANNA = np.array([1.0, 0.0, 0.0])
 BORIS = np.array([0.0, 1.0, 0.0])
@@ -68,7 +68,7 @@ def test_unusable_embeddings_get_no_name() -> None:
 def test_duplicate_speakers_are_merged_by_their_final_voices() -> None:
     import numpy as np
 
-    from continuum.diarization.tracker import SpeakerTracker
+    from recall.diarization.tracker import SpeakerTracker
 
     tracker = SpeakerTracker(match=0.95)  # strict live matching creates duplicates
     ana, ana_later, mark = np.array([1.0, 0.0, 0.0]), np.array([0.9, 0.3, 0.0]), np.array([0.0, 0.0, 1.0])

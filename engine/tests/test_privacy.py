@@ -5,9 +5,9 @@
 
 import pytest
 
-from continuum.factcheck.figures import extract_figures
-from continuum.privacy import redact, redact_segment
-from continuum.transcript import Segment, Word
+from recall.factcheck.figures import extract_figures
+from recall.privacy import redact, redact_segment
+from recall.transcript import Segment, Word
 
 
 @pytest.mark.parametrize(
@@ -70,9 +70,9 @@ def test_segment_text_and_words_are_redacted_with_timings_kept() -> None:
 
 
 def test_nothing_is_stored_when_required_encryption_is_off(monkeypatch, tmp_path) -> None:
-    from continuum import privacy
-    from continuum.config import Settings
-    from continuum.memory.scope import TenantScope
+    from recall import privacy
+    from recall.config import Settings
+    from recall.memory.scope import TenantScope
 
     wanted = Settings(
         notes_dir=tmp_path, scope=TenantScope("acme", "web"), record_audio=True, require_disk_encryption=True

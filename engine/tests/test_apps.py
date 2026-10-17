@@ -3,7 +3,7 @@
 
 """Choosing the meeting apps whose audio is captured."""
 
-from continuum.audio.apps import bundle_ids, meeting_apps
+from recall.audio.apps import bundle_ids, meeting_apps
 
 
 class App:
@@ -38,10 +38,10 @@ def test_teams_slack_and_other_platforms_are_heard() -> None:
 def test_extra_meeting_apps_come_from_settings() -> None:
     import pytest
 
-    from continuum.config import Settings
+    from recall.config import Settings
 
-    settings = Settings.from_env({"CONTINUUM_MEETING_APPS": "com.example.Meet, com.acme.*"})
+    settings = Settings.from_env({"RECALL_MEETING_APPS": "com.example.Meet, com.acme.*"})
     assert settings.extra_meeting_apps == {"com.example.Meet", "com.acme.*"}
     assert bundle_ids(meeting_apps([App("com.acme.Call"), App("com.other")], settings.extra_meeting_apps)) == {"com.acme.Call"}
-    with pytest.raises(ValueError, match="CONTINUUM_MEETING_APPS"):
-        Settings.from_env({"CONTINUUM_MEETING_APPS": "bad id!"})
+    with pytest.raises(ValueError, match="RECALL_MEETING_APPS"):
+        Settings.from_env({"RECALL_MEETING_APPS": "bad id!"})

@@ -65,7 +65,7 @@ pub fn save_settings(
             "Saved. The engine folder is not configured, so it was not restarted.",
         )]);
     };
-    let problems = crate::engine::uv_run(&dir, "continuum-check-config")
+    let problems = crate::engine::uv_run(&dir, "recall-check-config")
         .output()
         .ok()
         .and_then(|output| serde_json::from_slice::<serde_json::Value>(&output.stdout).ok())
@@ -85,7 +85,7 @@ pub fn save_settings(
 pub fn check_connections() -> Result<Vec<serde_json::Value>, String> {
     let dir = crate::engine::engine_dir()
         .ok_or_else(|| String::from("The engine folder is not configured."))?;
-    let output = crate::engine::uv_run(&dir, "continuum-check-connections")
+    let output = crate::engine::uv_run(&dir, "recall-check-connections")
         .output()
         .map_err(|error| format!("Could not start the connection test: {error}"))?;
     serde_json::from_slice::<serde_json::Value>(&output.stdout)
@@ -105,14 +105,14 @@ pub fn check_connections() -> Result<Vec<serde_json::Value>, String> {
 pub fn diagnostics() -> Result<String, String> {
     let dir = crate::engine::engine_dir()
         .ok_or_else(|| String::from("The engine folder is not configured."))?;
-    let output = crate::engine::uv_run(&dir, "continuum-diagnostics")
+    let output = crate::engine::uv_run(&dir, "recall-diagnostics")
         .output()
         .map_err(|error| format!("Could not make the diagnostics report: {error}"))?;
     if !output.status.success() {
         return Err(String::from("The diagnostics report could not be made."));
     }
     Ok(format!(
-        "Continuum desktop {} ({} {})\n\n{}",
+        "Recall desktop {} ({} {})\n\n{}",
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH,
@@ -145,7 +145,7 @@ fn restart_engine(app: &tauri::AppHandle, dir: &std::path::Path) -> Result<(), S
 pub fn google_connect(app: tauri::AppHandle) -> Result<String, String> {
     let dir = crate::engine::engine_dir()
         .ok_or_else(|| String::from("The engine folder is not configured."))?;
-    let output = crate::engine::uv_run(&dir, "continuum-google-login")
+    let output = crate::engine::uv_run(&dir, "recall-google-login")
         .output()
         .map_err(|error| format!("Could not start the Google sign-in: {error}"))?;
     let reply: serde_json::Value = serde_json::from_slice(&output.stdout)

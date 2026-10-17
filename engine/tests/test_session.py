@@ -11,11 +11,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from continuum.config import Settings
-from continuum.live_controls import NOTE_SPEAKER
-from continuum.memory.store import MemoryHit
-from continuum.session import MeetingSession
-from continuum.transcript import Segment, Word
+from recall.config import Settings
+from recall.live_controls import NOTE_SPEAKER
+from recall.memory.store import MemoryHit
+from recall.session import MeetingSession
+from recall.transcript import Segment, Word
 
 NOW = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)
 SUMMARY = json.dumps(
@@ -192,7 +192,7 @@ async def test_summary_failure_is_reported_and_the_next_meeting_still_starts(tmp
 async def test_silence_ends_the_meeting_and_can_stop_the_engine(tmp_path: Path, monkeypatch) -> None:
     import asyncio
 
-    import continuum.session as session_module
+    import recall.session as session_module
 
     monkeypatch.setattr(session_module, "IDLE_CHECK_S", 0.01)
     clock, stopped = Clock(), []
@@ -225,7 +225,7 @@ async def test_recording_is_written_and_named_in_the_notes(tmp_path: Path) -> No
     recording = notes.with_suffix(".wav")
     with wave.open(str(recording)) as wav:
         assert wav.getnframes() == 16_000
-    assert f"<!-- continuum:audio {recording.resolve()} -->" in notes.read_text()
+    assert f"<!-- recall:audio {recording.resolve()} -->" in notes.read_text()
 
 
 async def test_unused_recording_of_a_silent_meeting_is_deleted(tmp_path: Path) -> None:
@@ -301,7 +301,7 @@ async def test_a_meeting_without_a_title_explains_why_there_is_no_brief(tmp_path
 
 
 async def test_action_items_are_listed_during_the_meeting_at_most_every_few_minutes(tmp_path: Path) -> None:
-    from continuum.session import LIVE_ITEMS_INTERVAL_S
+    from recall.session import LIVE_ITEMS_INTERVAL_S
 
     clock, llm = Clock(), FakeLlm()
     session, _published, events = await make(
@@ -349,7 +349,7 @@ async def test_talk_time_goes_into_the_notes_and_the_ended_event(tmp_path: Path)
 
 
 async def test_switching_project_ends_the_meeting_and_files_the_next_under_the_new_project(tmp_path: Path) -> None:
-    from continuum.memory.scope import TenantScope
+    from recall.memory.scope import TenantScope
 
     old, new = FakeMemory(), FakeMemory()
     opened: list[TenantScope] = []

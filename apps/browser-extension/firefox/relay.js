@@ -4,6 +4,6 @@
 // Passes the call audio from tap.js to the background page, which sends it
 // to the engine only while capture is on for this tab.
 window.addEventListener("message", (event) => {
-  if (event.source !== window || event.data?.type !== "continuum-call-audio" || !Array.isArray(event.data.samples)) return;
+  if (event.source !== window || event.data?.type !== "recall-call-audio" || !Array.isArray(event.data.samples)) return;
   browser.runtime.sendMessage({ type: "audio", samples: event.data.samples }).catch(() => undefined);
 });

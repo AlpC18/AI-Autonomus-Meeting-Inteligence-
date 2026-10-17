@@ -1,7 +1,7 @@
 [project]
-name = "continuum"
+name = "recall"
 version = "0.1.0"
-description = "Project Continuum engine: audio, diarization, memory, and MCP actions"
+description = "Project Recall engine: audio, diarization, memory, and MCP actions"
 license = "MIT"
 authors = [
     { name = "Yüksel Alp Çiğtekin", email = "alpcigtekin53@gmail.com" }
@@ -26,20 +26,20 @@ dependencies = [
 ]
 
 [project.scripts]
-continuum-actions = "continuum.actions.server:main"
-continuum-engine = "continuum.pipeline:main"
-continuum-memory-search = "continuum.memory.cli:main"
-continuum-actions-review = "continuum.actions.review_cli:main"
-continuum-transcribe = "continuum.transcribe_cli:main"
-continuum-summarize = "continuum.summarize_cli:main"
-continuum-library = "continuum.library:main"
-continuum-check-config = "continuum.config_check:main"
-continuum-ask = "continuum.ask:main"
-continuum-detect-call = "continuum.audio.call_detect:main"
-continuum-google-login = "continuum.actions.google_login:main"
-continuum-import-docs = "continuum.memory.documents:main"
-continuum-check-connections = "continuum.connections:main"
-continuum-diagnostics = "continuum.diagnostics:main"
+recall-actions = "recall.actions.server:main"
+recall-engine = "recall.pipeline:main"
+recall-memory-search = "recall.memory.cli:main"
+recall-actions-review = "recall.actions.review_cli:main"
+recall-transcribe = "recall.transcribe_cli:main"
+recall-summarize = "recall.summarize_cli:main"
+recall-library = "recall.library:main"
+recall-check-config = "recall.config_check:main"
+recall-ask = "recall.ask:main"
+recall-detect-call = "recall.audio.call_detect:main"
+recall-google-login = "recall.actions.google_login:main"
+recall-import-docs = "recall.memory.documents:main"
+recall-check-connections = "recall.connections:main"
+recall-diagnostics = "recall.diagnostics:main"
 
 [project.optional-dependencies]
 diarization = [

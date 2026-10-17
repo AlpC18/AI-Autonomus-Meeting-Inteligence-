@@ -16,14 +16,14 @@ afterEach(() => {
 const field = (key: string, label: string, kind: string, options: string[] = []) => ({ key, label, group: "", kind, options, help: "" });
 const SETTINGS = {
   fields: [
-    field("CONTINUUM_LLM_PROVIDER", "AI provider", "choice", ["", "groq", "ollama"]),
-    field("CONTINUUM_LLM_API_KEY", "API key", "secret"),
-    field("CONTINUUM_TENANT_ID", "Workspace", "text"),
-    field("CONTINUUM_PROJECT_ID", "Project", "text"),
-    field("CONTINUUM_NOTES_DIR", "Notes folder", "text"),
+    field("RECALL_LLM_PROVIDER", "AI provider", "choice", ["", "groq", "ollama"]),
+    field("RECALL_LLM_API_KEY", "API key", "secret"),
+    field("RECALL_TENANT_ID", "Workspace", "text"),
+    field("RECALL_PROJECT_ID", "Project", "text"),
+    field("RECALL_NOTES_DIR", "Notes folder", "text"),
     field("HF_TOKEN", "Hugging Face token", "secret"),
   ] as never,
-  values: { CONTINUUM_NOTES_DIR: "~/Notes" },
+  values: { RECALL_NOTES_DIR: "~/Notes" },
   secretsSet: [],
 };
 
@@ -55,7 +55,7 @@ describe("SetupChecklist", () => {
 
     await waitFor(() => expect(reloads).toBe(1));
     expect(saves).toEqual([
-      { values: { CONTINUUM_NOTES_DIR: "~/Notes", CONTINUUM_LLM_PROVIDER: "groq" }, secrets: { CONTINUUM_LLM_API_KEY: "gsk-1" } },
+      { values: { RECALL_NOTES_DIR: "~/Notes", RECALL_LLM_PROVIDER: "groq" }, secrets: { RECALL_LLM_API_KEY: "gsk-1" } },
     ]);
   });
 

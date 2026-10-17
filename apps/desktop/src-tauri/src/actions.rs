@@ -5,7 +5,7 @@
 //!
 //! These are the only path by which a proposed action is executed from the
 //! desktop app, and they run only in response to the user pressing a button.
-//! The work itself is done by the engine's `continuum-actions-review` command;
+//! The work itself is done by the engine's `recall-actions-review` command;
 //! this module passes the decision on and returns the command's JSON output.
 
 use serde_json::Value;
@@ -23,7 +23,7 @@ pub fn is_action_id(id: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-/// Runs `continuum-actions-review --json <args>` and parses what it prints.
+/// Runs `recall-actions-review --json <args>` and parses what it prints.
 ///
 /// # Errors
 /// Returns a message for the user if the engine folder is unknown, `uv`
@@ -32,7 +32,7 @@ pub fn is_action_id(id: &str) -> bool {
 fn review(args: &[&str]) -> Result<Value, String> {
     let dir =
         engine::engine_dir().ok_or_else(|| String::from("The engine folder is not configured."))?;
-    let output = engine::uv_run(&dir, "continuum-actions-review")
+    let output = engine::uv_run(&dir, "recall-actions-review")
         .arg("--json")
         .args(args)
         .output()

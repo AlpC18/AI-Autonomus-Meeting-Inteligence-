@@ -5,26 +5,26 @@
 
 import httpx
 
-from continuum.connections import Result, check
+from recall.connections import Result, check
 
 PAGE = "0123456789abcdef0123456789abcdef"
 ENV = {
-    "CONTINUUM_LLM_PROVIDER": "groq",
+    "RECALL_LLM_PROVIDER": "groq",
     "GROQ_API_KEY": "gsk-secret",
     "GITHUB_TOKEN": "ghp-secret",
-    "CONTINUUM_GITHUB_REPOS": "acme/web,acme/private",
+    "RECALL_GITHUB_REPOS": "acme/web,acme/private",
     "GITLAB_TOKEN": "glpat-secret",
-    "CONTINUUM_JIRA_SITE": "https://acme.atlassian.net",
+    "RECALL_JIRA_SITE": "https://acme.atlassian.net",
     "JIRA_EMAIL": "me@acme.com",
     "JIRA_API_TOKEN": "jira-secret",
-    "CONTINUUM_JIRA_PROJECTS": "WEB",
+    "RECALL_JIRA_PROJECTS": "WEB",
     "NOTION_TOKEN": "ntn-secret",
-    "CONTINUUM_NOTION_PAGE_ID": PAGE,
+    "RECALL_NOTION_PAGE_ID": PAGE,
     "GOOGLE_CLIENT_ID": "id",
     "GOOGLE_CLIENT_SECRET": "google-secret",
     "GOOGLE_REFRESH_TOKEN": "refresh-secret",
     "HF_TOKEN": "hf-secret",
-    "CONTINUUM_SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/T/B/x",
+    "RECALL_SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/T/B/x",
 }
 
 REPLIES = {
@@ -79,7 +79,7 @@ def test_unreachable_services_and_ai_refusals_are_failures() -> None:
         def complete(self, system: str, user: str) -> str:
             raise RuntimeError("groq refused the request (HTTP 401): invalid key")
 
-    env = {key: ENV[key] for key in ("CONTINUUM_LLM_PROVIDER", "GROQ_API_KEY", "GITHUB_TOKEN")}
+    env = {key: ENV[key] for key in ("RECALL_LLM_PROVIDER", "GROQ_API_KEY", "GITHUB_TOKEN")}
     with httpx.Client(transport=httpx.MockTransport(down)) as client:
         results = check(env, client, lambda settings: Refuses())
 

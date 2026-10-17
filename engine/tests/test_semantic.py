@@ -6,9 +6,9 @@
 import json
 from datetime import UTC, datetime
 
-from continuum.factcheck.semantic import SemanticChecker
-from continuum.memory.store import MemoryHit
-from continuum.transcript import Segment
+from recall.factcheck.semantic import SemanticChecker
+from recall.memory.store import MemoryHit
+from recall.transcript import Segment
 
 RECORD = MemoryHit("We chose Paddle as the payment provider", "Ana", "system", "m1",
                    datetime(2026, 9, 1, tzinfo=UTC), 0.7, "acme", "web")

@@ -71,7 +71,7 @@ jobs:
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: Continuum ${{ github.ref_name }}
+          releaseName: Recall ${{ github.ref_name }}
           releaseDraft: true
           includeUpdaterJson: true
           args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json

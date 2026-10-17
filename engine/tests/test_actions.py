@@ -12,14 +12,14 @@ import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from continuum.actions import calendar, github, slack
-from continuum.actions.approval import approve
-from continuum.actions.calendar import CalendarDeadline, GoogleAccess
-from continuum.actions.github import GitHubIssue
-from continuum.actions.server import mcp
-from continuum.actions.settings import ActionSettings
-from continuum.actions.slack import SlackMessage
-from continuum.actions.store import MAX_PENDING, ActionStore
+from recall.actions import calendar, github, slack
+from recall.actions.approval import approve
+from recall.actions.calendar import CalendarDeadline, GoogleAccess
+from recall.actions.github import GitHubIssue
+from recall.actions.server import mcp
+from recall.actions.settings import ActionSettings
+from recall.actions.slack import SlackMessage
+from recall.actions.store import MAX_PENDING, ActionStore
 
 REPO = "acme/website"
 ISSUE = GitHubIssue(REPO, "Refactor payment API", "From the 14 Aug meeting.", ("meeting",))
@@ -166,15 +166,15 @@ def test_malformed_issues_are_rejected(kwargs: dict) -> None:
 async def test_mcp_tool_proposes_without_contacting_github(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_GITHUB_REPOS", REPO)
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_GITHUB_REPOS", REPO)
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
     async with Client(mcp) as client:
         result = await client.call_tool(
-            "continuum_propose_github_issue", {"repo": REPO, "title": "Refactor payment API"}
+            "recall_propose_github_issue", {"repo": REPO, "title": "Refactor payment API"}
         )
-        pending = await client.call_tool("continuum_list_pending_actions")
+        pending = await client.call_tool("recall_list_pending_actions")
 
     assert result.data["status"] == "pending"
     stored = ActionStore(tmp_path / "actions.db").pending()
@@ -186,13 +186,13 @@ async def test_mcp_tool_proposes_without_contacting_github(
 async def test_mcp_tool_refuses_a_repo_that_is_not_allowed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_GITHUB_REPOS", REPO)
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_GITHUB_REPOS", REPO)
 
     async with Client(mcp) as client:
         with pytest.raises(ToolError, match="not allowed"):
             await client.call_tool(
-                "continuum_propose_github_issue", {"repo": "evil/repo", "title": "x"}
+                "recall_propose_github_issue", {"repo": "evil/repo", "title": "x"}
             )
 
     assert ActionStore(tmp_path / "actions.db").pending() == []
@@ -203,14 +203,14 @@ async def test_server_exposes_no_way_to_approve_or_execute() -> None:
         names = {tool.name for tool in await client.list_tools()}
 
     assert names == {
-        "continuum_health",
-        "continuum_propose_github_issue",
-        "continuum_propose_gitlab_issue",
-        "continuum_propose_jira_issue",
-        "continuum_propose_slack_message",
-        "continuum_propose_calendar_deadline",
-        "continuum_list_pending_actions",
-        "continuum_search_meetings",
+        "recall_health",
+        "recall_propose_github_issue",
+        "recall_propose_gitlab_issue",
+        "recall_propose_jira_issue",
+        "recall_propose_slack_message",
+        "recall_propose_calendar_deadline",
+        "recall_list_pending_actions",
+        "recall_search_meetings",
     }
 
 
@@ -363,18 +363,18 @@ def test_settings_need_all_three_google_values() -> None:
 async def test_tools_refuse_proposals_for_unconfigured_connectors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    for name in ("CONTINUUM_SLACK_WEBHOOK_URL", "GOOGLE_CLIENT_ID"):
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    for name in ("RECALL_SLACK_WEBHOOK_URL", "GOOGLE_CLIENT_ID"):
         monkeypatch.delenv(name, raising=False)
 
     async with Client(mcp) as client:
         with pytest.raises(ToolError, match="Slack is not configured"):
-            await client.call_tool("continuum_propose_slack_message", {"text": "hi"})
+            await client.call_tool("recall_propose_slack_message", {"text": "hi"})
         with pytest.raises(ToolError, match="Google Calendar is not configured"):
             await client.call_tool(
-                "continuum_propose_calendar_deadline", {"title": "Report", "due": "2026-11-30"}
+                "recall_propose_calendar_deadline", {"title": "Report", "due": "2026-11-30"}
             )
-        assert await client.call_tool("continuum_list_pending_actions", {}) is not None
+        assert await client.call_tool("recall_list_pending_actions", {}) is not None
 
     assert ActionStore(tmp_path / "actions.db").pending() == []
 
@@ -382,17 +382,17 @@ async def test_tools_refuse_proposals_for_unconfigured_connectors(
 async def test_tools_queue_slack_and_calendar_proposals_without_sending(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CONTINUUM_ACTIONS_DB", str(tmp_path / "actions.db"))
-    monkeypatch.setenv("CONTINUUM_SLACK_WEBHOOK_URL", WEBHOOK)
+    monkeypatch.setenv("RECALL_ACTIONS_DB", str(tmp_path / "actions.db"))
+    monkeypatch.setenv("RECALL_SLACK_WEBHOOK_URL", WEBHOOK)
     for name, value in zip(
         ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"), "abc", strict=True
     ):
         monkeypatch.setenv(name, value)
 
     async with Client(mcp) as client:
-        await client.call_tool("continuum_propose_slack_message", {"text": "Budget approved"})
+        await client.call_tool("recall_propose_slack_message", {"text": "Budget approved"})
         await client.call_tool(
-            "continuum_propose_calendar_deadline", {"title": "Report", "due": "2026-11-30"}
+            "recall_propose_calendar_deadline", {"title": "Report", "due": "2026-11-30"}
         )
 
     pending = ActionStore(tmp_path / "actions.db").pending()
@@ -405,20 +405,20 @@ async def test_tools_queue_slack_and_calendar_proposals_without_sending(
 async def test_meeting_search_tool_explains_when_memory_is_not_set_up(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("CONTINUUM_TENANT_ID", raising=False)
-    monkeypatch.delenv("CONTINUUM_PROJECT_ID", raising=False)
+    monkeypatch.delenv("RECALL_TENANT_ID", raising=False)
+    monkeypatch.delenv("RECALL_PROJECT_ID", raising=False)
 
     async with Client(mcp) as client:
-        with pytest.raises(ToolError, match="CONTINUUM_TENANT_ID"):
-            await client.call_tool("continuum_search_meetings", {"query": "budget"})
+        with pytest.raises(ToolError, match="RECALL_TENANT_ID"):
+            await client.call_tool("recall_search_meetings", {"query": "budget"})
 
-        monkeypatch.setenv("CONTINUUM_TENANT_ID", "acme")
-        monkeypatch.setenv("CONTINUUM_PROJECT_ID", "website")
-        monkeypatch.setenv("CONTINUUM_MEMORY_DIR", str(tmp_path / "nothing-here"))
+        monkeypatch.setenv("RECALL_TENANT_ID", "acme")
+        monkeypatch.setenv("RECALL_PROJECT_ID", "website")
+        monkeypatch.setenv("RECALL_MEMORY_DIR", str(tmp_path / "nothing-here"))
         with pytest.raises(ToolError, match="No memory has been stored"):
-            await client.call_tool("continuum_search_meetings", {"query": "budget"})
+            await client.call_tool("recall_search_meetings", {"query": "budget"})
         with pytest.raises(ToolError):
-            await client.call_tool("continuum_search_meetings", {"query": "budget", "limit": 500})
+            await client.call_tool("recall_search_meetings", {"query": "budget", "limit": 500})
 
 
 def test_current_calendar_event_names_the_meeting() -> None:
@@ -475,7 +475,7 @@ def test_calendar_event_lists_other_attendees() -> None:
 def test_approved_recap_email_is_sent_from_gmail(store: ActionStore, tmp_path: Path) -> None:
     import base64
 
-    from continuum.actions import proposals
+    from recall.actions import proposals
 
     kind, payload = proposals.email_recap(connected(tmp_path), ["ana@acme.io"], "Recap: Budget", "## Summary\nAgreed.")
     action = store.propose(kind, payload)
@@ -505,7 +505,7 @@ def test_approved_recap_email_is_sent_from_gmail(store: ActionStore, tmp_path: P
     ],
 )
 def test_malformed_emails_are_rejected(to: tuple, subject: str, body: str) -> None:
-    from continuum.actions.gmail import EmailRecap
+    from recall.actions.gmail import EmailRecap
 
     with pytest.raises(ValueError):
         EmailRecap(to, subject, body)
@@ -515,8 +515,8 @@ NOTION_PAGE = "1a2b3c4d5e6f40718293a4b5c6d7e8f9"
 
 
 def test_approved_notion_page_goes_under_the_configured_parent(store: ActionStore, tmp_path: Path) -> None:
-    from continuum.actions import proposals
-    from continuum.actions.notion import NotionAccess
+    from recall.actions import proposals
+    from recall.actions.notion import NotionAccess
 
     settings = ActionSettings(tmp_path / "a.db", notion=NotionAccess("secret-notion-token", NOTION_PAGE))
     kind, payload = proposals.notion_page(
@@ -541,7 +541,7 @@ def test_approved_notion_page_goes_under_the_configured_parent(store: ActionStor
 
 
 def test_notion_errors_never_show_the_token(store: ActionStore, tmp_path: Path) -> None:
-    from continuum.actions.notion import KIND, NotionAccess, NotionPage
+    from recall.actions.notion import KIND, NotionAccess, NotionPage
 
     settings = ActionSettings(tmp_path / "a.db", notion=NotionAccess("secret-notion-token", NOTION_PAGE))
     action = store.propose(KIND, NotionPage("Budget", "Agreed.").to_payload())
@@ -562,10 +562,10 @@ def test_notion_errors_never_show_the_token(store: ActionStore, tmp_path: Path) 
     ],
 )
 def test_notion_page_id_is_read_from_an_id_or_a_link(raw: str) -> None:
-    env = {"NOTION_TOKEN": "t", "CONTINUUM_NOTION_PAGE_ID": raw}
+    env = {"NOTION_TOKEN": "t", "RECALL_NOTION_PAGE_ID": raw}
     assert ActionSettings.from_env(env).notion.parent_page_id == NOTION_PAGE
 
 
 def test_a_bad_notion_page_id_is_refused() -> None:
     with pytest.raises(ValueError):
-        ActionSettings.from_env({"NOTION_TOKEN": "t", "CONTINUUM_NOTION_PAGE_ID": "not a page"})
+        ActionSettings.from_env({"NOTION_TOKEN": "t", "RECALL_NOTION_PAGE_ID": "not a page"})

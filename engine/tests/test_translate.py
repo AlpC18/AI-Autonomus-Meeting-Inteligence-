@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from continuum.config import Settings
-from continuum.session import MeetingSession
-from continuum.transcript import Segment, Word
-from continuum.translate import Translator
+from recall.config import Settings
+from recall.session import MeetingSession
+from recall.transcript import Segment, Word
+from recall.translate import Translator
 
 
 class Dictionary:
@@ -53,6 +53,6 @@ async def test_the_session_publishes_a_caption_for_each_spoken_line(tmp_path: Pa
 
 
 def test_the_target_language_is_checked() -> None:
-    assert Settings.from_env({"CONTINUUM_TRANSLATE_TO": "TR"}).translate_to == "tr"
-    with pytest.raises(ValueError, match="CONTINUUM_TRANSLATE_TO"):
-        Settings.from_env({"CONTINUUM_TRANSLATE_TO": "xx"})
+    assert Settings.from_env({"RECALL_TRANSLATE_TO": "TR"}).translate_to == "tr"
+    with pytest.raises(ValueError, match="RECALL_TRANSLATE_TO"):
+        Settings.from_env({"RECALL_TRANSLATE_TO": "xx"})

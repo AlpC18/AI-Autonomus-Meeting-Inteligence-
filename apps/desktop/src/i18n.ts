@@ -3,10 +3,10 @@
 
 import { TR } from "./i18n.tr";
 
-/** Languages of the interface; the setting is `CONTINUUM_LANGUAGE`. */
+/** Languages of the interface; the setting is `RECALL_LANGUAGE`. */
 export type Language = "en" | "tr";
 
-const STORAGE_KEY = "continuum.language";
+const STORAGE_KEY = "recall.language";
 
 function stored(): Language {
   try {
