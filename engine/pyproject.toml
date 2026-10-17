@@ -43,7 +43,8 @@ recall-diagnostics = "recall.diagnostics:main"
 
 [project.optional-dependencies]
 diarization = [
-    "pyannote-audio>=4.0.7",
+    # PyTorch no longer builds for Intel Macs.
+    "pyannote-audio>=4.0.7 ; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 claude = [
     "anthropic>=1",
@@ -68,3 +69,18 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.uv]
+# The platforms release builds ship for (on uv-managed Python 3.12): the lock
+# must have a wheel for each.
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_version == '3.12'",
+    "sys_platform == 'darwin' and platform_machine == 'x86_64' and python_version == '3.12'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64' and python_version == '3.12'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'",
+]
+# ponytail: cryptography 49+ ships no Intel Mac wheel and users have no Rust
+# compiler; pinned there only. Drop this (and the Intel Mac build) when it ages out.
+constraint-dependencies = [
+    "cryptography<49 ; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]

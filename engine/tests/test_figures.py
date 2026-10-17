@@ -116,3 +116,24 @@ def test_spoken_turkish_numbers_are_understood(text: str, expected: set) -> None
 )
 def test_turkish_words_that_double_as_ordinary_words_are_not_figures(text: str) -> None:
     assert figures(text) == set()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("otuz bin dolarlık bütçe", {("money", 30_000.0)}),
+        ("bütçe 35 bin dolara çıktı", {("money", 35_000.0)}),
+        ("üç günlük iş", {("count:gün", 3.0)}),
+        ("beş kişilik ekip", {("count:kişi", 5.0)}),
+        ("on günde biter", {("count:gün", 10.0)}),
+        ("5 aylık plan", {("count:ay", 5.0)}),
+        ("40 müşteriye ulaştık", {("count:müşteri", 40.0)}),
+    ],
+)
+def test_turkish_units_with_suffixes_are_understood(text: str, expected: set) -> None:
+    assert figures(text) == expected
+
+
+@pytest.mark.parametrize("text", ["2 ayrıca", "3 günah", "5 dolaşım"])
+def test_words_that_only_start_like_a_unit_are_not_units(text: str) -> None:
+    assert figures(text) == set()

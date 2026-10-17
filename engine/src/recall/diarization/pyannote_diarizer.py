@@ -3,6 +3,8 @@
 
 """Separates the speakers inside an utterance with pyannote.audio."""
 
+import platform
+import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,16 @@ WINDOW_S = 1.0
 
 RESPLIT_MIN_S = 2.0
 """One-speaker turns at least this long are re-checked for a second known voice."""
+
+
+def missing_extra_message(system: str, machine: str) -> str:
+    """Why speaker separation is unavailable, and what to do about it."""
+    if system == "darwin" and machine == "x86_64":
+        return "Speaker separation is not available on Intel Macs: PyTorch no longer supports them."
+    return (
+        "Speaker separation needs the 'diarization' extra. In the app, set the Hugging Face "
+        "token in Settings and it is installed; from source, run `uv sync --extra diarization`."
+    )
 
 
 class PyannoteDiarizer:
@@ -73,10 +85,7 @@ class PyannoteDiarizer:
         try:
             from pyannote.audio import Pipeline
         except ImportError as error:
-            raise RuntimeError(
-                "Speaker separation needs the 'diarization' extra: "
-                "run `uv sync --extra diarization`."
-            ) from error
+            raise RuntimeError(missing_extra_message(sys.platform, platform.machine())) from error
         try:
             pipeline = Pipeline.from_pretrained(MODEL, token=token, cache_dir=cache_dir)
         except Exception as error:

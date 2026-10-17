@@ -118,7 +118,12 @@ mod tests {
 
     #[test]
     fn accepts_absolute_paths() {
-        assert!(is_notes_path("/Users/ana/notes/2026-10-14 Meeting.md"));
+        let path = if cfg!(windows) {
+            r"C:\Users\ana\notes\2026-10-14 Meeting.md"
+        } else {
+            "/Users/ana/notes/2026-10-14 Meeting.md"
+        };
+        assert!(is_notes_path(path));
     }
 
     #[test]

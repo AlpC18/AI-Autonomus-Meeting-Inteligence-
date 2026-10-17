@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         if: matrix.os == 'ubuntu-latest'
         run: uvx ruff@0.17.0 check .
+      - name: Every release platform installs from wheels only
+        if: matrix.os == 'ubuntu-latest'
+        run: sh scripts/check_release_wheels.sh
       - name: Install (lock file must be up to date)
         run: uv sync --locked --extra claude
       - name: Test with coverage
@@ -114,10 +117,19 @@ jobs:
         run: node --test worklet.test.mjs firefox/tap.test.mjs
 
   shell:
-    name: Desktop shell (Rust)
-    runs-on: macos-latest
+    name: Desktop shell (Rust, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -135,6 +147,9 @@ jobs:
       - name: Build the frontend Tauri embeds
         working-directory: apps/desktop
         run: pnpm install --frozen-lockfile && pnpm exec vite build
+      - name: Bundle preparation (uv download for this platform)
+        working-directory: apps/desktop
+        run: node scripts/prepare-bundle.mjs
       - name: Clippy
         working-directory: apps/desktop/src-tauri
         run: cargo clippy --all-targets -- -D warnings
