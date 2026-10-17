@@ -85,14 +85,24 @@ pub const FIELDS: &[Field] = &[
         "RECALL_MEETING_TEMPLATE",
         "Meeting template",
         "AI",
-        Kind::Choice(&["auto", "general", "standup", "one_on_one", "sales", "interview", "retro"]),
+        Kind::Choice(&[
+            "auto",
+            "general",
+            "standup",
+            "one_on_one",
+            "sales",
+            "interview",
+            "retro",
+        ]),
         "Adds sections to the AI summary for the kind of meeting: standup (done, next, blockers), one_on_one, sales, interview, retro. auto picks it from the calendar title.",
     ),
     field(
         "RECALL_TRANSLATE_TO",
         "Live translation",
         "AI",
-        Kind::Choice(&["", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko"]),
+        Kind::Choice(&[
+            "", "en", "tr", "de", "fr", "es", "it", "pt", "nl", "ru", "ar", "ja", "zh", "ko",
+        ]),
         "Shows each line translated into this language under the transcript. Sends every line to your AI provider.",
     ),
     field(
@@ -775,8 +785,7 @@ mod tests {
 
     #[test]
     fn setting_one_secret_keeps_the_other_settings() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-one-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-one-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -801,8 +810,7 @@ mod tests {
 
     #[test]
     fn empty_secret_deletes_it() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-del-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-del-{}", std::process::id()));
         let store = MemoryStore::default();
         let mut settings = Settings::load(dir.join("settings.json"), Box::new(store.clone()));
         settings
@@ -819,18 +827,14 @@ mod tests {
 
     #[test]
     fn invalid_or_unknown_settings_change_nothing() {
-        let dir =
-            std::env::temp_dir().join(format!("recall-settings-bad-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("recall-settings-bad-{}", std::process::id()));
         let mut settings =
             Settings::load(dir.join("settings.json"), Box::new(MemoryStore::default()));
         for (values, secrets) in [
             (map(&[("PATH", "/evil")]), BTreeMap::new()),
             (map(&[("RECALL_RETENTION_DAYS", "0")]), BTreeMap::new()),
             (map(&[("RECALL_REDACT", "yes")]), BTreeMap::new()),
-            (
-                map(&[("RECALL_ASR_BACKEND", "parakeet")]),
-                BTreeMap::new(),
-            ),
+            (map(&[("RECALL_ASR_BACKEND", "parakeet")]), BTreeMap::new()),
             (map(&[("RECALL_NOTES_DIR", "a\nb")]), BTreeMap::new()),
             (
                 map(&[("GITHUB_TOKEN", "in the wrong place")]),

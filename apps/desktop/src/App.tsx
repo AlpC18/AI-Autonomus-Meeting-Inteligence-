@@ -11,6 +11,9 @@ import { parseSettings, type SettingsView } from "./settings/settings";
 import { SettingsPanel } from "./settings/SettingsPanel";
 import { UpdateBanner } from "./update/UpdateBanner";
 import { ThemeSelect } from "./ThemeSelect";
+import { EngineButton } from "./EngineButton";
+import { MeetingLanguages } from "./hud/MeetingLanguages";
+import { Timeline } from "./hud/Timeline";
 import { SetupChecklist } from "./setup/SetupChecklist";
 import { setupComplete, setupSteps } from "./setup/setup";
 import { setLanguage, t } from "./i18n";
@@ -98,7 +101,7 @@ export default function App() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-canvas/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-5">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5">
           <div className="flex items-center gap-2.5">
             <span aria-hidden="true" className="grid size-7 place-items-center rounded-lg bg-accent text-sm font-semibold text-white">
               R
@@ -126,11 +129,12 @@ export default function App() {
               />
               {t(engineState)}
             </span>
+            <EngineButton status={stream.status} />
             <ThemeSelect />
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-5 pt-6 pb-10">
+      <main className="mx-auto max-w-6xl px-5 pt-6 pb-10">
         {error && (
           <p role="alert" className="mb-4 text-sm text-red-700">
             {t("Could not reach the desktop backend: {error}", { error })}
@@ -138,12 +142,18 @@ export default function App() {
         )}
         <UpdateBanner />
         {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
-        <div hidden={view !== "live"}>
-          <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} polishing={stream.polishing} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
-          <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
-          <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
-          <Notepad connected={connected} send={stream.send} />
-          <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
+        <div hidden={view !== "live"} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 space-y-5">
+            <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} polishing={stream.polishing} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
+            <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
+            <Notepad connected={connected} send={stream.send} />
+            <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
+          </div>
+          <aside className="space-y-5">
+            <Timeline topics={stream.topics} />
+            <SpeakerNamer segments={stream.segments} connected={connected} send={stream.send} />
+            <MeetingLanguages settings={settings} saved={() => setSettingsVersion((version) => version + 1)} />
+          </aside>
         </div>
         {view === "setup" && steps && settings && (
           <SetupChecklist

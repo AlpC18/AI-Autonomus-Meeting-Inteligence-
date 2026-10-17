@@ -67,6 +67,8 @@ export interface TranscriptStream {
   lastSummary: MeetingSummaryEvent | null;
   /** The ended meeting's recording is being transcribed again, accurately. */
   polishing: boolean;
+  /** What was talked about, from what time, in this meeting (oldest first). */
+  topics: Topic[];
   /** The brief for the current meeting from earlier meetings, if one arrived. */
   brief: Answer | null;
   /** Action items said so far in the current meeting (only with live action items on). */
@@ -142,6 +144,12 @@ export interface TalkTime {
   interruptions: number;
 }
 
+/** One timeline entry: from `at` (ISO time) the meeting talked about `title`. */
+export interface Topic {
+  at: string;
+  title: string;
+}
+
 /** Meeting-level events from the engine, other than transcript and alerts. */
 export type EngineEvent =
   | { type: "answer"; answer: Answer }
@@ -154,6 +162,7 @@ export type EngineEvent =
   | { type: "translation"; key: string; text: string }
   | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null }
   | { type: "polishing" }
+  | { type: "topic"; topic: Topic }
   | { type: "polished"; improved: boolean };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
@@ -337,6 +346,9 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
     return { type: "documents_imported", result: { imported, errors: strings(message.errors) } };
   }
   if (message.type === "polishing") return { type: "polishing" };
+  if (message.type === "topic" && typeof message.at === "string" && typeof message.title === "string") {
+    return { type: "topic", topic: { at: message.at, title: message.title } };
+  }
   if (message.type === "polished") return { type: "polished", improved: message.improved === true };
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
     const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
@@ -383,6 +395,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [answers, setAnswers] = useState<Readonly<Record<string, Answer>>>({});
   const [lastSummary, setLastSummary] = useState<MeetingSummaryEvent | null>(null);
   const [polishing, setPolishing] = useState(false);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [brief, setBrief] = useState<Answer | null>(null);
   const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
   const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
@@ -449,6 +462,9 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLastReport(engineEvent.report);
         } else if (engineEvent?.type === "action_items") {
           setLiveItems(engineEvent.items);
+        } else if (engineEvent?.type === "topic") {
+          const { topic } = engineEvent;
+          setTopics((current) => [...current, topic]);
         } else if (engineEvent?.type === "polishing" || engineEvent?.type === "polished") {
           setPolishing(engineEvent.type === "polishing");
         } else if (engineEvent?.type === "summary") {
@@ -467,6 +483,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setProjectError(null);
           setSegments([]);
           setCaptions({});
+          setTopics([]);
           setBrief(null);
           setLiveItems([]);
         }
@@ -487,5 +504,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, polishing, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, polishing, topics, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
 }

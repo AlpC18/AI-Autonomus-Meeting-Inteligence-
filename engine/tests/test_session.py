@@ -82,6 +82,11 @@ class Clock:
         return self.now
 
 
+def item_calls(llm: "FakeLlm") -> list[str]:
+    """The AI calls that list action items (the timeline makes its own)."""
+    return [call for call in llm.calls if call.startswith("<transcript>")]
+
+
 async def make(tmp_path: Path, **kwargs) -> tuple[MeetingSession, list[Segment], list[dict]]:
     settings_kwargs = kwargs.pop("settings", {})
     settings = Settings(notes_dir=tmp_path / "notes", **settings_kwargs)
@@ -309,19 +314,19 @@ async def test_action_items_are_listed_during_the_meeting_at_most_every_few_minu
     )
 
     session.publish(said("Ana will send the report by November"))
-    assert llm.calls == []  # too early in the meeting
+    assert item_calls(llm) == []  # too early in the meeting
 
     clock.now += LIVE_ITEMS_INTERVAL_S
     session.publish(said("Ana will send the report by November"))
     session.publish(said("and the slides"))  # an update is already running
     await session._listing
-    assert len(llm.calls) == 1
+    assert len(item_calls(llm)) == 1
     items = [event for event in events if event["type"] == "action_items"]
     assert items == [{"type": "action_items", "items": [{"task": "Send the report", "owner": "Ana", "due": "2026-11-30"}]}]
 
     clock.now += 10
     session.publish(said("one more thing"))
-    assert session._listing.done() and len(llm.calls) == 1  # waits for the interval
+    assert session._listing.done() and len(item_calls(llm)) == 1  # waits for the interval
 
 
 async def test_action_items_are_not_listed_live_unless_turned_on(tmp_path: Path) -> None:

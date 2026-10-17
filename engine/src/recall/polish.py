@@ -19,7 +19,6 @@ same "others". Each stretch takes the speaker of the live line it overlaps
 
 import multiprocessing
 import wave
-import zlib
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -29,6 +28,13 @@ from typing import Any
 import numpy as np
 
 from recall.audio.blocks import SAMPLE_RATE
+from recall.audio.plausible import (
+    MAX_COMPRESSION_RATIO,
+    MIN_AVG_LOGPROB,
+    compression_ratio,
+    most_likely,
+    phantom,
+)
 from recall.audio.transcriber import mlx_available, mlx_repo
 from recall.live_controls import NOTE_SOURCE
 from recall.transcript import Segment
@@ -180,17 +186,6 @@ class Reading:
 Reader = Callable[[np.ndarray, str | None], Reading]
 """Transcribes audio, in the given language or (``None``) whatever it detects."""
 
-# Whisper's own limits for a decoding it should not trust.
-MIN_AVG_LOGPROB = -1.0
-MAX_COMPRESSION_RATIO = 2.4
-
-
-def _compression_ratio(text: str) -> float:
-    """Whisper's measure of repetition: how well the text compresses ("nene nene nene ..." very well)."""
-    data = text.encode("utf-8")
-    return len(data) / len(zlib.compress(data)) if data else 0.0
-
-
 def confident(parts: Sequence[tuple[str, float, float]]) -> bool:
     """Whether ``(text, avg_logprob, compression_ratio)`` parts look like real words, not invented noise."""
     if not parts:
@@ -200,15 +195,8 @@ def confident(parts: Sequence[tuple[str, float, float]]) -> bool:
         return False  # mostly stray letters and commas
     mean_logprob = sum(logprob for _, logprob, _ in parts) / len(parts)
     # The ratio is measured here too: the one the model reports let a repetition loop through.
-    worst = max(max(ratio, _compression_ratio(text)) for text, _, ratio in parts)
+    worst = max(max(ratio, compression_ratio(text)) for text, _, ratio in parts)
     return mean_logprob >= MIN_AVG_LOGPROB and worst <= MAX_COMPRESSION_RATIO
-
-
-def most_likely(probabilities: Mapping[str, float], languages: Sequence[str]) -> str | None:
-    """The most likely of ``languages`` (the meeting's), or ``None`` to let the model decide."""
-    if not languages:
-        return None
-    return max(languages, key=lambda language: probabilities.get(language, 0.0))
 
 
 def transcribe_passages(audio: np.ndarray, spans: Sequence[tuple[float, float]], read: Reader) -> list[list[Line]]:
@@ -301,7 +289,7 @@ def _reader(backend: str, model_size: str, model_dir: Path | None, languages: Se
 
 
 def _clean(raw) -> list[Line]:
-    return [(float(start), float(end), text.strip()) for start, end, text in raw if text.strip()]
+    return [(float(start), float(end), text.strip()) for start, end, text in raw if text.strip() and not phantom(text)]
 
 
 def assemble(

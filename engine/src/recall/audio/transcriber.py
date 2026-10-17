@@ -11,11 +11,12 @@ installed with the ``apple`` extra).
 import importlib.util
 import platform
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Protocol
 
 from recall.audio.chunker import Utterance
+from recall.audio.plausible import most_likely, plausible
 from recall.diarization.turns import default_speaker
 from recall.transcript import Segment, Word
 
@@ -61,11 +62,20 @@ class Transcriber:
     """
 
     def __init__(
-        self, model_size: str = "base", model_dir: Path | None = None, *, translate: bool = False
+        self,
+        model_size: str = "base",
+        model_dir: Path | None = None,
+        *,
+        translate: bool = False,
+        languages: Sequence[str] = (),
     ) -> None:
-        """With ``translate`` the output is English whatever language is spoken."""
+        """With ``translate`` the output is English whatever language is spoken.
+
+        ``languages`` are the meeting's: speech is only ever written in one of them.
+        """
         from faster_whisper import WhisperModel
 
+        self._languages = tuple(languages)
         self._task = "translate" if translate else "transcribe"
         self._model = WhisperModel(
             model_size,
@@ -82,13 +92,18 @@ class Transcriber:
         by ``source``; diarization may refine that afterwards. Returns an
         empty list when no speech is recognised.
         """
+        language = self._languages[0] if len(self._languages) == 1 else None
+        if len(self._languages) > 1:
+            _best, _probability, ranked = self._model.detect_language(utterance.samples)
+            language = most_likely(dict(ranked), self._languages)
         raw_segments, _info = self._model.transcribe(
-            utterance.samples, word_timestamps=True, vad_filter=True, task=self._task
+            utterance.samples, word_timestamps=True, vad_filter=True, task=self._task, language=language
         )
         return _segments(
             (
                 (raw.start, raw.end, raw.text, ((w.word, w.start, w.end) for w in raw.words or ()))
                 for raw in raw_segments
+                if plausible(raw.text, raw.avg_logprob, raw.compression_ratio, raw.no_speech_prob)
             ),
             utterance,
             source,
@@ -119,7 +134,12 @@ class MlxTranscriber:
     """
 
     def __init__(
-        self, model_size: str = "base", model_dir: Path | None = None, *, translate: bool = False
+        self,
+        model_size: str = "base",
+        model_dir: Path | None = None,
+        *,
+        translate: bool = False,
+        languages: Sequence[str] = (),
     ) -> None:
         if importlib.util.find_spec("mlx_whisper") is None:
             raise RuntimeError(
@@ -129,6 +149,7 @@ class MlxTranscriber:
         from huggingface_hub import snapshot_download
 
         self._transcribe = mlx_whisper.transcribe
+        self._languages = tuple(languages)
         self._task = "translate" if translate else "transcribe"
         # Downloads once into model_dir, like faster-whisper's download_root.
         self._repo = snapshot_download(
@@ -143,6 +164,7 @@ class MlxTranscriber:
             word_timestamps=True,
             condition_on_previous_text=False,
             task=self._task,
+            language=self._language(utterance.samples),
             verbose=None,
         )
         return _segments(
@@ -154,10 +176,26 @@ class MlxTranscriber:
                     ((w["word"], w["start"], w["end"]) for w in raw.get("words", ())),
                 )
                 for raw in result["segments"]
+                if plausible(raw["text"], raw["avg_logprob"], raw["compression_ratio"], raw["no_speech_prob"])
             ),
             utterance,
             source,
         )
+
+    def _language(self, samples) -> str | None:
+        """The meeting language this speech is most likely in (``None``: any language)."""
+        if len(self._languages) <= 1:
+            return self._languages[0] if self._languages else None
+        import mlx.core as mx
+        from mlx_whisper.audio import log_mel_spectrogram, pad_or_trim
+        from mlx_whisper.decoding import detect_language
+        from mlx_whisper.transcribe import ModelHolder
+
+        model = ModelHolder.get_model(self._repo, mx.float16)
+        mel = log_mel_spectrogram(pad_or_trim(mx.array(samples)), n_mels=model.dims.n_mels)
+        _tokens, probabilities = detect_language(model, mel.astype(mx.float16))
+        ranked = probabilities if isinstance(probabilities, dict) else probabilities[0]
+        return most_likely(ranked, self._languages)
 
 
 def mlx_available() -> bool:
@@ -170,7 +208,12 @@ def mlx_available() -> bool:
 
 
 def load_transcriber(
-    backend: str, model_size: str, model_dir: Path | None, *, translate: bool = False
+    backend: str,
+    model_size: str,
+    model_dir: Path | None,
+    *,
+    translate: bool = False,
+    languages: Sequence[str] = (),
 ) -> SpeechToText:
     """Load the speech model for ``backend`` (see :data:`BACKENDS`).
 
@@ -183,5 +226,5 @@ def load_transcriber(
     if backend not in BACKENDS:
         raise ValueError(f"unknown speech backend {backend!r}; use one of {BACKENDS}")
     if backend == "mlx" or (backend == "auto" and mlx_available()):
-        return MlxTranscriber(model_size, model_dir, translate=translate)
-    return Transcriber(model_size, model_dir, translate=translate)
+        return MlxTranscriber(model_size, model_dir, translate=translate, languages=languages)
+    return Transcriber(model_size, model_dir, translate=translate, languages=languages)

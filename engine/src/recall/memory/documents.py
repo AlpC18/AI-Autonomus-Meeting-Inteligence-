@@ -17,6 +17,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from recall.config import Settings
 from recall.memory.store import Meeting, ScopedMemory
@@ -152,3 +153,23 @@ def main() -> None:
         sys.exit(f"Memory is in use (is the engine running?): {error}")
     if failed:
         sys.exit(1)
+
+
+def import_paths(memory: ScopedMemory, paths: tuple[str, ...], redact: bool) -> dict[str, list[Any]]:
+    """Import the documents at ``paths`` (files or folders) into ``memory``; report each file or error."""
+    imported: list[Any] = []
+    errors: list[Any] = []
+    for raw in paths:
+        path = Path(raw)
+        if not path.exists():
+            errors.append(f"{raw}: not found")
+            continue
+        files = document_files([path])
+        if not files:
+            errors.append(f"{raw}: no Markdown, text or PDF files")
+        for file in files:
+            try:
+                imported.append({"name": file.name, "passages": import_document(memory, file, redact)})
+            except (OSError, RuntimeError, ValueError) as error:
+                errors.append(f"{file}: {error}")
+    return {"imported": imported, "errors": errors}

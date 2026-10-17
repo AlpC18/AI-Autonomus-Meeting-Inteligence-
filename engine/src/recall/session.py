@@ -45,7 +45,7 @@ from recall.live_controls import (
     parse,
 )
 from recall.llm import Llm
-from recall.memory.documents import document_files, import_document
+from recall.memory.documents import import_paths
 from recall.memory.scope import TenantScope
 from recall.memory.store import Meeting, MemoryHit, ScopedMemory
 from recall.notes import MeetingNotes, markdown_lines
@@ -55,6 +55,7 @@ from recall.stats import speaker_stats
 from recall.stats import to_markdown as stats_markdown
 from recall.summary import MeetingSummary, follow_up_email, summarize, to_markdown
 from recall.templates import for_meeting
+from recall.timeline import TOPIC_WINDOW_S, topic_title
 from recall.transcript import Segment
 from recall.translate import Translator
 
@@ -145,6 +146,8 @@ class _Current:
     temporary_audio: bool = False
     """The recording exists only for the accurate transcript and is deleted after it."""
     disputed: set[tuple[str, float]] = field(default_factory=set)
+    topic_from: tuple[float, datetime, int] | None = None
+    """Where the timeline entry in progress began: clock, wall time, index in ``segments``."""
     items_checked_at: float = 0.0
     items_checked_segments: int = 0
 
@@ -186,6 +189,7 @@ class MeetingSession:
         # Transcribes a finished meeting's recording again, accurately (see recall.polish).
         self._polish = polish
         self._polishing: set[asyncio.Task[None]] = set()
+        self._topics: set[asyncio.Task[None]] = set()
         self._heard: dict[str, int] = {}
         self._memory = memory
         self._llm = llm
@@ -308,6 +312,9 @@ class MeetingSession:
                 if current.recorder is not None:
                     current.recorder.close()
                 ended["talk_time"] = self._talk_time(current)
+                last_topic = self._add_topic(current)  # what was said since the last entry
+                if last_topic is not None:
+                    await last_topic  # before "meeting_ended", so it joins this meeting's timeline
                 if self._polish is not None and current.recorder is not None:
                     # Minutes of work: the next meeting starts meanwhile.
                     ended["polishing"] = True
@@ -401,6 +408,7 @@ class MeetingSession:
             current.segments.append(segment)
         if segment.source != NOTE_SOURCE:
             current.last_speech = self._clock()
+            self._maybe_add_topic(current)
         if current.notes is not None:
             try:
                 current.notes.add(redact_segment(segment) if self._settings.redact else segment)
@@ -502,6 +510,34 @@ class MeetingSession:
         items = [{"task": item.task, "owner": item.owner, "due": item.due} for item in summary.action_items]
         self._publish_event({"type": "action_items", "items": items})
 
+    def _maybe_add_topic(self, current: _Current) -> None:
+        """Open a timeline entry at the first speech, close it after :data:`TOPIC_WINDOW_S`."""
+        newest = len(current.segments) - 1
+        if current.topic_from is not None and self._clock() - current.topic_from[0] >= TOPIC_WINDOW_S:
+            self._add_topic(current, upto=newest)  # the newest line opens the next entry
+        if current.topic_from is None:
+            current.topic_from = (self._clock(), self._now(), newest)
+
+    def _add_topic(self, current: _Current, upto: int | None = None) -> asyncio.Task[None] | None:
+        """Publish the timeline entry in progress, up to line ``upto`` (titled in the background)."""
+        if current.topic_from is None:
+            return None
+        _clock, started, first = current.topic_from
+        current.topic_from = None
+        clean = redact_segment if self._settings.redact else (lambda segment: segment)
+        # Redacted like the summary: the titles may come from the AI provider.
+        lines = [clean(s).text for s in current.segments[first:upto] if s.source != NOTE_SOURCE]
+
+        async def publish() -> None:
+            title = await asyncio.to_thread(topic_title, lines, self._llm)
+            if title:
+                self._publish_event({"type": "topic", "at": started.isoformat(), "title": title})
+
+        task = asyncio.create_task(publish())
+        self._topics.add(task)
+        task.add_done_callback(self._topics.discard)
+        return task
+
     def _transcript(self, current: _Current) -> str:
         """The meeting's transcript as the AI provider gets it: the (redacted) notes lines."""
         clean = redact_segment if self._settings.redact else (lambda segment: segment)
@@ -577,7 +613,7 @@ class MeetingSession:
         if memory is None:
             reply = {"imported": [], "errors": ["Memory is off: set a workspace and project in Settings first."]}
         else:
-            reply = await asyncio.to_thread(_import_into, memory, paths, self._settings.redact)
+            reply = await asyncio.to_thread(import_paths, memory, paths, self._settings.redact)
         self._publish_event({"type": "documents_imported", **reply})
 
     async def _note(self, command: Note | Rename) -> None:
@@ -731,26 +767,6 @@ class MeetingSession:
             queued, errors = await asyncio.to_thread(self._propose, summary, source, current.event)
             event.update(queued=queued, errors=errors)
         self._publish_event(event)
-
-
-def _import_into(memory: ScopedMemory, paths: tuple[str, ...], redact: bool) -> dict[str, list[Any]]:
-    """Import the documents at ``paths`` (files or folders); report each file or error."""
-    imported: list[Any] = []
-    errors: list[Any] = []
-    for raw in paths:
-        path = Path(raw)
-        if not path.exists():
-            errors.append(f"{raw}: not found")
-            continue
-        files = document_files([path])
-        if not files:
-            errors.append(f"{raw}: no Markdown, text or PDF files")
-        for file in files:
-            try:
-                imported.append({"name": file.name, "passages": import_document(memory, file, redact)})
-            except (OSError, RuntimeError, ValueError) as error:
-                errors.append(f"{file}: {error}")
-    return {"imported": imported, "errors": errors}
 
 
 def _rename(segment: Segment, names: dict[str, str]) -> Segment:

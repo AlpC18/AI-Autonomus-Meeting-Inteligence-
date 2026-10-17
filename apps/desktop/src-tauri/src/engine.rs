@@ -131,10 +131,7 @@ pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
     } else if engine_dir.join(".env").is_file() {
         command.args(["--env-file", ".env"]);
     }
-    command
-        .arg(script)
-        .current_dir(engine_dir)
-        .envs(settings);
+    command.arg(script).current_dir(engine_dir).envs(settings);
     command
 }
 
@@ -209,8 +206,13 @@ static BUNDLE: OnceLock<Bundle> = OnceLock::new();
 pub fn use_bundle(resource_dir: &Path, data_dir: &Path, cache_dir: &Path) -> bool {
     let engine_dir = resource_dir.join("engine");
     let uv = std::env::current_exe().ok().and_then(|exe| {
-        exe.parent()
-            .map(|dir| dir.join(if cfg!(windows) { "recall-uv.exe" } else { "recall-uv" }))
+        exe.parent().map(|dir| {
+            dir.join(if cfg!(windows) {
+                "recall-uv.exe"
+            } else {
+                "recall-uv"
+            })
+        })
     });
     let (Some(uv), true) = (uv, engine_dir.join("pyproject.toml").is_file()) else {
         return false;

@@ -3,6 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import { speakerTurns } from "./speakerTurns";
+import { displaySpeaker, speakerColor } from "./speakers";
 import type { EngineCommand, TranscriptSegment } from "./transcriptStream";
 import { t } from "../i18n";
 
@@ -43,75 +44,76 @@ interface SpeakerNamerProps {
 }
 
 /**
- * Lets the user give real names to "Speaker 1", "Speaker 2", ... (and to "me").
- *
- * The engine applies a name to everything said from then on and confirms it,
- * and the transcript already on screen is relabelled at the same time.
+ * The people in the meeting: everyone heard so far, in their transcript
+ * colour, each with a box for their real name. The engine applies a name to
+ * everything said from then on, and the transcript on screen is relabelled.
+ * When remote voices are not told apart, says how to turn that on.
  */
 export function SpeakerNamer({ segments, connected, send }: SpeakerNamerProps) {
   const speakers = speakersIn(segments);
-  const [speaker, setSpeaker] = useState("");
-  const [name, setName] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
-  const chosen = speakers.includes(speaker) ? speaker : (speakers[0] ?? "");
+  const separated = speakers.some((label) => /^Speaker \d+$/.test(label));
 
-  if (speakers.length === 0) return null;
-
-  const onSubmit = (event: FormEvent) => {
+  const save = (event: FormEvent, label: string) => {
     event.preventDefault();
+    const name = drafts[label] ?? "";
     const problem = nameProblem(name);
     if (problem) {
       setMessage(problem);
       return;
     }
     const to = name.trim().replace(/\s+/g, " ");
-    if (send({ type: "rename_speaker", from: chosen, to })) {
-      setMessage(t("{from} will be shown as {to}.", { from: chosen, to }));
-      setName("");
-      setSpeaker(to);
+    if (send({ type: "rename_speaker", from: label, to })) {
+      setMessage(t("{from} will be shown as {to}.", { from: displaySpeaker(label), to }));
+      setDrafts((current) => ({ ...current, [label]: "" }));
     } else {
       setMessage(t("The engine is not connected; try again in a moment."));
     }
   };
 
   return (
-    <form onSubmit={onSubmit} aria-label={t("Name a speaker")} className="mt-3 flex flex-wrap items-end gap-2">
-      <label className="flex flex-col text-xs text-zinc-600">
-        {t("Speaker")}
-        <select
-          value={chosen}
-          onChange={(event) => setSpeaker(event.target.value)}
-          className="mt-1 rounded-md border border-zinc-300 p-1.5 text-sm text-zinc-900"
-        >
+    <section aria-label={t("People")} className="rounded-xl border border-zinc-200 bg-surface p-4">
+      <h2 className="text-sm font-semibold">{t("People")}</h2>
+      {speakers.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-500">{t("People appear here as they speak.")}</p>
+      ) : (
+        <ul className="mt-3 space-y-2.5">
           {speakers.map((label) => (
-            <option key={label} value={label}>
-              {label}
-            </option>
+            <li key={label}>
+              <form onSubmit={(event) => save(event, label)} className="flex items-center gap-2">
+                <span className={`w-20 shrink-0 truncate text-sm font-semibold ${speakerColor(label)}`}>{displaySpeaker(label)}</span>
+                <input
+                  aria-label={t("Name for {person}", { person: displaySpeaker(label) })}
+                  value={drafts[label] ?? ""}
+                  maxLength={MAX_NAME_LENGTH}
+                  onChange={(event) => setDrafts((current) => ({ ...current, [label]: event.target.value }))}
+                  placeholder={t("e.g. Ana")}
+                  className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={!connected}
+                  aria-label={t("Save name for {person}", { person: displaySpeaker(label) })}
+                  className="cursor-pointer rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("Save")}
+                </button>
+              </form>
+            </li>
           ))}
-        </select>
-      </label>
-      <label className="flex flex-col text-xs text-zinc-600">
-        {t("Real name")}
-        <input
-          value={name}
-          maxLength={MAX_NAME_LENGTH}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t("e.g. Ana")}
-          className="mt-1 rounded-md border border-zinc-300 p-1.5 text-sm text-zinc-900"
-        />
-      </label>
-      <button
-        type="submit"
-        disabled={!connected}
-        className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {t("Rename")}
-      </button>
+        </ul>
+      )}
+      {!separated && speakers.includes("others") && (
+        <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+          {t("Everyone else is heard as one voice. To tell them apart as Person 1, Person 2, …, add a free Hugging Face token in Get started.")}
+        </p>
+      )}
       {message && (
-        <p role="status" className="w-full text-xs text-zinc-700">
+        <p role="status" className="mt-2 text-xs text-zinc-700">
           {message}
         </p>
       )}
-    </form>
+    </section>
   );
 }

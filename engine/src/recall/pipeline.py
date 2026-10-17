@@ -282,7 +282,13 @@ async def run(settings: Settings) -> int:
     logger.info("Loading Whisper model %r (%s)", settings.whisper_model, settings.asr_backend)
     try:
         transcriber = await asyncio.to_thread(
-            load_transcriber, settings.asr_backend, settings.whisper_model, settings.model_dir
+            functools.partial(
+                load_transcriber,
+                settings.asr_backend,
+                settings.whisper_model,
+                settings.model_dir,
+                languages=settings.meeting_languages,
+            )
         )
     except OSError as error:
         # Model downloads fail as OSError subclasses (no connection, TLS errors).

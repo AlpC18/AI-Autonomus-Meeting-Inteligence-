@@ -61,6 +61,13 @@
   --color-sky-50: #10222c;
   --color-amber-50: #2a2312;
   --color-amber-400: #b8892c;
+  /* One colour per person in the transcript (see hud/speakers.ts). */
+  --color-teal-700: #6fc7bb;
+  --color-violet-700: #b9a3f5;
+  --color-amber-700: #e0b356;
+  --color-sky-700: #7fc2ec;
+  --color-rose-700: #f29bb0;
+  --color-lime-700: #a9d46b;
 }
 
 @layer base {
