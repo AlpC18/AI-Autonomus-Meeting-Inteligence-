@@ -46,7 +46,6 @@ Phase 9 (experience) is on `feat/phase-9-experience`, stacked on #7: voices acro
 - How the user picks tenant/project per meeting (today: environment variables).
 - Bundling the engine for release builds.
 - Windows and Linux system audio and overlay behaviour.
-- `AI_GUIDELINES_v2026.md` and `AI_Guidelines_Architecture_Standards.md` are unfilled templates; remove or archive?
 
 ## Recent decisions
 

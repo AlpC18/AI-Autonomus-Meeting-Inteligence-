@@ -46,7 +46,7 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MO
 
 ## Known constraints
 
-- System audio capture is macOS-only and needs Screen Recording permission for the app that runs the engine.
+- System audio: macOS uses ScreenCaptureKit and needs Screen Recording permission for the app that runs the engine; Windows uses WASAPI (process) loopback; Linux uses PulseAudio/PipeWire (`pactl`, `parec` from pulseaudio-utils).
 - pyannote labels are only valid inside one call. Session-wide names come from matching voice embeddings (`diarization/tracker.py`); embed each speaker's own audio, because the embeddings the pipeline returns for short clips are mixtures and do not match across calls.
 - pyannote costs about 0.9 s of CPU per second of audio beyond the first 10 s on an M1 (the wespeaker embedding model dominates; MPS and a coarser segmentation step did not help).
 - `uv run --env-file` silently drops a value with unquoted spaces; quote such paths in `engine/.env`.
