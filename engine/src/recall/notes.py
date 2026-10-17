@@ -162,6 +162,17 @@ class MeetingNotes:
                 file.write(self._heading)
             file.write("\n".join(markdown_lines(segment)) + "\n")
 
+    def rewrite(self, segments: list[Segment]) -> None:
+        """Replace the transcript with ``segments`` (the accurate one after the meeting).
+
+        Raises:
+            OSError: if the file cannot be written.
+        """
+        if not self.path.exists():
+            return
+        lines = [line for segment in segments for line in markdown_lines(segment)]
+        self.path.write_text(self._heading + "\n".join(lines) + "\n", encoding="utf-8")
+
     def append(self, markdown: str) -> None:
         """Add a section (for example the summary) at the end of an existing file.
 

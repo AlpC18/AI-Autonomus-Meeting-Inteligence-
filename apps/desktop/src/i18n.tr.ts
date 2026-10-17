@@ -231,7 +231,13 @@ export const TR: Readonly<Record<string, string>> = {
   "Optional: the ID chrome://extensions (or Firefox's about:debugging UUID) shows for the Recall extension, so no other extension can send audio.":
     "İsteğe bağlı: chrome://extensions sayfasında (Firefox'ta about:debugging UUID'si) Recall eklentisi için görünen kimlik; böylece başka hiçbir eklenti ses gönderemez.",
   "Speech model": "Konuşma modeli",
-  "Larger is more accurate and slower.": "Büyük model daha doğru ama daha yavaştır.",
+  "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.":
+    "Canlı altyazı için. Büyük model daha doğru ama daha yavaştır; small her yeni bilgisayarda yetişir.",
+  "Accurate transcript after the meeting": "Toplantıdan sonra doğru döküm",
+  "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.":
+    "Toplantı bitince ses bu bilgisayarda bu modelle yeniden yazıya dökülür; notlar, hafıza ve özet bu metni kullanır. Toplantının her saati için yaklaşık 10 dakika sürer. “Toplantı sesini kaydet” kapalıysa ses hemen ardından silinir.",
+  "Making the transcript accurate… The notes and summary follow in a few minutes.":
+    "Döküm düzeltiliyor… Notlar ve özet birkaç dakika içinde gelecek.",
   "Speech engine": "Konuşma motoru",
   "auto uses the Apple Silicon GPU when available.": "auto, varsa Apple Silicon GPU'yu kullanır.",
   "Hugging Face token": "Hugging Face anahtarı",

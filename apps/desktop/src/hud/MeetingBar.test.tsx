@@ -157,4 +157,9 @@ describe("MeetingBar", () => {
     render(<MeetingBar title="x" connected send={() => true} lastSummary={summary} brief={null} liveItems={[]} lastTalkTime={[]} project={null} projectError={null} />);
     expect(screen.getByText("The summary could not be made: No AI provider is set")).toBeTruthy();
   });
+
+  it("says when the transcript is being made accurate", () => {
+    render(<MeetingBar title="x" connected send={() => true} lastSummary={null} brief={null} liveItems={[]} lastTalkTime={[]} project={null} projectError={null} polishing />);
+    expect(screen.getByText(/Making the transcript accurate/)).toBeTruthy();
+  });
 });

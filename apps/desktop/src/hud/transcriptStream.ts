@@ -65,6 +65,8 @@ export interface TranscriptStream {
   answers: Readonly<Record<string, Answer>>;
   /** The summary of the meeting that ended last, if any. */
   lastSummary: MeetingSummaryEvent | null;
+  /** The ended meeting's recording is being transcribed again, accurately. */
+  polishing: boolean;
   /** The brief for the current meeting from earlier meetings, if one arrived. */
   brief: Answer | null;
   /** Action items said so far in the current meeting (only with live action items on). */
@@ -150,7 +152,9 @@ export type EngineEvent =
   | { type: "project_error"; error: string }
   | { type: "documents_imported"; result: DocumentImport }
   | { type: "translation"; key: string; text: string }
-  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null };
+  | { type: "meeting_ended"; reason: string; talkTime: TalkTime[]; report: string | null }
+  | { type: "polishing" }
+  | { type: "polished"; improved: boolean };
 
 /** The engine's confirmation that a speaker is now shown under another name. */
 export interface Renamed {
@@ -332,6 +336,8 @@ export function parseEngineEvent(raw: unknown): EngineEvent | null {
       : [];
     return { type: "documents_imported", result: { imported, errors: strings(message.errors) } };
   }
+  if (message.type === "polishing") return { type: "polishing" };
+  if (message.type === "polished") return { type: "polished", improved: message.improved === true };
   if (message.type === "meeting_ended" && typeof message.reason === "string") {
     const rows = Array.isArray(message.talk_time) ? message.talk_time : [];
     const talkTime = rows.flatMap((row): TalkTime[] =>
@@ -376,6 +382,7 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
   const [meetingTitle, setMeetingTitle] = useState("Meeting");
   const [answers, setAnswers] = useState<Readonly<Record<string, Answer>>>({});
   const [lastSummary, setLastSummary] = useState<MeetingSummaryEvent | null>(null);
+  const [polishing, setPolishing] = useState(false);
   const [brief, setBrief] = useState<Answer | null>(null);
   const [liveItems, setLiveItems] = useState<readonly LiveActionItem[]>([]);
   const [lastTalkTime, setLastTalkTime] = useState<readonly TalkTime[]>([]);
@@ -442,6 +449,8 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
           setLastReport(engineEvent.report);
         } else if (engineEvent?.type === "action_items") {
           setLiveItems(engineEvent.items);
+        } else if (engineEvent?.type === "polishing" || engineEvent?.type === "polished") {
+          setPolishing(engineEvent.type === "polishing");
         } else if (engineEvent?.type === "summary") {
           setLastSummary(engineEvent.summary);
         } else if (engineEvent?.type === "translation") {
@@ -478,5 +487,5 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     };
   }, [url]);
 
-  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
+  return { status, segments, alerts, dismissAlert, hints, dismissHint, lastReport, send, meetingTitle, answers, lastSummary, polishing, brief, liveItems, lastTalkTime, project, projectError, lastImport, captions };
 }

@@ -162,8 +162,15 @@ pub const FIELDS: &[Field] = &[
         "RECALL_WHISPER_MODEL",
         "Speech model",
         "Meetings",
-        Kind::Choice(&["base", "tiny", "small", "medium", "large-v3-turbo"]),
-        "Larger is more accurate and slower.",
+        Kind::Choice(&["small", "base", "tiny", "medium", "large-v3-turbo"]),
+        "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.",
+    ),
+    field(
+        "RECALL_FINAL_MODEL",
+        "Accurate transcript after the meeting",
+        "Meetings",
+        Kind::Choice(&["large-v3-turbo", "medium", "small", "off"]),
+        "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.",
     ),
     field(
         "RECALL_ASR_BACKEND",
@@ -874,6 +881,8 @@ mod tests {
         assert_eq!(default_of("RECALL_REDACT"), "1");
         assert_eq!(default_of("RECALL_REMEMBER_VOICES"), "1");
         assert_eq!(default_of("RECALL_RECORD_AUDIO"), "0");
+        assert_eq!(default_of("RECALL_WHISPER_MODEL"), "small");
+        assert_eq!(default_of("RECALL_FINAL_MODEL"), "large-v3-turbo");
         assert_eq!(default_of("RECALL_LLM_FACT_CHECK"), "0");
         assert_eq!(default_of("RECALL_LLM_HESITATIONS"), "0");
     }

@@ -23,6 +23,8 @@ interface MeetingBarProps {
   connected: boolean;
   send: (message: EngineCommand) => boolean;
   lastSummary: MeetingSummaryEvent | null;
+  /** The last meeting's transcript is being made accurate (see the engine's recall.polish). */
+  polishing?: boolean;
   brief: Answer | null;
   liveItems: readonly LiveActionItem[];
   lastTalkTime: readonly TalkTime[];
@@ -81,7 +83,7 @@ function minutes(seconds: number): string {
  * what earlier meetings said about it; "Brief me" asks for it again.
  * Switching the project ends this meeting and files the next under it.
  */
-export function MeetingBar({ title, connected, send, lastSummary, brief, liveItems, lastTalkTime, project, projectError, lastReport = null, lastImport = null, pick = pickDocuments }: MeetingBarProps) {
+export function MeetingBar({ title, connected, send, lastSummary, polishing = false, brief, liveItems, lastTalkTime, project, projectError, lastReport = null, lastImport = null, pick = pickDocuments }: MeetingBarProps) {
   const [ending, setEnding] = useState(false);
   const [nextProject, setNextProject] = useState("");
   const [shownSummary, setShownSummary] = useState<MeetingSummaryEvent | null>(null);
@@ -198,6 +200,11 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
             ))}
           </ul>
         </div>
+      )}
+      {polishing && (
+        <p role="status" className="mt-2 text-sm text-zinc-600">
+          {t("Making the transcript accurate… The notes and summary follow in a few minutes.")}
+        </p>
       )}
       {lastSummary && (
         <div role="status" className="mt-2 rounded-md bg-zinc-50 p-3 text-sm">

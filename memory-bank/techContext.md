@@ -59,3 +59,4 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `RECALL_MODEL
 - Installer check: on pull requests that touch packaging, `release.yml` builds all four platforms without publishing, installs each (`.app`, `.deb` via apt, NSIS `/S`), and `apps/desktop/scripts/smoke-bundle.mjs` starts the installed engine the way the app does. The app binary is `recall` and the bundled uv is `recall-uv` (so the Linux package never claims `/usr/bin/uv`).
 - Bundled extras: `claude` and `documents` always, `apple` on Apple Silicon, `diarization` once `HF_TOKEN` is set (`engine.rs`, `Bundle::extras`).
 - The spec links Buzz as `chime-vc/buzz`; verify the correct upstream before using it.
+- Speech accuracy measured 2026-10-17 on Turkish, German and Italian (macOS voices): base garbles words, small mostly right (~1 s per sentence on M1), large-v3-turbo word-perfect. The after-meeting redo of a 45 s three-language meeting took ~60 s, mostly loading the model.

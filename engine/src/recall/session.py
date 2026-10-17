@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import tempfile
 import time
 import uuid
 from collections.abc import Callable, Sequence
@@ -26,6 +27,7 @@ import numpy as np
 
 from recall.actions.calendar import CalendarEvent
 from recall.ask import answer, brief
+from recall.audio.blocks import SAMPLE_RATE
 from recall.audio.recorder import MixRecorder
 from recall.config import Settings
 from recall.language import t
@@ -47,6 +49,7 @@ from recall.memory.documents import document_files, import_document
 from recall.memory.scope import TenantScope
 from recall.memory.store import Meeting, MemoryHit, ScopedMemory
 from recall.notes import MeetingNotes, markdown_lines
+from recall.polish import Line, Polished, assemble, passages
 from recall.privacy import redact_segment
 from recall.stats import speaker_stats
 from recall.stats import to_markdown as stats_markdown
@@ -137,6 +140,11 @@ class _Current:
     started: float
     last_speech: float
     segments: list[Segment] = field(default_factory=list)
+    offsets: dict[str, float] = field(default_factory=dict)
+    """Per source, how far into its stream the recording started."""
+    temporary_audio: bool = False
+    """The recording exists only for the accurate transcript and is deleted after it."""
+    disputed: set[tuple[str, float]] = field(default_factory=set)
     items_checked_at: float = 0.0
     items_checked_segments: int = 0
 
@@ -171,8 +179,13 @@ class MeetingSession:
         watchers: Sequence[Watcher] = (),
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
+        polish: Callable[[Path, list[tuple[float, float]]], list[list[Line]]] | None = None,
     ) -> None:
         self._settings = settings
+        # Transcribes a finished meeting's recording again, accurately (see recall.polish).
+        self._polish = polish
+        self._polishing: set[asyncio.Task[None]] = set()
+        self._heard: dict[str, int] = {}
         self._memory = memory
         self._llm = llm
         self._speakers = speakers
@@ -258,8 +271,18 @@ class MeetingSession:
                 except OSError:
                     logger.exception("Could not start recording")
             logger.info("Writing meeting notes to %s", notes.path)
+        temporary = False
+        if recorder is None and self._polish is not None:
+            try:
+                path = Path(tempfile.mkdtemp(prefix="recall-")) / "meeting.wav"
+                recorder = MixRecorder(path, self._settings.sources)
+                temporary = True
+            except OSError:
+                logger.exception("Could not record for the accurate transcript")
         now = self._clock()
         self._current = _Current(Meeting(str(uuid.uuid4()), started_at), event, notes, recorder, now, now)
+        self._current.temporary_audio = temporary
+        self._current.offsets = {source: self._heard.get(source, 0) / SAMPLE_RATE for source in self._settings.sources}
         started: dict[str, Any] = {"type": "meeting_started", "title": title or t("Meeting")}
         if self._scope is not None:
             started["project"] = self._scope.project_id
@@ -284,11 +307,17 @@ class MeetingSession:
                 if current.recorder is not None:
                     current.recorder.close()
                 ended["talk_time"] = self._talk_time(current)
-                await self._summarise(current)
+                if self._polish is not None and current.recorder is not None:
+                    # Minutes of work: the next meeting starts meanwhile.
+                    ended["polishing"] = True
+                    task = asyncio.create_task(self._polish_meeting(current, self.names, self._memory))
+                    self._polishing.add(task)
+                    task.add_done_callback(self._polishing.discard)
+                else:
+                    await self._summarise(current)
             elif current.recorder is not None:
                 current.recorder.close()
-                with contextlib.suppress(OSError):
-                    current.recorder.path.unlink()
+                _discard_recording(current.recorder.path, current.temporary_audio)
             report = await self._finish_watchers(current)
             if report:
                 ended["report"] = report
@@ -325,9 +354,8 @@ class MeetingSession:
         if current is None or current.recorder is None:
             return
         current.recorder.close()
-        if not current.spoken:
-            with contextlib.suppress(OSError):
-                current.recorder.path.unlink()
+        if not current.spoken or current.temporary_audio:
+            _discard_recording(current.recorder.path, current.temporary_audio)
 
     # --- live transcript -------------------------------------------------------
 
@@ -483,11 +511,14 @@ class MeetingSession:
         current = self._current
         if self._memory is None or current is None:
             return
+        if disputed:
+            current.disputed.add((segment.source, segment.start))
         stored = redact_segment(segment) if self._settings.redact else segment
         self._memory.add_segment(stored, current.meeting, disputed=disputed)
 
     def record(self, source: str, block: np.ndarray) -> None:
         """Add captured audio to the meeting's recording, when recording is on."""
+        self._heard[source] = self._heard.get(source, 0) + len(block)
         if self._current is not None and self._current.recorder is not None:
             self._current.recorder.feed(source, block)
 
@@ -644,6 +675,38 @@ class MeetingSession:
         for old, new in merges.items():
             self._publish_event({"type": "renamed", "from": old, "to": new})
 
+    async def _polish_meeting(self, current: _Current, names: SpeakerNames, memory: ScopedMemory | None) -> None:
+        """Replace the live transcript with an accurate one, then summarise. Never raises."""
+        assert self._polish is not None and current.recorder is not None
+        self._publish_event({"type": "polishing"})
+        found = passages(current.segments, current.offsets)
+        try:
+            lines = await asyncio.to_thread(self._polish, current.recorder.path, [(p.start, p.end) for p in found])
+        except Exception:
+            logger.exception("Could not transcribe the recording again; keeping the live transcript")
+            lines = []
+        finally:
+            if current.temporary_audio:
+                _discard_recording(current.recorder.path, temporary=True)
+        polished = assemble(found, lines, current.segments, current.offsets, names.shown) if lines else []
+        improved = any(p.replaces is not None and p.segment is not p.replaces for p in polished)
+        if improved:
+            current.segments = [p.segment for p in polished]
+            clean = redact_segment if self._settings.redact else (lambda segment: segment)
+            if current.notes is not None:
+                try:
+                    current.notes.rewrite([clean(segment) for segment in current.segments])
+                except OSError:
+                    logger.exception("Could not write the accurate transcript to the notes")
+            if memory is not None:
+                try:
+                    await asyncio.to_thread(_replace_memory, memory, current, polished, clean)
+                except Exception:
+                    logger.exception("Could not store the accurate transcript in memory")
+        # Always sent, so the app stops showing the work in progress.
+        self._publish_event({"type": "polished", "improved": improved})
+        await self._summarise(current)
+
     async def _summarise(self, current: _Current) -> None:
         if self._llm is None:
             return
@@ -695,3 +758,22 @@ def _rename(segment: Segment, names: dict[str, str]) -> Segment:
         for word in segment.words
     )
     return replace(segment, speaker=names.get(segment.speaker, segment.speaker), words=words)
+
+
+def _discard_recording(path: Path, temporary: bool) -> None:
+    """Delete a recording; a temporary one takes its private folder with it."""
+    with contextlib.suppress(OSError):
+        path.unlink()
+        if temporary:
+            path.parent.rmdir()
+
+
+def _replace_memory(
+    memory: ScopedMemory, current: _Current, polished: list[Polished], clean: Callable[[Segment], Segment]
+) -> None:
+    """Store the accurate transcript in place of the live one, keeping which lines were disputed."""
+    memory.forget_meeting(current.meeting.meeting_id)
+    for line in polished:
+        live = line.replaces
+        disputed = live is not None and (live.source, live.start) in current.disputed
+        memory.add_segment(clean(line.segment), current.meeting, disputed=disputed)

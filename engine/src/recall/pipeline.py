@@ -45,6 +45,7 @@ from recall.llm import Llm, LlmSettings, connect
 from recall.memory.embedder import DEFAULT_MODEL, load_embedder
 from recall.memory.scope import TenantScope
 from recall.memory.store import MemoryHit, MemoryStore, ScopedMemory
+from recall.polish import transcribe_recording
 from recall.privacy import storage_settings, warn_if_disk_unencrypted
 from recall.session import MeetingSession, Watcher, queue_configured_proposals
 from recall.transcript import Segment
@@ -329,6 +330,11 @@ async def run(settings: Settings) -> int:
             stop=main_task.cancel,
             open_scope=open_scope,
             watchers=await _watchers(settings, stack, llm),
+            polish=(
+                functools.partial(transcribe_recording, backend=settings.asr_backend, model_size=settings.final_model, model_dir=settings.model_dir)
+                if settings.final_model
+                else None
+            ),
         )
         check = _checker(session.search, llm if settings.llm_fact_check else None) if memory else None
         async with TranscriptServer(port=settings.ws_port, on_message=session.handle) as server:
