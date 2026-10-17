@@ -20,7 +20,7 @@ from recall.audio.plausible import most_likely, plausible
 from recall.diarization.turns import default_speaker
 from recall.transcript import Segment, Word
 
-BACKENDS = ("auto", "faster-whisper", "mlx")
+BACKENDS = ("auto", "faster-whisper", "mlx", "groq")
 """Values accepted in ``RECALL_ASR_BACKEND``."""
 
 RawWord = tuple[str, float, float]
@@ -214,6 +214,7 @@ def load_transcriber(
     *,
     translate: bool = False,
     languages: Sequence[str] = (),
+    api_key: str | None = None,
 ) -> SpeechToText:
     """Load the speech model for ``backend`` (see :data:`BACKENDS`).
 
@@ -225,6 +226,14 @@ def load_transcriber(
     """
     if backend not in BACKENDS:
         raise ValueError(f"unknown speech backend {backend!r}; use one of {BACKENDS}")
+    if backend == "groq":
+        from recall.audio.cloud_transcriber import CloudTranscriber
+
+        def local() -> SpeechToText:
+            return load_transcriber("auto", model_size, model_dir, translate=translate, languages=languages)
+
+        # ponytail: no translate on the cloud path; the local fallback handles that setting.
+        return CloudTranscriber(api_key or "", languages, fallback=local)  # type: ignore[return-value]
     if backend == "mlx" or (backend == "auto" and mlx_available()):
         return MlxTranscriber(model_size, model_dir, translate=translate, languages=languages)
     return Transcriber(model_size, model_dir, translate=translate, languages=languages)

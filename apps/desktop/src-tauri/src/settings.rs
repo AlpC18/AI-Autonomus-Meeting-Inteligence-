@@ -193,8 +193,15 @@ pub const FIELDS: &[Field] = &[
         "RECALL_ASR_BACKEND",
         "Speech engine",
         "Meetings",
-        Kind::Choice(&["auto", "faster-whisper", "mlx"]),
-        "auto uses the Apple Silicon GPU when available.",
+        Kind::Choice(&["auto", "faster-whisper", "mlx", "groq"]),
+        "Live captions. auto uses the Apple Silicon GPU when available. groq sends each sentence's audio to Groq (large-v3-turbo, about 1 s): for languages the local models cannot follow live, such as Albanian. Needs the Groq key; the transcript after the meeting stays on this computer.",
+    ),
+    field(
+        "GROQ_API_KEY",
+        "Groq key for cloud speech",
+        "Meetings",
+        Kind::Secret,
+        "Free at console.groq.com. Only used when the speech engine is groq (or the AI provider is Groq).",
     ),
     field(
         "HF_TOKEN",

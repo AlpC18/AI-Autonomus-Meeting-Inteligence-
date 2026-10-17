@@ -264,7 +264,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Making the transcript accurate… The notes and summary follow in a few minutes.":
     "Döküm düzeltiliyor… Notlar ve özet birkaç dakika içinde gelecek.",
   "Speech engine": "Konuşma motoru",
-  "auto uses the Apple Silicon GPU when available.": "auto, varsa Apple Silicon GPU'yu kullanır.",
+  "Live captions. auto uses the Apple Silicon GPU when available. groq sends each sentence's audio to Groq (large-v3-turbo, about 1 s): for languages the local models cannot follow live, such as Albanian. Needs the Groq key; the transcript after the meeting stays on this computer.":
+    "Canlı altyazı. auto, varsa Apple Silicon GPU'yu kullanır. groq her cümlenin sesini Groq'a gönderir (large-v3-turbo, yaklaşık 1 sn): Arnavutça gibi yerel modellerin canlı takip edemediği diller için. Groq anahtarı gerekir; toplantı sonrası döküm bu bilgisayarda kalır.",
+  "Groq key for cloud speech": "Bulut konuşma tanıma için Groq anahtarı",
+  "Free at console.groq.com. Only used when the speech engine is groq (or the AI provider is Groq).":
+    "console.groq.com'da ücretsiz. Yalnızca konuşma motoru groq olduğunda (veya yapay zeka sağlayıcısı Groq olduğunda) kullanılır.",
   "Hugging Face token": "Hugging Face anahtarı",
   "Enables telling speakers apart (pyannote).": "Konuşanları ayırt etmeyi sağlar (pyannote).",
   "Recognise people you named": "Adlandırdığınız kişileri tanı",

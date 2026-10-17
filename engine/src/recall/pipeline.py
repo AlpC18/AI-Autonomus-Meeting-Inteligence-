@@ -288,6 +288,7 @@ async def run(settings: Settings) -> int:
                 settings.whisper_model,
                 settings.model_dir,
                 languages=settings.meeting_languages,
+                api_key=_speech_key(),
             )
         )
     except OSError as error:
@@ -353,7 +354,8 @@ async def run(settings: Settings) -> int:
                 in_own_process(
                     functools.partial(
                         polish_recording,
-                        backend=settings.asr_backend,
+                        # The after-meeting transcript always stays on this computer.
+                        backend="auto" if settings.asr_backend == "groq" else settings.asr_backend,
                         model_size=settings.final_model,
                         model_dir=settings.model_dir,
                         languages=settings.meeting_languages,
@@ -517,3 +519,12 @@ def main() -> None:
         sys.exit(str(error))
     except KeyboardInterrupt:
         sys.exit(0)
+
+
+def _speech_key() -> str | None:
+    """The Groq key for cloud speech: its own, or the AI provider's when that is Groq."""
+    if os.environ.get("GROQ_API_KEY"):
+        return os.environ["GROQ_API_KEY"]
+    if os.environ.get("RECALL_LLM_PROVIDER", "").strip().lower() == "groq":
+        return os.environ.get("RECALL_LLM_API_KEY") or None
+    return None
