@@ -46,13 +46,13 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `CONTINUUM_MO
 
 ## Known constraints
 
-- System audio capture is macOS-only and needs Screen Recording permission for the app that runs the engine.
+- System audio: macOS uses ScreenCaptureKit and needs Screen Recording permission for the app that runs the engine; Windows uses WASAPI (process) loopback; Linux uses PulseAudio/PipeWire (`pactl`, `parec` from pulseaudio-utils).
 - pyannote labels are only valid inside one call. Session-wide names come from matching voice embeddings (`diarization/tracker.py`); embed each speaker's own audio, because the embeddings the pipeline returns for short clips are mixtures and do not match across calls.
 - pyannote costs about 0.9 s of CPU per second of audio beyond the first 10 s on an M1 (the wespeaker embedding model dominates; MPS and a coarser segmentation step did not help).
 - `uv run --env-file` silently drops a value with unquoted spaces; quote such paths in `engine/.env`.
-- Fact checking only sees digits with a known unit: spelled-out numbers, dates and non-numeric contradictions are missed.
+- Fact checking compares figures with a known unit or currency (digits, spelled-out English and Turkish numbers, dates with a month name). Contradictions without numbers need the opt-in AI check (`factcheck/semantic.py`) and a configured provider. Turkish number words with suffixes ("dolarlık") are not read.
 - System audio captures everything the machine plays, so unrelated media is transcribed and stored too.
 - Only one process can open the memory database at a time, so search from another process needs the engine stopped.
 - Memory is stored unencrypted in `~/.continuum/memory` (folder readable by the user only).
-- The engine is not bundled into release builds; the app needs `uv` on its PATH and the repo's `engine/` folder.
+- Release builds bundle the engine sources, `uv.lock` and a `uv` binary (`tauri.bundle.conf.json`); the first start installs Python 3.12 and the locked environment into the app's data folder, which needs an internet connection once. Dev builds use `uv` from the PATH and the repo's `engine/` folder.
 - The spec links Buzz as `chime-vc/buzz`; verify the correct upstream before using it.

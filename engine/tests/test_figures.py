@@ -93,3 +93,26 @@ def test_spelled_out_wording_is_kept_for_display_and_masking() -> None:
 @pytest.mark.parametrize("text", ["the one we discussed", "you may 5", "March on", "on 40 March"])
 def test_words_and_months_alone_are_not_figures(text: str) -> None:
     assert figures(text) == set()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("bütçe otuz beş bin dolar", {("money", 35_000.0)}),
+        ("iki yüz kullanıcı kaydoldu", {("count:kullanıcı", 200.0)}),
+        ("on gün sürer", {("count:gün", 10.0)}),
+        ("yüzde yirmi beş indirim", {("percent", 25.0)}),
+        ("üç mühendis iki hafta", {("count:mühendis", 3.0), ("count:hafta", 2.0)}),
+        ("yüz kişi geldi", {("count:kişi", 100.0)}),
+    ],
+)
+def test_spoken_turkish_numbers_are_understood(text: str, expected: set) -> None:
+    assert figures(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["bir müşteri aradı", "we agreed on point two", "on day one", "yüz yüze görüştük"],
+)
+def test_turkish_words_that_double_as_ordinary_words_are_not_figures(text: str) -> None:
+    assert figures(text) == set()

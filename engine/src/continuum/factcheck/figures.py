@@ -45,11 +45,21 @@ _ONES = [
     "eighteen", "nineteen",
 ]  # fmt: skip
 _TENS = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
-_WORD_VALUES = {word: float(value) for value, word in enumerate(_ONES)} | {
-    word: float(10 * tens) for tens, word in enumerate(_TENS, start=2)
-}
-_SCALES = {"thousand": 1e3, "million": 1e6, "billion": 1e9}
-_NUMBER_WORDS = frozenset(_WORD_VALUES) | {"hundred"} | frozenset(_SCALES)
+_TR_ONES = ["sıfır", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"]
+_TR_TENS = ["on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"]
+_WORD_VALUES = (
+    {word: float(value) for value, word in enumerate(_ONES)}
+    | {word: float(10 * tens) for tens, word in enumerate(_TENS, start=2)}
+    | {word: float(value) for value, word in enumerate(_TR_ONES)}
+    | {word: float(10 * tens) for tens, word in enumerate(_TR_TENS, start=1)}
+)
+_HUNDREDS = frozenset({"hundred", "yüz"})
+_SCALES = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "bin": 1e3, "milyon": 1e6, "milyar": 1e9}
+_NUMBER_WORDS = frozenset(_WORD_VALUES) | _HUNDREDS | frozenset(_SCALES)
+# Turkish number words that are also ordinary words ("bir" = "a", "on" in English,
+# "yüz" = "face"): alone they count only before a Turkish unit or currency.
+_AMBIGUOUS = frozenset({"bir", "on", "yüz"})
+_TR_UNITS = frozenset({"gün", "hafta", "ay", "yıl", "saat", "dakika", "kişi", "mühendis", "kullanıcı", "müşteri", "dolar", "avro", "lira", "tl"})
 _WORD = re.compile(r"[^\W\d_]+")
 _JOINER = re.compile(r"[\s-]+")
 
@@ -121,7 +131,7 @@ def _words_value(words: list[str]) -> float:
         fraction = None
         if word in _WORD_VALUES:
             current += _WORD_VALUES[word]
-        elif word == "hundred":
+        elif word in _HUNDREDS:
             current = (current or 1) * 100
         elif word in _SCALES:
             total += (current or 1) * _SCALES[word]
@@ -141,9 +151,7 @@ def _digits(value: float) -> str:
 
 
 def _number_runs(text: str) -> list[tuple[int, int, float]]:
-    """Spans of spelled-out English numbers in ``text`` and their values."""
-    # ponytail: English words only; Turkish number words ("on", "yüz") clash
-    # with ordinary words. Add a Turkish pass if spoken Turkish figures are missed.
+    """Spans of spelled-out English and Turkish numbers in ``text`` and their values."""
     tokens = list(_WORD.finditer(text))
     runs = []
     i = 0
@@ -162,7 +170,11 @@ def _number_runs(text: str) -> list[tuple[int, int, float]]:
                 break
             j += 1
         # A bare scale word ("35 thousand") is left to the digit multipliers.
-        if words and (words[0] == "a" or any(word in _WORD_VALUES for word in words)):
+        counted = words and (words[0] == "a" or any(word in _WORD_VALUES for word in words))
+        if len(words) == 1 and words[0] in _AMBIGUOUS:
+            after = tokens[j].group().lower() if j < len(tokens) else ""
+            counted = words[0] != "bir" and after in _TR_UNITS
+        if counted:
             runs.append((tokens[i].start(), tokens[j - 1].end(), _words_value(words)))
             i = j
         else:
