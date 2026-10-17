@@ -11,12 +11,14 @@ import asyncio
 import contextlib
 import functools
 import logging
+import multiprocessing
 import os
 import signal
 import sys
 import threading
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import numpy as np
 
@@ -45,7 +47,7 @@ from recall.llm import Llm, LlmSettings, connect
 from recall.memory.embedder import DEFAULT_MODEL, load_embedder
 from recall.memory.scope import TenantScope
 from recall.memory.store import MemoryHit, MemoryStore, ScopedMemory
-from recall.polish import transcribe_recording
+from recall.polish import in_own_process, polish_recording
 from recall.privacy import storage_settings, warn_if_disk_unencrypted
 from recall.session import MeetingSession, Watcher, queue_configured_proposals
 from recall.transcript import Segment
@@ -145,8 +147,11 @@ class Engine:
         check: Callable[[Segment], FactCheckAlert | None] | None = None,
         publish_alert: Callable[[FactCheckAlert], None] | None = None,
         relabel: Callable[[Segment], Segment] | None = None,
+        live_idle: Any = None,
     ) -> None:
         self._transcriber = transcriber
+        # Cleared while transcribing, so the after-meeting redo gives way (recall.polish).
+        self._live_idle = live_idle
         self._publish = publish
         self._diarizer = diarizer
         self._remember = remember
@@ -169,7 +174,13 @@ class Engine:
         in either step is logged and does not interrupt the live transcript.
         """
         async with self._model_lock:
-            segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
+            if self._live_idle is not None:
+                self._live_idle.clear()
+            try:
+                segments = await asyncio.to_thread(self._transcriber.transcribe, utterance, source)
+            finally:
+                if self._live_idle is not None:
+                    self._live_idle.set()
             if segments and self._diarizer is not None and source != "mic":
                 turns = await asyncio.to_thread(self._diarizer.diarize, utterance)
                 segments = [label_segment(segment, turns) for segment in segments]
@@ -320,6 +331,8 @@ async def run(settings: Settings) -> int:
 
         main_task = asyncio.current_task()
         assert main_task is not None
+        live_idle = multiprocessing.get_context("spawn").Event()
+        live_idle.set()
         session = MeetingSession(
             settings,
             memory=memory,
@@ -331,7 +344,16 @@ async def run(settings: Settings) -> int:
             open_scope=open_scope,
             watchers=await _watchers(settings, stack, llm),
             polish=(
-                functools.partial(transcribe_recording, backend=settings.asr_backend, model_size=settings.final_model, model_dir=settings.model_dir)
+                in_own_process(
+                    functools.partial(
+                        polish_recording,
+                        backend=settings.asr_backend,
+                        model_size=settings.final_model,
+                        model_dir=settings.model_dir,
+                        languages=settings.meeting_languages,
+                    ),
+                    live_idle,
+                )
                 if settings.final_model
                 else None
             ),
@@ -348,6 +370,7 @@ async def run(settings: Settings) -> int:
                 check,
                 server.publish_alert,
                 session.relabel,
+                live_idle,
             )
             idle = asyncio.create_task(session.watch_idle())
             slides = _watch_slides(settings, engine) if check is not None else None

@@ -10,8 +10,10 @@ import numpy as np
 from test_session import FakeLlm, FakeMemory, make, said
 
 from recall.config import Settings
+from recall.polish import Polished, assemble, passages
 from recall.privacy import storage_settings
 from recall.session import MeetingSession
+from recall.transcript import Segment
 
 
 class ForgettingMemory(FakeMemory):
@@ -33,12 +35,13 @@ async def finish_polishing(session: MeetingSession) -> None:
 async def test_the_accurate_transcript_replaces_the_live_one(tmp_path: Path) -> None:
     recordings: list[Path] = []
 
-    def polish(path: Path, spans: list[tuple[float, float]]) -> list[list[tuple[float, float, str]]]:
+    def polish(path: Path, live: list[Segment], offsets: dict[str, float], shown) -> list[Polished]:
         recordings.append(path)
         assert path.exists()
         # 3 s of the first (silent) meeting came before this recording started.
-        assert spans == [(1.0, 2.0)]
-        return [[(0.9, 2.1, "Bütçe 35 bin dolara düşürüldü.")]]
+        assert offsets["system"] == 3.0
+        found = passages([(0.9, 2.1)], live, offsets)
+        return assemble(found, [[(0.9, 2.1, "Bütçe 35 bin dolara düşürüldü.")]], live, offsets, shown)
 
     memory, llm = ForgettingMemory(), FakeLlm()
     session, _published, events = await make(tmp_path, memory=memory, llm=llm, polish=polish)
@@ -64,7 +67,7 @@ async def test_the_accurate_transcript_replaces_the_live_one(tmp_path: Path) -> 
 
 
 async def test_a_failed_redo_keeps_the_live_transcript_and_still_summarises(tmp_path: Path) -> None:
-    def polish(_path: Path, _spans: list[tuple[float, float]]) -> list[list[tuple[float, float, str]]]:
+    def polish(_path: Path, _live: list[Segment], _offsets: dict[str, float], _shown) -> list[Polished]:
         raise RuntimeError("model download failed")
 
     llm = FakeLlm()

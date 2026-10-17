@@ -234,6 +234,9 @@ export const TR: Readonly<Record<string, string>> = {
   "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.":
     "Canlı altyazı için. Büyük model daha doğru ama daha yavaştır; small her yeni bilgisayarda yetişir.",
   "Accurate transcript after the meeting": "Toplantıdan sonra doğru döküm",
+  "Meeting languages": "Toplantı dilleri",
+  "Codes of the languages spoken in your meetings, e.g. en,tr,de,it,sq. The accurate transcript then picks among them, so a less common language such as Albanian is not mistaken for another. Empty: any language.":
+    "Toplantılarınızda konuşulan dillerin kodları, ör. en,tr,de,it,sq. Doğru döküm bu diller arasından seçer; böylece Arnavutça gibi daha az yaygın bir dil başka bir dille karıştırılmaz. Boş: her dil.",
   "When a meeting ends, its audio is transcribed again on this computer with this model; the notes, memory and summary use that text. Takes about 10 minutes per hour of meeting. Without “Record meeting audio” the audio is deleted right after.":
     "Toplantı bitince ses bu bilgisayarda bu modelle yeniden yazıya dökülür; notlar, hafıza ve özet bu metni kullanır. Toplantının her saati için yaklaşık 10 dakika sürer. “Toplantı sesini kaydet” kapalıysa ses hemen ardından silinir.",
   "Making the transcript accurate… The notes and summary follow in a few minutes.":

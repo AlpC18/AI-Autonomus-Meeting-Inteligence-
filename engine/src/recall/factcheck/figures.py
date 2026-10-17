@@ -14,9 +14,10 @@ _MULTIPLIERS = {
     "bn": 1e9, "billion": 1e9, "milyar": 1e9,
     "tausend": 1e3, "mio": 1e6, "millionen": 1e6, "mrd": 1e9, "milliarde": 1e9, "milliarden": 1e9,
     "mila": 1e3, "milione": 1e6, "milioni": 1e6, "miliardo": 1e9, "miliardi": 1e9,
+    "mijë": 1e3, "milion": 1e6, "milionë": 1e6, "miliard": 1e9, "miliardë": 1e9,
 }  # fmt: skip
 _CURRENCY_WORDS = frozenset(
-    {"dollar", "usd", "euro", "eur", "pound", "gbp", "lira", "tl", "dolar", "avro"}
+    {"dollar", "usd", "euro", "eur", "pound", "gbp", "lira", "tl", "dolar", "avro", "lek"}
 )
 # German and Italian units, as the English unit they mean, so "drei Wochen",
 # "tre settimane" and "three weeks" compare with each other.
@@ -33,6 +34,14 @@ _UNIT_ALIASES = {
     "ingegnere": "engineer", "ingegneri": "engineer", "persona": "person", "persone": "person",
     "utente": "user", "utenti": "user", "cliente": "customer", "clienti": "customer",
     "licenza": "license", "licenze": "license", "dollari": "dollar",
+    # Albanian
+    "ditë": "day", "ditësh": "day", "javë": "week", "javësh": "week", "muaj": "month",
+    "muajsh": "month", "vit": "year", "vite": "year", "vjet": "year", "vitesh": "year",
+    "orë": "hour", "orësh": "hour", "minutë": "minute", "minuta": "minute",
+    "zhvillues": "developer", "zhvilluesit": "developer", "inxhinier": "engineer",
+    "inxhinierë": "engineer", "njerëz": "person", "përdorues": "user", "përdoruesit": "user",
+    "klient": "customer", "klientë": "customer", "klientët": "customer", "licencë": "license",
+    "dollarë": "dollar", "lekë": "lek", "leke": "lek",
 }  # fmt: skip
 _UNITS = frozenset(
     {
@@ -52,7 +61,7 @@ _FIGURE = re.compile(
     (?P<currency>[$€£₺]\s?)?
     (?P<number>{_NUMBER})
     (?:\s?(?P<multiplier>{"|".join(sorted(_MULTIPLIERS, key=len, reverse=True))})\b)?
-    (?:\s?(?P<percent_after>%|percent\b|prozent\b|per\s?cento\b|percento\b))?
+    (?:\s?(?P<percent_after>%|percent\b|prozent\b|per\s?cento\b|percento\b|për\s?qind\b))?
     (?:\s(?:di\s)?(?P<word>[^\W\d_]+))?
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -74,7 +83,12 @@ _WORD_VALUES = (
     | {word: float(10 * tens) for tens, word in enumerate(_TR_TENS, start=1)}
 )
 _HUNDREDS = frozenset({"hundred", "yüz"})
-_SCALES = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "bin": 1e3, "milyon": 1e6, "milyar": 1e9}
+_SCALES = {
+    "thousand": 1e3, "million": 1e6, "billion": 1e9, "bin": 1e3, "milyon": 1e6, "milyar": 1e9,
+    "mijë": 1e3, "milion": 1e6, "milionë": 1e6, "miliard": 1e9, "miliardë": 1e9,
+}  # fmt: skip
+# "per cento" and "për qind" are "percent", not "for a hundred".
+_PERCENT_PAIRS = frozenset({("per", "cento"), ("për", "qind")})
 _NUMBER_WORDS = frozenset(_WORD_VALUES) | _HUNDREDS | frozenset(_SCALES)
 # Turkish number words that are also ordinary words ("bir" = "a", "on" in English,
 # "yüz" = "face"): alone they count only before a Turkish unit or currency.
@@ -91,6 +105,8 @@ _MONTHS = {
         "Januar Februar März April Mai Juni Juli August September Oktober November Dezember",
         "gennaio febbraio marzo aprile maggio giugno luglio agosto settembre ottobre novembre dicembre",
         "Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre",
+        "janar shkurt mars prill maj qershor korrik gusht shtator tetor nëntor dhjetor",
+        "Janar Shkurt Mars Prill Maj Qershor Korrik Gusht Shtator Tetor Nëntor Dhjetor",
     )
     for number, name in enumerate(names.split(), start=1)
 }
@@ -139,11 +155,20 @@ def _parse_number(raw: str) -> float:
     return float(f"{whole}.{fraction}")
 
 
-def _words_value(words: list[str]) -> float:
-    """``["thirty", "five", "thousand"]`` → 35000; ``["one", "point", "five"]`` → 1.5."""
+def _words_value(words: list[str | float]) -> float:
+    """``["thirty", "five", "thousand"]`` → 35000; ``["one", "point", "five"]`` → 1.5.
+
+    A number is a word already read as one ("tridhjetë" → 30.0).
+    """
     total = current = 0.0
     fraction: str | None = None
     for word in words:
+        if isinstance(word, float):
+            if fraction:
+                current += float(f"0.{fraction}")
+            fraction = None
+            current += word
+            continue
         if word == "point":
             fraction = ""
             continue
@@ -174,23 +199,25 @@ def _digits(value: float) -> str:
     return text + "0" if len(text.split(".")[1]) == 3 else text
 
 
+def _compound(tokens: list[re.Match[str]], j: int) -> float | None:
+    """The value of token ``j`` if it is a German, Italian or Albanian number word."""
+    if j >= len(tokens):
+        return None
+    word = tokens[j].group().lower()
+    previous = tokens[j - 1].group().lower() if j else ""
+    # A bare scale word ("35mila") is left to the digit multipliers.
+    if word in _NUMBER_WORDS or word in _MULTIPLIERS or (previous, word) in _PERCENT_PAIRS:
+        return None
+    return compound_value(word)
+
+
 def _number_runs(text: str) -> list[tuple[int, int, float]]:
-    """Spans of spelled-out English and Turkish numbers in ``text`` and their values."""
+    """Spans of spelled-out numbers in ``text`` and their values."""
     tokens = list(_WORD.finditer(text))
     runs = []
     i = 0
     while i < len(tokens):
-        # German and Italian write a whole number as one word.
-        word = tokens[i].group().lower()
-        previous = tokens[i - 1].group().lower() if i else ""
-        # A bare scale word ("35mila") is left to the digit multipliers; "per cento" is "percent".
-        skip = word in _NUMBER_WORDS or word in ARTICLES or word in _MULTIPLIERS or (previous, word) == ("per", "cento")
-        compound = None if skip else compound_value(word)
-        if compound is not None:
-            runs.append((tokens[i].start(), tokens[i].end(), compound))
-            i += 1
-            continue
-        words: list[str] = []
+        parts: list[str | float] = []
         j = i
         while j < len(tokens):
             word = tokens[j].group().lower()
@@ -198,18 +225,28 @@ def _number_runs(text: str) -> list[tuple[int, int, float]]:
             joined = j == i or _JOINER.fullmatch(text[tokens[j - 1].end() : tokens[j].start()])
             if not joined:
                 break
-            if word in _NUMBER_WORDS or word == "a" and not words and following in {"hundred", *_SCALES} or word in {"and", "point"} and words and following in _WORD_VALUES:
-                words.append(word)
+            value = _compound(tokens, j)
+            number_follows = following in _WORD_VALUES or _compound(tokens, j + 1) is not None
+            if value is not None:
+                parts.append(value)
+            elif (
+                word in _NUMBER_WORDS
+                or word == "a" and not parts and following in {"hundred", *_SCALES}
+                or word in {"and", "point", "e"} and parts and number_follows
+            ):
+                parts.append(word)
             else:
                 break
             j += 1
         # A bare scale word ("35 thousand") is left to the digit multipliers.
-        counted = words and (words[0] == "a" or any(word in _WORD_VALUES for word in words))
-        if len(words) == 1 and words[0] in _AMBIGUOUS:
+        counted = bool(parts) and (parts[0] == "a" or any(isinstance(p, float) or p in _WORD_VALUES for p in parts))
+        if len(parts) == 1 and parts[0] in _AMBIGUOUS:
             after = tokens[j].group().lower() if j < len(tokens) else ""
-            counted = words[0] != "bir" and _singular(after) in _TR_UNITS
+            counted = parts[0] != "bir" and _singular(after) in _TR_UNITS
+        if len(parts) == 1 and tokens[i].group().lower() in ARTICLES:
+            counted = False  # "ein Tag", "një javë": "a", not "one"
         if counted:
-            runs.append((tokens[i].start(), tokens[j - 1].end(), _words_value(words)))
+            runs.append((tokens[i].start(), tokens[j - 1].end(), _words_value(parts)))
             i = j
         else:
             i += 1

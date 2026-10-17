@@ -103,3 +103,10 @@ def test_risk_tracking_is_on_and_workload_check_off_by_default() -> None:
     settings = Settings.from_env({})
     assert settings.risk_tracking and not settings.workload_check
     assert not Settings.from_env({"RECALL_RISK_TRACKING": "0"}).risk_tracking
+
+
+def test_meeting_languages_are_read_and_checked() -> None:
+    assert Settings.from_env({"RECALL_MEETING_LANGUAGES": "en, TR,sq"}).meeting_languages == ("en", "tr", "sq")
+    assert Settings.from_env({}).meeting_languages == ()
+    with pytest.raises(ValueError, match="language code"):
+        Settings.from_env({"RECALL_MEETING_LANGUAGES": "english"})

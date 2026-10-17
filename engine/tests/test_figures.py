@@ -181,3 +181,36 @@ def test_german_and_italian_articles_and_words_are_not_figures(text: str) -> Non
 
 def test_the_same_unit_compares_across_languages() -> None:
     assert figures("drei Wochen") == figures("tre settimane") == figures("three weeks") == {("count:week", 3.0)}
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # As large-v3-turbo writes Albanian speech: digits with Albanian units.
+        ("Bugjeti u ul në 35.000 euro.", {("money", 35_000.0)}),
+        ("Na duhen 2 zhvillues për 3 javë.", {("count:developer", 2.0), ("count:week", 3.0)}),
+        ("Klienti kërkon një zbritje për 20%.", {("percent", 20.0)}),
+        ("çmimi është 5000 lekë", {("money", 5000.0)}),
+        ("buxheti 2 milionë euro", {("money", 2_000_000.0)}),
+        ("35 mijë euro", {("money", 35_000.0)}),
+        # Spoken numbers.
+        ("buxheti u ul në tridhjetë e pesë mijë euro", {("money", 35_000.0)}),
+        ("na duhen dy zhvillues për tre javë", {("count:developer", 2.0), ("count:week", 3.0)}),
+        ("njëzet për qind zbritje", {("percent", 20.0)}),
+        ("dyqind e pesëdhjetë përdorues", {("count:user", 250.0)}),
+        ("katërmbëdhjetë ditë", {("count:day", 14.0)}),
+        ("lansimi është më 14 tetor", {("date", 1014.0)}),
+        ("afati: 3 Mars", {("date", 303.0)}),
+    ],
+)
+def test_albanian_figures_are_understood(text: str, expected: set) -> None:
+    assert figures(text) == expected
+
+
+@pytest.mark.parametrize("text", ["një javë e qetë", "e premte", "tetori ishte i ngrohtë"])
+def test_albanian_articles_and_words_are_not_figures(text: str) -> None:
+    assert figures(text) == set()
+
+
+def test_albanian_units_compare_with_the_other_languages() -> None:
+    assert figures("tre javë") == figures("drei Wochen") == figures("three weeks") == {("count:week", 3.0)}

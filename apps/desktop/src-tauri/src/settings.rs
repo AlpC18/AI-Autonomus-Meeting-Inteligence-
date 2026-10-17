@@ -166,6 +166,13 @@ pub const FIELDS: &[Field] = &[
         "For live captions. Larger is more accurate and slower; small keeps up on any recent computer.",
     ),
     field(
+        "RECALL_MEETING_LANGUAGES",
+        "Meeting languages",
+        "Meetings",
+        Kind::Text,
+        "Codes of the languages spoken in your meetings, e.g. en,tr,de,it,sq. The accurate transcript then picks among them, so a less common language such as Albanian is not mistaken for another. Empty: any language.",
+    ),
+    field(
         "RECALL_FINAL_MODEL",
         "Accurate transcript after the meeting",
         "Meetings",

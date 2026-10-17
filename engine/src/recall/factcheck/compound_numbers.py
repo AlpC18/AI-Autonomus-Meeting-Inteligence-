@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 
-"""German and Italian numbers written as one word: "fünfunddreißigtausend", "trentacinquemila".
+"""German, Italian and Albanian number words: "fünfunddreißigtausend", "trentacinquemila", "katërmbëdhjetë".
 
-Both languages join the parts of a number into a single word, so they are
+These languages join the parts of a number into a single word, so they are
 read by splitting the word into known parts rather than word by word.
+Albanian then joins words with "e" ("tridhjetë e pesë"), which
+:mod:`recall.factcheck.figures` handles like "and".
 """
 
 _DE_ONES = {
@@ -31,7 +33,14 @@ _IT_TENS = {
 # Before "uno" and "otto" the tens lose their last vowel: "ventuno", "trentotto".
 _IT_TENS_ELIDED = {word[:-1]: value for word, value in _IT_TENS.items()}
 
-ARTICLES = frozenset({"ein", "eine", "un", "una", "uno"})
+_SQ_ONES = {
+    "një": 1, "dy": 2, "tre": 3, "tri": 3, "katër": 4, "pesë": 5,
+    "gjashtë": 6, "shtatë": 7, "tetë": 8, "nëntë": 9,
+}  # fmt: skip
+_SQ_TENS = {"njëzet": 20, "dyzet": 40}
+"""The tens not made as "<n>dhjetë" ("tridhjetë" is thirty)."""
+
+ARTICLES = frozenset({"ein", "eine", "un", "una", "uno", "një"})
 """Words for "one" that are usually just "a": alone they are not a number."""
 
 
@@ -94,10 +103,29 @@ def _italian(word: str) -> float | None:
     return float(total + current)
 
 
+def _albanian(word: str) -> float | None:
+    """One word: "pesë", "dhjetë", "katërmbëdhjetë" (4 + 10), "pesëdhjetë" (5 x 10), "dyqind" (2 x 100)."""
+    parts = _split(word, {**_SQ_ONES, **_SQ_TENS, "mbëdhjetë": "teen", "dhjetë": "ten", "qind": "hundred"})
+    match parts:
+        case [int() as value]:
+            return float(value)
+        case ["ten"]:
+            return 10.0
+        case ["hundred"]:
+            return 100.0
+        case [int() as ones, "teen"] if ones < 10:
+            return float(10 + ones)
+        case [int() as ones, "ten"] if ones < 10:
+            return float(10 * ones)
+        case [int() as ones, "hundred"] if ones < 10:
+            return float(100 * ones)
+    return None
+
+
 def compound_value(word: str) -> float | None:
-    """The value of a German or Italian number word, or ``None`` if it is not one."""
+    """The value of a German, Italian or Albanian number word, or ``None`` if it is not one."""
     lowered = word.lower()
-    for read in (_german, _italian):
+    for read in (_german, _italian, _albanian):
         value = read(lowered)
         if value is not None:
             return value
@@ -109,6 +137,8 @@ if __name__ == "__main__":
         ("fünfunddreißigtausend", 35_000), ("dreihundertzwölf", 312), ("einundzwanzig", 21),
         ("trentacinquemila", 35_000), ("ventuno", 21), ("trentotto", 38), ("centoventi", 120),
         ("duemila", 2000), ("mille", 1000), ("budget", None), ("und", None),
+        ("pesë", 5), ("katërmbëdhjetë", 14), ("tridhjetë", 30), ("dyzet", 40), ("dyqind", 200),
+        ("njëqind", 100), ("dhjetë", 10), ("tetor", None), ("dhjetor", None),
     ]:  # fmt: skip
         assert compound_value(text) == expected, (text, compound_value(text))
     print("ok")

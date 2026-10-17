@@ -49,7 +49,7 @@ from recall.memory.documents import document_files, import_document
 from recall.memory.scope import TenantScope
 from recall.memory.store import Meeting, MemoryHit, ScopedMemory
 from recall.notes import MeetingNotes, markdown_lines
-from recall.polish import Line, Polished, assemble, passages
+from recall.polish import Polished
 from recall.privacy import redact_segment
 from recall.stats import speaker_stats
 from recall.stats import to_markdown as stats_markdown
@@ -179,7 +179,8 @@ class MeetingSession:
         watchers: Sequence[Watcher] = (),
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
-        polish: Callable[[Path, list[tuple[float, float]]], list[list[Line]]] | None = None,
+        polish: Callable[[Path, list[Segment], dict[str, float], Callable[[str], str]], list[Polished]]
+        | None = None,
     ) -> None:
         self._settings = settings
         # Transcribes a finished meeting's recording again, accurately (see recall.polish).
@@ -679,17 +680,17 @@ class MeetingSession:
         """Replace the live transcript with an accurate one, then summarise. Never raises."""
         assert self._polish is not None and current.recorder is not None
         self._publish_event({"type": "polishing"})
-        found = passages(current.segments, current.offsets)
         try:
-            lines = await asyncio.to_thread(self._polish, current.recorder.path, [(p.start, p.end) for p in found])
+            polished = await asyncio.to_thread(
+                self._polish, current.recorder.path, list(current.segments), dict(current.offsets), names.shown
+            )
         except Exception:
             logger.exception("Could not transcribe the recording again; keeping the live transcript")
-            lines = []
+            polished = []
         finally:
             if current.temporary_audio:
                 _discard_recording(current.recorder.path, temporary=True)
-        polished = assemble(found, lines, current.segments, current.offsets, names.shown) if lines else []
-        improved = any(p.replaces is not None and p.segment is not p.replaces for p in polished)
+        improved = any(p.segment is not p.replaces for p in polished if p.segment.source != NOTE_SOURCE)
         if improved:
             current.segments = [p.segment for p in polished]
             clean = redact_segment if self._settings.redact else (lambda segment: segment)
