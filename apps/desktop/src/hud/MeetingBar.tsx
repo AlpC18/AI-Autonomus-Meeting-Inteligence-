@@ -176,13 +176,13 @@ export function MeetingBar({ title, connected, send, lastSummary, brief, liveIte
         </p>
       )}
       {brief && (
-        <div aria-label={t("Brief from earlier meetings")} className="mt-2 rounded-md border border-zinc-200 p-3">
+        <div aria-label={t("Brief from earlier meetings")} className="mt-2 rounded-xl border border-zinc-200 bg-surface p-4">
           <h3 className="text-sm font-semibold">{t("From earlier meetings")}</h3>
           <AnswerView answer={brief} />
         </div>
       )}
       {liveItems.length > 0 && (
-        <div aria-label={t("Action items so far")} className="mt-2 rounded-md border border-zinc-200 p-3 text-sm">
+        <div aria-label={t("Action items so far")} className="mt-2 rounded-xl border border-zinc-200 bg-surface p-4 text-sm">
           <h3 className="font-semibold">{t("Action items so far")}</h3>
           <ul className="mt-1 list-disc pl-5">
             {liveItems.map((item) => (

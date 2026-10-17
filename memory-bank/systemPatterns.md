@@ -61,3 +61,4 @@ human notes, docs, codebase ----------------> memory (SQLite + vector, tenant-sc
 - Entrypoints (`main.rs`, `main.tsx`, `server.py:main`) stay thin.
 - Memory reads and writes always filter by `tenant_id` and `project_id`.
 - Tools that change external state require user approval before running.
+- **2026-10-17 — Light and dark themes come from CSS variables, not `dark:` variants.** Components use the zinc scale for every neutral; `styles.css` sets that scale (plus `canvas`, `surface`, one teal `accent`) per theme, and the dark theme turns the scale around. The choice (System / Light / Dark) is per machine (`recall.theme` in localStorage) and also sets the native title bar. The overlay keeps its own dark look in either theme.
