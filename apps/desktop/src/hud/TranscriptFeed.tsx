@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { speakerTurns } from "./speakerTurns";
 import { displaySpeaker, speakerColor } from "./speakers";
 import { captionKey, type StreamStatus, type TranscriptSegment } from "./transcriptStream";
+import { timeOf } from "./Timeline";
 import { t } from "../i18n";
 
 const STATUS_TEXT: Record<StreamStatus, string> = {
@@ -25,7 +26,7 @@ interface TranscriptFeedProps {
 
 /** The transcript is shown in blocks of this many minutes of wall-clock time. */
 export const BLOCK_MINUTES = 2;
-const BLOCK_MS = BLOCK_MINUTES * 60_000;
+export const BLOCK_MS = BLOCK_MINUTES * 60_000;
 
 /** What one person said in a row within a block, with any translations of it. */
 interface Paragraph {
@@ -43,10 +44,8 @@ interface Block {
 /** Wall-clock start of a segment in ms; the engine's seconds stand in when it has no stamp. */
 const wallTime = (segment: TranscriptSegment) => segment.at ?? segment.start * 1000;
 
-/** Local time of day, like "12:00" or "12:00 PM" depending on the system's settings. */
-export function timeOfDay(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
+/** Local time of day of `ms`, written as the timeline writes it ("12:00"). */
+export const timeOfDay = (ms: number) => timeOf(new Date(ms).toISOString());
 
 /**
  * Groups segments into blocks of {@link BLOCK_MINUTES} on the clock (12:00–12:02,

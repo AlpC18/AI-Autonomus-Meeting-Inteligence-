@@ -373,4 +373,11 @@ export const TR: Readonly<Record<string, string>> = {
   "Live translation": "Canlı çeviri",
   "Shows each line translated into this language under the transcript. Sends every line to your AI provider.":
     "Her satırın bu dile çevirisini dökümün altında gösterir. Her satırı yapay zekâ sağlayıcınıza gönderir.",
+  Summary: "Özet",
+  Conversation: "Konuşma",
+  "Save conversation": "Konuşmayı kaydet",
+  "Saved.": "Kaydedildi.",
+  "Back to the live meeting": "Canlı toplantıya dön",
+  "No summary yet. End the meeting and the AI summary appears here.": "Henüz özet yok. Toplantıyı bitirin, yapay zekâ özeti burada görünür.",
+  "End meeting and summarize": "Toplantıyı bitir ve özetle",
 };

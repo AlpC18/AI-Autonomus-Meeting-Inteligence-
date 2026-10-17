@@ -14,14 +14,17 @@ import { ThemeSelect } from "./ThemeSelect";
 import { EngineButton } from "./EngineButton";
 import { MeetingLanguages } from "./hud/MeetingLanguages";
 import { Timeline } from "./hud/Timeline";
+import { SaveConversation } from "./hud/SaveConversation";
+import { SummaryPage } from "./hud/SummaryPage";
 import { SetupChecklist } from "./setup/SetupChecklist";
 import { setupComplete, setupSteps } from "./setup/setup";
 import { setLanguage, t } from "./i18n";
 
-type View = "setup" | "live" | "meetings" | "settings";
+type View = "setup" | "live" | "summary" | "meetings" | "settings";
 const VIEW_NAMES: Record<View, string> = {
   setup: "Get started",
   live: "Live meeting",
+  summary: "Summary",
   meetings: "Past meetings",
   settings: "Settings",
 };
@@ -95,7 +98,7 @@ export default function App() {
       .catch((cause: unknown) => setError(String(cause)));
   }, []);
 
-  const views = showSetup || view === "setup" ? (["setup", "live", "meetings", "settings"] as const) : (["live", "meetings", "settings"] as const);
+  const views = showSetup || view === "setup" ? (["setup", "live", "summary", "meetings", "settings"] as const) : (["live", "summary", "meetings", "settings"] as const);
   const engineState = connected ? "Engine running" : stream.status === "connecting" ? "Starting the engine…" : "Engine stopped";
 
   return (
@@ -144,7 +147,20 @@ export default function App() {
         {/* The live view stays mounted so the transcript keeps flowing while browsing. */}
         <div hidden={view !== "live"} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0 space-y-5">
-            <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} polishing={stream.polishing} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport} />
+            <MeetingBar title={stream.meetingTitle} connected={connected} send={stream.send} lastSummary={stream.lastSummary} polishing={stream.polishing} brief={stream.brief} liveItems={stream.liveItems} lastTalkTime={stream.lastTalkTime} project={stream.project} projectError={stream.projectError} lastReport={stream.lastReport} lastImport={stream.lastImport}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setView("summary")}
+                    className="cursor-pointer rounded-md border border-zinc-400 px-3 py-1.5 text-sm hover:bg-zinc-100"
+                  >
+                    {t("Summary")}
+                  </button>
+                  <SaveConversation title={stream.meetingTitle} segments={stream.segments} captions={stream.captions} topics={stream.topics} />
+                </>
+              }
+            />
             <TranscriptFeed status={stream.status} segments={stream.segments} captions={stream.captions} />
             <Notepad connected={connected} send={stream.send} />
             <AskPanel connected={connected} send={stream.send} answers={stream.answers} />
@@ -163,6 +179,9 @@ export default function App() {
             openSettings={() => setView("settings")}
             dismiss={hideSetup}
           />
+        )}
+        {view === "summary" && (
+          <SummaryPage connected={connected} send={stream.send} summary={stream.lastSummary} polishing={stream.polishing} topics={stream.topics} back={() => setView("live")} />
         )}
         {view === "meetings" && <MeetingLibrary />}
         {view === "settings" && <SettingsPanel />}

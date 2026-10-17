@@ -68,7 +68,8 @@ pub fn run() {
             library::library_list,
             library::library_search,
             library::library_show,
-            library::library_summarize
+            library::library_summarize,
+            library::save_transcript
         ])
         .setup(|app| {
             if let Ok(dir) = app.path().app_config_dir() {
