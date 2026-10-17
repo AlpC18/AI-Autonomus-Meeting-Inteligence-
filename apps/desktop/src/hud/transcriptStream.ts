@@ -23,6 +23,8 @@ export interface TranscriptSegment {
   words: TranscriptWord[];
   /** Dominant speaker of the segment. */
   speaker: string;
+  /** Wall-clock time the segment started (ms since epoch), stamped when it arrived. */
+  at?: number;
 }
 
 /** Whether the HUD currently has a live connection to the engine. */
@@ -422,16 +424,24 @@ export function useTranscriptStream(url: string = ENGINE_STREAM_URL): Transcript
     let socket: WebSocket | null = null;
     let retry: number | undefined;
     let stopped = false;
+    // Wall-clock ms of second 0 on the engine's timeline. The smallest estimate
+    // seen is the one with the least transcription delay in it.
+    let anchor = Infinity;
 
     const open = () => {
       setStatus("connecting");
       socket = new WebSocket(url);
       socketRef.current = socket;
-      socket.onopen = () => setStatus("open");
+      socket.onopen = () => {
+        anchor = Infinity; // the engine may have restarted its timeline
+        setStatus("open");
+      };
       socket.onmessage = (event: MessageEvent<unknown>) => {
         const segment = parseSegmentMessage(event.data);
         if (segment) {
-          setSegments((current) => [...current, segment].slice(-MAX_SEGMENTS));
+          anchor = Math.min(anchor, Date.now() - segment.end * 1000);
+          const stamped = { ...segment, at: anchor + segment.start * 1000 };
+          setSegments((current) => [...current, stamped].slice(-MAX_SEGMENTS));
           return;
         }
         const alert = parseAlertMessage(event.data);

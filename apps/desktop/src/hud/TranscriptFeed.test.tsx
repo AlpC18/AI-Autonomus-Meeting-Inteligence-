@@ -4,14 +4,35 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { TranscriptFeed } from "./TranscriptFeed";
+import { TranscriptFeed, timeOfDay, transcriptBlocks } from "./TranscriptFeed";
+import type { TranscriptSegment } from "./transcriptStream";
 
 afterEach(cleanup);
 
-const segment = (text: string, start: number) => ({ source: "system", start, end: start + 1, text, words: [], speaker: "Ayşe" });
+const NOON = new Date(2026, 9, 18, 12, 0, 0).getTime();
+const at = (minutes: number, seconds = 0) => NOON + (minutes * 60 + seconds) * 1000;
+const segment = (text: string, start: number, speaker = "Ayşe", wall = at(0, start)): TranscriptSegment => ({
+  source: "system", start, end: start + 1, text, words: [], speaker, at: wall,
+});
+
+describe("transcriptBlocks", () => {
+  it("joins two minutes of clock time into one block, one paragraph per person in a row", () => {
+    const blocks = transcriptBlocks([
+      segment("Bütçe 35 bin dolar.", 1),
+      segment("Tamam.", 50),
+      segment("Ben de katılıyorum.", 70, "me"),
+      segment("Lansman cuma.", 130, "Ayşe", at(2, 10)),
+    ]);
+    expect(blocks.map((block) => block.from)).toEqual([NOON, at(2)]);
+    expect(blocks[0].paragraphs.map((p) => [p.speaker, p.text])).toEqual([
+      ["Ayşe", "Bütçe 35 bin dolar. Tamam."],
+      ["me", "Ben de katılıyorum."],
+    ]);
+  });
+});
 
 describe("TranscriptFeed", () => {
-  it("shows a translation under the line it belongs to", () => {
+  it("heads each block with its clock times and keeps translations with the paragraph", () => {
     render(
       <TranscriptFeed
         status="open"
@@ -19,22 +40,16 @@ describe("TranscriptFeed", () => {
         captions={{ "system:1": "The budget is 35 thousand dollars." }}
       />,
     );
-    const lines = screen.getAllByRole("listitem").map((item) => item.textContent);
-    expect(lines).toEqual(["00:01Ayşe Bütçe 35 bin dolar.", "The budget is 35 thousand dollars.", "00:02Ayşe Tamam."]);
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(`${timeOfDay(NOON)} – ${timeOfDay(at(2))}`);
+    expect(screen.getByText("Bütçe 35 bin dolar. Tamam.")).toBeTruthy();
+    expect(screen.getByLabelText("Translation").textContent).toBe("The budget is 35 thousand dollars.");
   });
 
   it("shows people as Person 1 and You, and says when nobody has spoken yet", () => {
     const { rerender } = render(<TranscriptFeed status="open" segments={[]} />);
     expect(screen.getByText("Waiting for someone to speak…")).toBeTruthy();
-    rerender(
-      <TranscriptFeed
-        status="open"
-        segments={[
-          { source: "system", start: 3, end: 4, text: "Merhaba", words: [], speaker: "Speaker 1" },
-          { source: "mic", start: 5, end: 6, text: "Selam", words: [], speaker: "me" },
-        ]}
-      />,
-    );
-    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["00:03Person 1 Merhaba", "00:05You Selam"]);
+    rerender(<TranscriptFeed status="open" segments={[segment("Merhaba", 3, "Speaker 1"), { ...segment("Selam", 5, "me"), source: "mic" }]} />);
+    expect(screen.getByText("Person 1")).toBeTruthy();
+    expect(screen.getByText("You")).toBeTruthy();
   });
 });

@@ -23,15 +23,63 @@ interface TranscriptFeedProps {
   captions?: Readonly<Record<string, string>>;
 }
 
-function clock(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(whole / 60);
-  return `${String(minutes).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
+/** The transcript is shown in blocks of this many minutes of wall-clock time. */
+export const BLOCK_MINUTES = 2;
+const BLOCK_MS = BLOCK_MINUTES * 60_000;
+
+/** What one person said in a row within a block, with any translations of it. */
+interface Paragraph {
+  speaker: string;
+  text: string;
+  note: boolean;
+  captions: string[];
+}
+
+interface Block {
+  from: number;
+  paragraphs: Paragraph[];
+}
+
+/** Wall-clock start of a segment in ms; the engine's seconds stand in when it has no stamp. */
+const wallTime = (segment: TranscriptSegment) => segment.at ?? segment.start * 1000;
+
+/** Local time of day, like "12:00" or "12:00 PM" depending on the system's settings. */
+export function timeOfDay(ms: number): string {
+  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 /**
- * The live transcript: one line per speaker turn, the speaker in their own
- * colour, typed notes highlighted. It follows new lines unless the user has
+ * Groups segments into blocks of {@link BLOCK_MINUTES} on the clock (12:00–12:02,
+ * 12:02–12:04, …), joining what one person said in a row into one paragraph.
+ */
+export function transcriptBlocks(segments: readonly TranscriptSegment[], captions: Readonly<Record<string, string>> = {}): Block[] {
+  const blocks: Block[] = [];
+  for (const segment of segments) {
+    const from = Math.floor(wallTime(segment) / BLOCK_MS) * BLOCK_MS;
+    if (blocks.length === 0 || blocks[blocks.length - 1].from !== from) blocks.push({ from, paragraphs: [] });
+    const { paragraphs } = blocks[blocks.length - 1];
+    const note = segment.source === "note";
+    const turns = speakerTurns(segment);
+    turns.forEach((turn, index) => {
+      const caption = index === turns.length - 1 ? captions[captionKey(segment.source, segment.start)] : undefined;
+      const last = paragraphs[paragraphs.length - 1];
+      if (last && !note && !last.note && last.speaker === turn.speaker) {
+        paragraphs[paragraphs.length - 1] = {
+          ...last,
+          text: `${last.text} ${turn.text.trim()}`,
+          captions: caption ? [...last.captions, caption] : last.captions,
+        };
+      } else {
+        paragraphs.push({ speaker: turn.speaker, text: turn.text.trim(), note, captions: caption ? [caption] : [] });
+      }
+    });
+  }
+  return blocks;
+}
+
+/**
+ * The live transcript in two-minute blocks of clock time, what each person
+ * said in a row as one paragraph in their own colour, typed notes highlighted. It follows new lines unless the user has
  * scrolled up to read. Presentation only; data comes from the engine's stream.
  */
 export function TranscriptFeed({ status, segments, captions = {} }: TranscriptFeedProps) {
@@ -60,32 +108,29 @@ export function TranscriptFeed({ status, segments, captions = {} }: TranscriptFe
       {segments.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-zinc-500">{t("Waiting for someone to speak…")}</p>
       ) : (
-        <ol aria-live="polite" ref={list} onScroll={onScroll} className="max-h-[60vh] min-h-48 space-y-3 overflow-y-auto px-4 py-3">
-          {segments.flatMap((segment) => {
-            const caption = captions[captionKey(segment.source, segment.start)];
-            const note = segment.source === "note";
-            return [
-              ...speakerTurns(segment).map((turn, index) => (
-                <li
-                  key={`${segment.source}-${segment.start}-${index}`}
-                  className={note ? "rounded-lg border-l-4 border-amber-400 bg-amber-50 px-3 py-1.5" : "grid grid-cols-[3.25rem_1fr] gap-x-2"}
-                >
-                  {!note && <span className="pt-0.5 text-xs text-zinc-500 tabular-nums">{clock(segment.start)}</span>}
-                  <p className="text-[15px] leading-relaxed">
-                    <strong className={`font-semibold ${note ? "" : speakerColor(turn.speaker)}`}>{displaySpeaker(turn.speaker)}</strong>{" "}
-                    <span className="text-zinc-900">{turn.text}</span>
-                  </p>
-                </li>
-              )),
-              ...(caption
-                ? [
-                    <li key={`${segment.source}-${segment.start}-caption`} lang="" aria-label={t("Translation")} className="pl-[3.75rem] text-sm text-zinc-600 italic">
-                      {caption}
-                    </li>,
-                  ]
-                : []),
-            ];
-          })}
+        <ol aria-live="polite" ref={list} onScroll={onScroll} className="max-h-[60vh] min-h-48 space-y-4 overflow-y-auto px-4 py-3">
+          {transcriptBlocks(segments, captions).map((block) => (
+            <li key={block.from}>
+              <h3 className="sticky top-0 mb-1.5 bg-surface py-0.5 text-xs font-medium text-zinc-500 tabular-nums">
+                {timeOfDay(block.from)} – {timeOfDay(block.from + BLOCK_MS)}
+              </h3>
+              <div className="space-y-2">
+                {block.paragraphs.map((paragraph, index) => (
+                  <div key={index} className={paragraph.note ? "rounded-lg border-l-4 border-amber-400 bg-amber-50 px-3 py-1.5" : ""}>
+                    <p className="text-[15px] leading-relaxed">
+                      <strong className={`font-semibold ${paragraph.note ? "" : speakerColor(paragraph.speaker)}`}>{displaySpeaker(paragraph.speaker)}</strong>{" "}
+                      <span className="text-zinc-900">{paragraph.text}</span>
+                    </p>
+                    {paragraph.captions.length > 0 && (
+                      <p lang="" aria-label={t("Translation")} className="text-sm text-zinc-600 italic">
+                        {paragraph.captions.join(" ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </li>
+          ))}
         </ol>
       )}
     </section>

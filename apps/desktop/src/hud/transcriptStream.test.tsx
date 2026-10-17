@@ -60,6 +60,17 @@ describe("useTranscriptStream", () => {
     expect(socket.sent).toEqual(['{"type":"brief"}']);
   });
 
+  it("stamps segments with the clock time they were said, leaving out transcription delay", () => {
+    vi.setSystemTime(new Date(2026, 9, 18, 12, 0, 10));
+    const { hook, socket } = connect();
+    act(() => socket.push(segment("Slow to transcribe", "Ana", 5))); // ended 4 s before it arrived
+    vi.setSystemTime(new Date(2026, 9, 18, 12, 0, 12));
+    act(() => socket.push(segment("Quick", "Ana", 10))); // arrived as it ended
+    const [slow, quick] = hook.result.current.segments;
+    expect(new Date(quick.at!).toTimeString().slice(0, 8)).toBe("12:00:11");
+    expect(new Date(slow.at!).toTimeString().slice(0, 8)).toBe("12:00:09");
+  });
+
   it("keeps only the newest alerts and lets them be dismissed", () => {
     const { hook, socket } = connect();
     act(() => {
