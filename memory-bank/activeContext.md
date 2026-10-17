@@ -32,7 +32,7 @@ All phase PRs (#1-#12) are merged into `main` and tagged v0.1.0 (macOS arm64 bui
 
 - Speaker names in a real multi-person call (so far verified on a recording, not live capture); short utterances with two voices get one name.
 - Run a summary against a cloud provider (only a local model so far).
-- Release builds for Windows and Linux (the release workflow builds macOS arm64 only).
+- Tag v0.2.0 to get the first four-platform release (Windows and Linux builds have only been compiled in CI, not installed on real hardware).
 
 Already done (older notes listed them as open): in-app Google consent (Settings → Connect Google), live recording with playback in the Library (`RECALL_RECORD_AUDIO`), picking or switching the project from the app (Settings and the meeting bar), the engine bundled in release builds (verified 2026-10-17: the v0.1.0 app installs its locked environment from a clean state and imports the engine), and a summary when a meeting ends.
 

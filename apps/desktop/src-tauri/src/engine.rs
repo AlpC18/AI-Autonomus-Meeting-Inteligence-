@@ -122,18 +122,19 @@ pub fn uv_run(engine_dir: &Path, script: &str) -> Command {
     let bundle = BUNDLE
         .get()
         .filter(|bundle| bundle.engine_dir == engine_dir);
+    let settings = crate::settings::engine_env();
     let mut command =
         Command::new(bundle.map_or_else(|| PathBuf::from("uv"), |bundle| bundle.uv.clone()));
     command.arg("run");
     if let Some(bundle) = bundle {
-        command.args(bundle.run_args()).envs(bundle.env());
+        command.args(bundle.run_args(&settings)).envs(bundle.env());
     } else if engine_dir.join(".env").is_file() {
         command.args(["--env-file", ".env"]);
     }
     command
         .arg(script)
         .current_dir(engine_dir)
-        .envs(crate::settings::engine_env());
+        .envs(settings);
     command
 }
 
@@ -154,20 +155,30 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    /// Optional engine features installed with the app on this platform.
-    pub fn extras() -> &'static [&'static str] {
+    /// Optional engine features installed with the app, given its settings.
+    ///
+    /// Speaker names (PyTorch, about a gigabyte) are installed only once a
+    /// Hugging Face token is set, since nothing else uses them; PyTorch has no
+    /// Intel Mac build, so they are never installed there.
+    pub fn extras(settings: &[(String, String)]) -> Vec<&'static str> {
+        let mut extras = vec!["claude", "documents"];
         if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-            &["claude", "apple"]
-        } else {
-            &["claude"]
+            extras.push("apple");
         }
+        let has_token = settings
+            .iter()
+            .any(|(key, value)| key == "HF_TOKEN" && !value.trim().is_empty());
+        if has_token && !cfg!(all(target_os = "macos", target_arch = "x86_64")) {
+            extras.push("diarization");
+        }
+        extras
     }
 
     /// Arguments after `uv run`: never touch the lock file, no dev tools.
-    pub fn run_args(&self) -> Vec<String> {
+    pub fn run_args(&self, settings: &[(String, String)]) -> Vec<String> {
         let mut args = vec![String::from("--frozen"), String::from("--no-dev")];
-        for extra in Self::extras() {
-            args.extend([String::from("--extra"), (*extra).to_owned()]);
+        for extra in Self::extras(settings) {
+            args.extend([String::from("--extra"), extra.to_owned()]);
         }
         args
     }
@@ -287,6 +298,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)]
     fn process_that_honours_closed_stdin_exits_on_its_own() {
         let engine = EngineProcess::spawn_command(Command::new("cat")).expect("spawn cat");
 
@@ -294,6 +306,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn process_that_ignores_closed_stdin_is_killed_after_the_grace_period() {
         let mut command = Command::new("sleep");
         command.arg("30");
@@ -305,6 +318,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn shutdown_twice_is_harmless() {
         let engine = EngineProcess::spawn_command(Command::new("cat")).expect("spawn cat");
         engine.shutdown(Duration::from_secs(5));
@@ -320,7 +334,7 @@ mod tests {
             data_dir: PathBuf::from("/data"),
             cache_dir: PathBuf::from("/cache"),
         };
-        let args = bundle.run_args();
+        let args = bundle.run_args(&[]);
         assert!(args.starts_with(&[String::from("--frozen"), String::from("--no-dev")]));
         assert!(args.contains(&String::from("claude")));
         for (_, path) in bundle.env() {
@@ -334,6 +348,27 @@ mod tests {
                 .env()
                 .contains(&("UV_PYTHON_PREFERENCE", PathBuf::from("only-managed")))
         );
+    }
+
+    fn setting(key: &str, value: &str) -> Vec<(String, String)> {
+        vec![(key.to_owned(), value.to_owned())]
+    }
+
+    #[test]
+    fn pdf_import_and_claude_are_always_installed() {
+        let extras = Bundle::extras(&[]);
+        assert!(extras.contains(&"claude"));
+        assert!(extras.contains(&"documents"));
+    }
+
+    #[test]
+    fn speaker_names_are_installed_only_with_a_hugging_face_token() {
+        assert!(!Bundle::extras(&[]).contains(&"diarization"));
+        assert!(!Bundle::extras(&setting("HF_TOKEN", "")).contains(&"diarization"));
+        let with_token = Bundle::extras(&setting("HF_TOKEN", "hf_abc"));
+        // PyTorch has no Intel Mac build, so there is nothing to install there.
+        let intel_mac = cfg!(all(target_os = "macos", target_arch = "x86_64"));
+        assert_eq!(with_token.contains(&"diarization"), !intel_mac);
     }
 
     #[test]

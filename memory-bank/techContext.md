@@ -55,4 +55,6 @@ Heavy files can live off the system disk: point `UV_CACHE_DIR` and `RECALL_MODEL
 - Only one process can open the memory database at a time, so search from another process needs the engine stopped.
 - Memory is stored unencrypted in `~/.recall/memory` (folder readable by the user only).
 - Release builds bundle the engine sources, `uv.lock` and a `uv` binary (`tauri.bundle.conf.json`); the first start installs Python 3.12 and the locked environment into the app's data folder, which needs an internet connection once. Dev builds use `uv` from the PATH and the repo's `engine/` folder.
+- Release platforms: macOS 14+ arm64 and x86_64, Windows x86_64, Linux x86_64. `[tool.uv] required-environments` keeps the lock installable on each, and `engine/scripts/check_release_wheels.sh` (CI) fails if any package would need building from source. macOS 14 is the floor because `av` and `onnxruntime` ship arm64 wheels for 14+ only. Intel Macs get onnxruntime 1.23.2 and cryptography <49 (last with Intel wheels) and no speaker names (no PyTorch).
+- Bundled extras: `claude` and `documents` always, `apple` on Apple Silicon, `diarization` once `HF_TOKEN` is set (`engine.rs`, `Bundle::extras`).
 - The spec links Buzz as `chime-vc/buzz`; verify the correct upstream before using it.

@@ -20,7 +20,7 @@ cd engine && uv sync --all-extras && uv run pytest
 cd engine && cp .env.example .env   # settings; the desktop app starts the engine itself
 ```
 
-Release app: `cd apps/desktop && pnpm bundle` builds `Recall.app` with the engine inside; on first launch it installs its Python environment (needs internet once). Settings (and API keys, kept in the macOS Keychain) are set in the app.
+Release app: `cd apps/desktop && pnpm bundle` builds the app for this machine with the engine inside; on first launch it installs its Python environment (needs internet once). A `v*` tag builds all platforms in CI: macOS 14+ (Apple Silicon and Intel), Windows 10+ and Linux (x86_64), as one draft release. Speaker names install the first time a Hugging Face token is saved (about 1 GB, not on Intel Macs, where PyTorch is unavailable). Settings (and API keys, kept in the system's credential store) are set in the app.
 
 Languages: the app, notes, hints and AI summaries are in English or Turkish (**Language** in Settings); speech is transcribed in whatever language people speak, and promises and doubts are noticed in both English and Turkish.
 

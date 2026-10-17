@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Yüksel Alp Çiğtekin / AI Meeting Intelligence. All rights reserved.
 #
-# Builds the macOS app for a version tag (v0.2.0, ...) and publishes it as a
-# draft GitHub release with the signed updater manifest (latest.json) that
+# Builds the app for macOS (Apple Silicon and Intel), Windows and Linux for a
+# version tag (v0.2.0, ...) and publishes them as one draft GitHub release with the signed updater manifest (latest.json) that
 # installed apps check. Publish the draft to roll the update out.
 #
 # Secrets: TAURI_SIGNING_PRIVATE_KEY (required; contents of
@@ -21,11 +21,58 @@ permissions:
   contents: write
 
 jobs:
-  macos:
-    name: macOS (Apple Silicon)
-    runs-on: macos-latest
+  release:
+    name: Draft release
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.create.outputs.result }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check the tag matches the app version
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME but tauri.conf.json says $version"; exit 1; }
+      # One release made up front, so the parallel builds cannot each create their own draft.
+      - id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace("refs/tags/", ""),
+              name: `Recall ${context.ref.replace("refs/tags/", "")}`,
+              draft: true,
+            });
+            return data.id;
+
+  build:
+    name: ${{ matrix.name }}
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -35,18 +82,17 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+          key: ${{ matrix.target }}
       - name: Install
         working-directory: apps/desktop
         run: pnpm install --frozen-lockfile
-      - name: Check the tag matches the app version
-        working-directory: apps/desktop
-        run: |
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME but tauri.conf.json says $version"; exit 1; }
       - name: Apple signing, only for the secrets that are set
+        if: runner.os == 'macOS'
         # An empty APPLE_CERTIFICATE makes Tauri import an empty certificate and
         # fail, so secrets that are not set must not reach the build at all.
         env:
@@ -63,6 +109,9 @@ jobs:
               { echo "$name<<__END__"; echo "${!name}"; echo "__END__"; } >> "$GITHUB_ENV"
             fi
           done
+      # ponytail: each build merges its platform into the release's latest.json;
+      # builds finish minutes apart, so a lost update is unlikely. Generate
+      # latest.json in a final job if a platform ever goes missing from it.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,8 +119,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: Recall ${{ github.ref_name }}
-          releaseDraft: true
+          releaseId: ${{ needs.release.outputs.id }}
           includeUpdaterJson: true
-          args: --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json
+          args: --target ${{ matrix.target }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.release.conf.json
