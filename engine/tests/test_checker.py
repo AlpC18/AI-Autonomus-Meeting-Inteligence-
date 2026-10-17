@@ -100,3 +100,21 @@ def test_memory_is_searched_by_topic_without_the_figures() -> None:
     FactChecker(search).check(statement("the budget was $50k for 6 months"))
 
     assert queries == ["the budget was for"]
+
+
+def test_a_german_statement_is_checked_against_an_english_record() -> None:
+    record = hit("We agreed the team needs two engineers for three weeks.")
+    alert = checker(record).check(statement("Wir brauchen zwei Entwickler für vier Wochen."))
+
+    assert alert is not None
+    assert alert.claimed == ("vier Wochen",)
+    assert alert.recorded == ("three weeks",)
+
+
+def test_an_italian_statement_is_checked_against_a_turkish_record() -> None:
+    record = hit("Bütçe 35.000 dolar olarak onaylandı.")
+    alert = checker(record).check(statement("Il budget è di cinquantamila dollari."))
+
+    assert alert is not None
+    assert alert.claimed == ("cinquantamila dollari",)
+    assert alert.recorded == ("35.000 dolar",)

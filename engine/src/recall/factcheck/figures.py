@@ -6,14 +6,34 @@
 import re
 from dataclasses import dataclass
 
+from recall.factcheck.compound_numbers import ARTICLES, compound_value
+
 _MULTIPLIERS = {
     "k": 1e3, "thousand": 1e3, "bin": 1e3,
     "m": 1e6, "mn": 1e6, "million": 1e6, "milyon": 1e6,
     "bn": 1e9, "billion": 1e9, "milyar": 1e9,
+    "tausend": 1e3, "mio": 1e6, "millionen": 1e6, "mrd": 1e9, "milliarde": 1e9, "milliarden": 1e9,
+    "mila": 1e3, "milione": 1e6, "milioni": 1e6, "miliardo": 1e9, "miliardi": 1e9,
 }  # fmt: skip
 _CURRENCY_WORDS = frozenset(
     {"dollar", "usd", "euro", "eur", "pound", "gbp", "lira", "tl", "dolar", "avro"}
 )
+# German and Italian units, as the English unit they mean, so "drei Wochen",
+# "tre settimane" and "three weeks" compare with each other.
+_UNIT_ALIASES = {
+    "tag": "day", "tage": "day", "tagen": "day", "woche": "week", "wochen": "week",
+    "monat": "month", "monate": "month", "monaten": "month", "jahr": "year", "jahre": "year",
+    "jahren": "year", "stunde": "hour", "stunden": "hour", "minuten": "minute",
+    "entwickler": "developer", "entwicklerinnen": "developer", "ingenieur": "engineer",
+    "ingenieure": "engineer", "personen": "person", "nutzer": "user", "benutzer": "user",
+    "kunde": "customer", "kunden": "customer", "lizenz": "license", "lizenzen": "license",
+    "giorno": "day", "giorni": "day", "settimana": "week", "settimane": "week", "mese": "month",
+    "mesi": "month", "anno": "year", "anni": "year", "ore": "hour", "minuto": "minute",
+    "minuti": "minute", "sviluppatore": "developer", "sviluppatori": "developer",
+    "ingegnere": "engineer", "ingegneri": "engineer", "persona": "person", "persone": "person",
+    "utente": "user", "utenti": "user", "cliente": "customer", "clienti": "customer",
+    "licenza": "license", "licenze": "license", "dollari": "dollar",
+}  # fmt: skip
 _UNITS = frozenset(
     {
         "day", "week", "month", "year", "hour", "minute", "sprint", "engineer",
@@ -32,8 +52,8 @@ _FIGURE = re.compile(
     (?P<currency>[$€£₺]\s?)?
     (?P<number>{_NUMBER})
     (?:\s?(?P<multiplier>{"|".join(sorted(_MULTIPLIERS, key=len, reverse=True))})\b)?
-    (?:\s?(?P<percent_after>%|percent\b))?
-    (?:\s(?P<word>[^\W\d_]+))?
+    (?:\s?(?P<percent_after>%|percent\b|prozent\b|per\s?cento\b|percento\b))?
+    (?:\s(?:di\s)?(?P<word>[^\W\d_]+))?
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -68,12 +88,16 @@ _MONTHS = {
     for names in (
         "January February March April May June July August September October November December",
         "Ocak Şubat Mart Nisan Mayıs Haziran Temmuz Ağustos Eylül Ekim Kasım Aralık",
+        "Januar Februar März April Mai Juni Juli August September Oktober November Dezember",
+        "gennaio febbraio marzo aprile maggio giugno luglio agosto settembre ottobre novembre dicembre",
+        "Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre",
     )
     for number, name in enumerate(names.split(), start=1)
 }
 _MONTH = "|".join(_MONTHS)
-_DAY = r"(?P<{}>\d{{1,2}})(?:st|nd|rd|th)?"
-# Capitalised month names only, so "you may 5" is not a date.
+_DAY = r"(?P<{}>\d{{1,2}})(?:st|nd|rd|th|\.)?"
+# Capitalised month names only (Italian writes them in lower case, and none of
+# its names is an ordinary word), so "you may 5" is not a date.
 _DATE = re.compile(
     rf"(?<!\w)(?:(?P<month>{_MONTH})\s+{_DAY.format('day')}"
     rf"|{_DAY.format('day_first')}\s+(?:of\s+)?(?P<month_after>{_MONTH}))(?!\w)"
@@ -156,6 +180,16 @@ def _number_runs(text: str) -> list[tuple[int, int, float]]:
     runs = []
     i = 0
     while i < len(tokens):
+        # German and Italian write a whole number as one word.
+        word = tokens[i].group().lower()
+        previous = tokens[i - 1].group().lower() if i else ""
+        # A bare scale word ("35mila") is left to the digit multipliers; "per cento" is "percent".
+        skip = word in _NUMBER_WORDS or word in ARTICLES or word in _MULTIPLIERS or (previous, word) == ("per", "cento")
+        compound = None if skip else compound_value(word)
+        if compound is not None:
+            runs.append((tokens[i].start(), tokens[i].end(), compound))
+            i += 1
+            continue
         words: list[str] = []
         j = i
         while j < len(tokens):
@@ -224,6 +258,8 @@ _TR_SUFFIXES = frozenset(
 def _singular(word: str) -> str:
     """The unit or currency a word names: "weeks" → "week", "dolarlık" → "dolar"."""
     lowered = word.lower()
+    if lowered in _UNIT_ALIASES:
+        return _UNIT_ALIASES[lowered]
     if lowered.endswith("s") and lowered[:-1] in _UNITS | _CURRENCY_WORDS:
         return lowered[:-1]
     for base in _TR_UNITS:

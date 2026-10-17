@@ -137,3 +137,47 @@ def test_turkish_units_with_suffixes_are_understood(text: str, expected: set) ->
 @pytest.mark.parametrize("text", ["2 ayrıca", "3 günah", "5 dolaşım"])
 def test_words_that_only_start_like_a_unit_are_not_units(text: str) -> None:
     assert figures(text) == set()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Das Budget wurde auf fünfunddreißigtausend Euro gesenkt", {("money", 35_000.0)}),
+        ("Wir brauchen zwei Entwickler für drei Wochen", {("count:developer", 2.0), ("count:week", 3.0)}),
+        ("dreihundertzwölf Kunden", {("count:customer", 312.0)}),
+        ("zwanzig Prozent Rabatt", {("percent", 20.0)}),
+        ("ein Budget von 35 Millionen Euro", {("money", 35_000_000.0)}),
+        ("Start am 14. Oktober", {("date", 1014.0)}),
+        ("bis zum 3. März", {("date", 303.0)}),
+        ("das dauert sechzehn Tage", {("count:day", 16.0)}),
+    ],
+)
+def test_german_figures_are_understood(text: str, expected: set) -> None:
+    assert figures(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("il budget è di trentacinquemila euro", {("money", 35_000.0)}),
+        ("ci vogliono ventuno giorni", {("count:day", 21.0)}),
+        ("due sviluppatori per tre settimane", {("count:developer", 2.0), ("count:week", 3.0)}),
+        ("centoventi utenti", {("count:user", 120.0)}),
+        ("uno sconto del trenta per cento", {("percent", 30.0)}),
+        ("costa 35mila euro", {("money", 35_000.0)}),
+        ("il lancio è il 14 ottobre", {("date", 1014.0)}),
+        ("Il lancio è il quattordici ottobre", {("date", 1014.0)}),
+        ("2 milioni di euro", {("money", 2_000_000.0)}),
+    ],
+)
+def test_italian_figures_are_understood(text: str, expected: set) -> None:
+    assert figures(text) == expected
+
+
+@pytest.mark.parametrize("text", ["ein Tag wie jeder andere", "una settimana tranquilla", "sei bravo", "Tag 3"])
+def test_german_and_italian_articles_and_words_are_not_figures(text: str) -> None:
+    assert figures(text) == set()
+
+
+def test_the_same_unit_compares_across_languages() -> None:
+    assert figures("drei Wochen") == figures("tre settimane") == figures("three weeks") == {("count:week", 3.0)}
